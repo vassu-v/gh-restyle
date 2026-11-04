@@ -9,7 +9,7 @@ defers something.
 |---|---|---|
 | M0 | Design direction (Signal skin) | ✅ done |
 | M1 | Skeleton: monorepo, app, design engine, sample data, extension v0 | ✅ done |
-| M2 | Sign in with GitHub (OAuth App + PKCE + worker), secure token storage, PAT fallback | ✅ code done, tested, Worker deployed · ⏳ needs the GitHub OAuth App + client secret (`docs/SETUP-SIGNIN.md`); `/health` says configured:false until then |
+| M2 | Sign in with GitHub (OAuth App + PKCE + worker), secure token storage, PAT fallback | ✅ live: OAuth App `Ov23likikLApWz5YvJtj`, secret set on the Worker (`/health` configured:true) |
 | M3 | Core GitHub: feed, inbox triage, repos, code browser, issues, PRs (diff, checks, merge, approve), search, profiles, markdown | ✅ done (see gaps below) |
 | M4 | Studio: presets, theme, tabs/sections, tile editor, share codes | 🟡 basic version exists since M1; polish pending |
 | M5 | Ship the PWA: installable, offline shell, icons; hosted on one Cloudflare Worker with sign-in (`npm run deploy`) | ✅ live at https://gitling.truckcoding.workers.dev |
@@ -30,8 +30,8 @@ defers something.
 
 ## Not verified yet (be honest about these)
 
-- **Real OAuth against github.com:** it needs the OAuth App and deployed worker. The flow is covered by the
-  e2e test with GitHub faked.
+- **Real OAuth against github.com:** verified up to GitHub's login page (correct client ID, callback, scopes,
+  S256), and GitHub accepts the Worker's client secret. The final approve-and-return step needs a human login.
 - **Signed-in screens with a real account in the browser:** live API tests cover the data layer. The
   notifications, feed, search and user endpoints couldn't be called live from the build sandbox, which only
   allowed repo-scoped paths.
