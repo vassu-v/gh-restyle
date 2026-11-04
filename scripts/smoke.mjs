@@ -1,6 +1,7 @@
 // Browser smoke test of the built web app (sample-data mode). Run after `npm run build:web`.
 // Opens every screen at phone size and fails on a blank screen, an error state or a console error.
 // Needs Playwright with Chromium (`npx playwright install chromium` if missing).
+// SMOKE_URL=https://… checks a deployed site instead of the local build.
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { existsSync, readFileSync } from 'node:fs';
@@ -20,7 +21,7 @@ const server = createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': TYPES[extname(target)] ?? 'application/octet-stream' });
   res.end(readFileSync(target));
 }).listen(0);
-const base = `http://127.0.0.1:${server.address().port}`;
+const base = (process.env.SMOKE_URL ?? '').replace(/\/+$/, '') || `http://127.0.0.1:${server.address().port}`;
 
 // [path, text that must appear]
 const SCREENS = [
@@ -36,6 +37,9 @@ const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
 const errors = [];
 page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
 page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(`console: ${m.text()}`); });
+// Broken files on our own origin (fonts, bundles, icons) count as failures; GitHub images etc. don't.
+page.on('requestfailed', (r) => { if (r.url().startsWith(base)) errors.push(`request failed: ${r.url()} ${r.failure()?.errorText}`); });
+page.on('response', (r) => { if (r.url().startsWith(base) && r.status() >= 400) errors.push(`HTTP ${r.status()}: ${r.url()}`); });
 let failed = 0;
 for (const [path, expect] of SCREENS) {
   const before = errors.length;
@@ -48,7 +52,7 @@ for (const [path, expect] of SCREENS) {
 }
 const manifest = await (await fetch(base + '/manifest.webmanifest')).json();
 const sw = await (await fetch(base + '/sw.js')).text();
-const head = readFileSync(join(dist, 'index.html'), 'utf8');
+const head = await (await fetch(base + '/')).text();
 const pwaOk = manifest.icons?.length >= 4 && sw.includes('PRECACHE') && head.includes('rel="manifest"');
 console.log(`${pwaOk ? '✓' : '✗'} PWA manifest, service worker and head tags`);
 if (!pwaOk) failed++;

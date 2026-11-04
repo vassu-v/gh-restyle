@@ -1,12 +1,26 @@
 // Runs after `expo export --platform web`. Turns apps/app/dist into an installable, offline-capable PWA:
 //   1. adds manifest / icon / theme meta tags to index.html (Expo's single-page output has no HTML template hook)
 //   2. writes sw.js with a precache list of this build's files and a build-specific cache name
+//   0. renames asset folders that start with "@" (scoped packages, e.g. @expo-google-fonts): Cloudflare's asset
+//      server redirects %40 ↔ @ forever (ERR_TOO_MANY_REDIRECTS), so fonts never loaded in production
 // Idempotent: running it twice gives the same result.
 import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
 const dist = new URL('../apps/app/dist/', import.meta.url).pathname;
+const walkAll = (dir) => readdirSync(dir).flatMap((f) => { const p = join(dir, f); return statSync(p).isDirectory() ? [p, ...walkAll(p)] : [p]; });
+
+// 0. "@" in asset paths → "_at_", in folder names and in every "/assets/…" string in the JS/HTML.
+for (const d of walkAll(join(dist, 'assets')).filter((p) => statSync(p).isDirectory() && p.split('/').pop().startsWith('@')).sort((a, b) => b.length - a.length)) {
+  renameSync(d, join(d, '..', '_at_' + d.split('/').pop().slice(1)));
+}
+for (const f of walkAll(dist).filter((p) => /\.(js|html)$/.test(p))) {
+  const src = readFileSync(f, 'utf8');
+  const out = src.replace(/(["'`])\/assets\/[^"'`]*\1/g, (m) => m.replace(/\/@/g, '/_at_'));
+  if (out !== src) writeFileSync(f, out);
+}
+
 const htmlPath = join(dist, 'index.html');
 let html = readFileSync(htmlPath, 'utf8');
 

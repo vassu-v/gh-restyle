@@ -9,10 +9,10 @@ defers something.
 |---|---|---|
 | M0 | Design direction (Signal skin) | ✅ done |
 | M1 | Skeleton: monorepo, app, design engine, sample data, extension v0 | ✅ done |
-| M2 | Sign in with GitHub (OAuth App + PKCE + worker), secure token storage, PAT fallback | ✅ code done and tested · ⏳ needs the owner's OAuth App + Cloudflare deploy (`docs/SETUP-SIGNIN.md`) |
+| M2 | Sign in with GitHub (OAuth App + PKCE + worker), secure token storage, PAT fallback | ✅ code done, tested, Worker deployed · ⏳ needs the GitHub OAuth App + client secret (`docs/SETUP-SIGNIN.md`); `/health` says configured:false until then |
 | M3 | Core GitHub: feed, inbox triage, repos, code browser, issues, PRs (diff, checks, merge, approve), search, profiles, markdown | ✅ done (see gaps below) |
 | M4 | Studio: presets, theme, tabs/sections, tile editor, share codes | 🟡 basic version exists since M1; polish pending |
-| M5 | Ship the PWA: installable, offline shell, icons; hosted on one Cloudflare Worker with sign-in (`npm run deploy`) | ✅ build + deploy script done (dry-run ok) · ⏳ first deploy waits for the account's workers.dev subdomain |
+| M5 | Ship the PWA: installable, offline shell, icons; hosted on one Cloudflare Worker with sign-in (`npm run deploy`) | ✅ live at https://gitling.truckcoding.workers.dev |
 | P2 | Push notifications, design sync via gist, native store builds | not started |
 
 ## How it was verified
@@ -25,7 +25,7 @@ defers something.
 | Every screen in Chromium at phone size, plus PWA files | `npm run smoke` | 16/16 screens, PWA ok |
 | Full sign-in flow, GitHub simulated, real worker code | `npm run e2e:signin` | 12/12 |
 | Read endpoints against the real api.github.com | `LIVE_REPO=vassu-v/gh-restyle LIVE_REPO_ONLY=1 npm run test:live` | pass (repo, readme, tree, file, issues, pulls, thread, files, checks) |
-| Worker + app bundle for Cloudflare | `node scripts/deploy.mjs --dry-run` | 5.5 KiB code + 79 asset files |
+| Live site, every screen in Chromium | `SMOKE_URL=https://gitling.truckcoding.workers.dev npm run smoke` | 16/16 screens, PWA ok |
 | Extension | `npm run build:extension` | builds; restyle verified on live github.com during M1 |
 
 ## Not verified yet (be honest about these)
@@ -41,6 +41,8 @@ defers something.
   Chromium.
 
 ## Known gaps / next up
+
+- Asset folders starting with `@` (scoped npm packages, e.g. fonts) loop forever on Cloudflare's asset server. `scripts/pwa.mjs` renames them to `_at_…` at build time; keep that step.
 
 - Markdown has no syntax highlighting, emoji shortcodes, math or mermaid. SVG badges show as links on
   native.
