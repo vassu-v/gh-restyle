@@ -1,8 +1,13 @@
 # AGENTS.md — start here
 
-Context for any coding agent (Claude Code, Codex, Cursor, …) or new contributor. Read this file, then
-`docs/STATUS.md` (where things stand) and `docs/ARCHITECTURE.md` (how it fits together). Decisions and their
-reasons are in `docs/decisions/`. Product plan and milestones are in `PLAN.md`.
+Context for any coding agent (Claude Code, Codex, Cursor, …) or new contributor. Read in this order:
+
+1. this file: rules and commands
+2. `docs/CONTEXT.md`: the owner, their taste, the story so far, live deploy facts, environment quirks, open to-dos
+3. `docs/STATUS.md`: what's done and how it was verified
+4. `docs/ARCHITECTURE.md`: how it fits together; `docs/decisions/` explains why
+
+Product plan and milestones: `PLAN.md`. Live app: https://gitling.truckcoding.workers.dev
 
 ## What this is
 
@@ -28,7 +33,7 @@ packages/github/     typed GitHub REST: client.ts (transport), api.ts (every end
 packages/design/     Design schema (zod), Signal skin, token resolver, contrast fitting, share codes
 services/edge/       Cloudflare Worker "gitling": serves the web app (static assets) + sign-in routes (phase 2: push)
 scripts/             pwa.mjs (post-build), smoke.mjs (browser check of every screen), e2e-signin.mjs, deploy.mjs
-docs/                STATUS, ARCHITECTURE, SETUP-SIGNIN, DEPLOY, decisions/
+docs/                CONTEXT, STATUS, ARCHITECTURE, SETUP-SIGNIN, DEPLOY, decisions/
 ```
 
 ## Commands (from the repo root)
@@ -65,8 +70,13 @@ Playwright-based scripts need Chromium (`npx playwright install chromium` if it 
 8. Expo moves fast: check versioned docs before using an Expo API (see `apps/app/AGENTS.md`). Add native
    packages with `npx expo install`, not `npm i`.
 9. Keep `docs/STATUS.md` true. If you finish, break or defer something, update it in the same change.
+   Add lasting facts (owner preferences, deploy details, quirks) to `docs/CONTEXT.md`, but never secrets.
+10. Talk to the owner in plain, friendly English: the result first, then numbered steps for what they need to
+    do. Never ask them to paste tokens or secrets in chat (see `docs/CONTEXT.md` § Security).
 
 ## Done means
 
 `npm run check` passes, and for UI changes `npm run smoke` passes and you looked at the screen.
+After deploying, `SMOKE_URL=https://gitling.truckcoding.workers.dev npm run smoke` passes.
+Commit as `vassu-v <shoryavardhaans2@gmail.com>` and push to `main`.
 Say plainly what you verified and what you couldn't (e.g. native builds, real OAuth without credentials).

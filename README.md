@@ -9,7 +9,8 @@
 A GitHub client you design yourself. One Expo app for phone and web (installable PWA), plus a browser
 extension that restyles github.com on desktop.
 
-- **New here, or an AI agent?** Read [`AGENTS.md`](AGENTS.md) first.
+- **Live:** https://gitling.truckcoding.workers.dev (install it from the Account screen)
+- **New here, or an AI agent?** Read [`AGENTS.md`](AGENTS.md) first, then [`docs/CONTEXT.md`](docs/CONTEXT.md).
 - **Where things stand:** [`docs/STATUS.md`](docs/STATUS.md)
 - **How it works:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · **why:** [`docs/decisions/`](docs/decisions/)
 - **Plan:** [`PLAN.md`](PLAN.md)

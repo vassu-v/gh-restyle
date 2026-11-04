@@ -1,6 +1,6 @@
 # Status
 
-Last updated: 2026-11-04. Keep this file true: update it in the same change that finishes, breaks or
+Last updated: 2026-11-04 (after the first live deploy and GitHub sign-in setup). Keep this file true: update it in the same change that finishes, breaks or
 defers something.
 
 ## Milestones
