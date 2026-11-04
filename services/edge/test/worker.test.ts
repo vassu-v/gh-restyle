@@ -91,3 +91,18 @@ describe('POST /auth/exchange', () => {
     expect(no.status).toBe(403);
   });
 });
+
+describe('static assets', () => {
+  it('hands non-auth paths to the app assets when bound', async () => {
+    const ASSETS = { fetch: vi.fn(async () => new Response('<html>app</html>')) };
+    const res = await handle(new Request(`${W}/repo/a/b`), { ...env, ASSETS });
+    expect(await res.text()).toBe('<html>app</html>');
+    expect(ASSETS.fetch).toHaveBeenCalledOnce();
+  });
+  it('still answers /health itself', async () => {
+    const ASSETS = { fetch: vi.fn() };
+    const res = await handle(new Request(`${W}/health`), { ...env, ASSETS });
+    expect((await res.json()).ok).toBe(true);
+    expect(ASSETS.fetch).not.toHaveBeenCalled();
+  });
+});

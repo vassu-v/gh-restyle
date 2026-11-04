@@ -12,7 +12,7 @@ defers something.
 | M2 | Sign in with GitHub (OAuth App + PKCE + worker), secure token storage, PAT fallback | ✅ code done and tested · ⏳ needs the owner's OAuth App + Cloudflare deploy (`docs/SETUP-SIGNIN.md`) |
 | M3 | Core GitHub: feed, inbox triage, repos, code browser, issues, PRs (diff, checks, merge, approve), search, profiles, markdown | ✅ done (see gaps below) |
 | M4 | Studio: presets, theme, tabs/sections, tile editor, share codes | 🟡 basic version exists since M1; polish pending |
-| M5 | Ship the PWA: installable, offline shell, icons, Vercel + Cloudflare Pages configs | ✅ build + configs done · ⏳ not deployed yet (`docs/DEPLOY.md`) |
+| M5 | Ship the PWA: installable, offline shell, icons; hosted on one Cloudflare Worker with sign-in (`npm run deploy`) | ✅ build + deploy script done (dry-run ok) · ⏳ first deploy waits for the account's workers.dev subdomain |
 | P2 | Push notifications, design sync via gist, native store builds | not started |
 
 ## How it was verified
@@ -21,11 +21,11 @@ defers something.
 |---|---|---|
 | Types (app + worker) | `npm run typecheck` | clean |
 | Lint | `npm run lint` | clean |
-| Unit tests: client, api × sample data, PKCE/state, worker, design | `npm test` | 38/38 |
+| Unit tests: client, api × sample data, PKCE/state, worker, design | `npm test` | 40/40 |
 | Every screen in Chromium at phone size, plus PWA files | `npm run smoke` | 16/16 screens, PWA ok |
 | Full sign-in flow, GitHub simulated, real worker code | `npm run e2e:signin` | 12/12 |
 | Read endpoints against the real api.github.com | `LIVE_REPO=vassu-v/gh-restyle LIVE_REPO_ONLY=1 npm run test:live` | pass (repo, readme, tree, file, issues, pulls, thread, files, checks) |
-| Worker bundles for Cloudflare | `npx wrangler@4 deploy --dry-run` (in services/edge) | 5.4 KiB |
+| Worker + app bundle for Cloudflare | `node scripts/deploy.mjs --dry-run` | 5.5 KiB code + 79 asset files |
 | Extension | `npm run build:extension` | builds; restyle verified on live github.com during M1 |
 
 ## Not verified yet (be honest about these)

@@ -23,14 +23,14 @@ npm run web
 
 It opens with sample data, so every screen works without an account. To use your own GitHub:
 
-- **One-tap sign-in:** set up once with [`docs/SETUP-SIGNIN.md`](docs/SETUP-SIGNIN.md) (GitHub OAuth App + free Cloudflare worker).
+- **One-tap sign-in:** set up once with [`docs/SETUP-SIGNIN.md`](docs/SETUP-SIGNIN.md) (a GitHub OAuth App; the Cloudflare Worker is already part of the deploy).
 - **Or paste a token:** avatar → Account → "Use a personal access token instead" (classic token with `repo`, `notifications`, `read:user`).
 
 On a phone during development: install **Expo Go** and scan the QR code that `npx expo start` prints in `apps/app`.
 
 ## Install it on your phone
 
-Deploy the web build to Vercel or Cloudflare Pages ([`docs/DEPLOY.md`](docs/DEPLOY.md)), open the URL, then
+Deploy with `npm run deploy` (one Cloudflare Worker serves the app and sign-in; see [`docs/DEPLOY.md`](docs/DEPLOY.md)), open the URL, then
 Account → **Install app** (Android/Chrome) or Share → **Add to Home Screen** (iPhone).
 
 ## Desktop extension

@@ -22,12 +22,12 @@ apps/app/            Expo app (Expo Router, React Native, react-native-web). Has
   src/features/      shared rows (issues, repos, feed), tiles, inbox swipe, tab bar
   src/lib/           links.ts (in-app routes + github.com URL → route), format.ts
   src/pwa/           service-worker registration + install prompt
-  public/            copied into the web build: manifest, icons, Cloudflare _headers/_redirects
+  public/            copied into the web build: manifest, icons, _headers
 apps/extension/      Manifest V3 extension; restyles github.com via Primer CSS variables
 packages/github/     typed GitHub REST: client.ts (transport), api.ts (every endpoint), auth.ts (OAuth/PKCE), mock.ts (sample data)
 packages/design/     Design schema (zod), Signal skin, token resolver, contrast fitting, share codes
-services/edge/       Cloudflare Worker: OAuth callback bounce + code exchange (phase 2: push)
-scripts/             pwa.mjs (post-build), smoke.mjs (browser check of every screen), e2e-signin.mjs
+services/edge/       Cloudflare Worker "gitling": serves the web app (static assets) + sign-in routes (phase 2: push)
+scripts/             pwa.mjs (post-build), smoke.mjs (browser check of every screen), e2e-signin.mjs, deploy.mjs
 docs/                STATUS, ARCHITECTURE, SETUP-SIGNIN, DEPLOY, decisions/
 ```
 
@@ -44,6 +44,7 @@ docs/                STATUS, ARCHITECTURE, SETUP-SIGNIN, DEPLOY, decisions/
 | `npm run test:live` | read-only tests against the real api.github.com (`LIVE_REPO=owner/name`, optional `GITHUB_TOKEN`) |
 | `npm run build:web` | `expo export` + `scripts/pwa.mjs` → `apps/app/dist` (what Vercel/Cloudflare serve) |
 | `npm run build:extension` | → `apps/extension/dist` (load unpacked) |
+| `npm run deploy` | build the app with settings from `services/edge/wrangler.toml` and deploy the Worker (needs Cloudflare auth; see docs/DEPLOY.md) |
 
 Playwright-based scripts need Chromium (`npx playwright install chromium` if it isn't on the machine).
 

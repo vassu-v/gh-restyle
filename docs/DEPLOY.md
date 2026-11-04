@@ -1,40 +1,48 @@
-# Deploy the web app (PWA)
+# Deploy
 
-The web build is static files in `apps/app/dist`, produced by `npm run build:web`. Any static host works.
-Configs for two hosts are in the repo.
+## Production: Cloudflare (one Worker)
 
-## Vercel (`vercel.json` at the repo root)
+One Cloudflare Worker (`services/edge`, named `gitling`) serves everything at
+`https://gitling.<subdomain>.workers.dev`:
 
-1. On https://vercel.com/new, import the GitHub repo. Leave **Root Directory** as the repo root. `vercel.json`
-   sets the install command, the build command (`npm run build:web`) and the output folder
-   (`apps/app/dist`).
-2. Optional: add `EXPO_PUBLIC_GITHUB_CLIENT_ID` and `EXPO_PUBLIC_AUTH_URL` under Environment Variables (see
-   `docs/SETUP-SIGNIN.md`).
-3. Deploy. Add the resulting `https://<name>.vercel.app` to the worker's `ALLOWED_RETURN`, then run
-   `npm run deploy:auth`.
+- **The web app (PWA):** static assets from `apps/app/dist`, with single-page fallback. `_headers` sets
+  caching and security headers.
+- **Sign-in:** `/auth/callback`, `/auth/exchange` and `/health`, the only paths that run Worker code
+  (`run_worker_first`).
 
-`vercel.json` also handles these:
-- **SPA rewrite:** deep links like `/repo/x/y` load the app.
-- **Long cache:** hashed bundles are cached for a long time.
-- **No cache:** `sw.js`, `index.html` and the manifest are never cached.
-- **Security headers.**
+The app and sign-in share one origin, so there's no cross-site setup.
 
-## Cloudflare Pages
+### Deploy
 
-1. In the dashboard, go to Workers & Pages → Create → Pages → Connect to Git → pick the repo.
-2. Settings:
-   - **Build command:** `npm run build:web`
-   - **Build output directory:** `apps/app/dist`
-   - **Environment variable:** `NODE_VERSION=22`
-   - Optionally, the two `EXPO_PUBLIC_*` variables.
-3. Deploy. `apps/app/public/_redirects` (SPA fallback) and `_headers` (cache and security headers) are
-   copied into the build automatically.
-4. Add the `https://<name>.pages.dev` origin to the worker's `ALLOWED_RETURN`.
+```bash
+npm run deploy
+```
 
-## After the first deploy
+`scripts/deploy.mjs` reads `GITHUB_CLIENT_ID` and `ALLOWED_RETURN` from `services/edge/wrangler.toml`,
+builds the app with those values baked in (`EXPO_PUBLIC_*`), then runs `wrangler deploy`. Add `--dry-run` to
+build and bundle without uploading.
 
-- Open the URL on a phone.
-  - **Android / Chrome:** Account → **Install app**.
-  - **iPhone / Safari:** Share → **Add to Home Screen**.
-- Updates: each deploy changes the service worker's cache name. Installed apps pick up the new version on
-  the next launch.
+Auth: either `CLOUDFLARE_API_TOKEN` (the "Edit Cloudflare Workers" template), plus `CLOUDFLARE_ACCOUNT_ID`
+if the token can see several accounts, or `npx wrangler@4 login` on your own machine.
+
+### First time only
+
+1. Open Workers & Pages in the Cloudflare dashboard once. That creates the account's free `workers.dev`
+   subdomain.
+2. `npm run deploy`, then note the URL it prints.
+3. Put that URL first among the https entries in `ALLOWED_RETURN` in `wrangler.toml`. Commit, then run
+   `npm run deploy` again.
+4. Set up sign-in: `docs/SETUP-SIGNIN.md`.
+
+Open the URL on a phone.
+- **Android / Chrome:** Account → **Install app**.
+- **iPhone / Safari:** Share → **Add to Home Screen**.
+
+Each deploy changes the service worker's cache name, so installed apps update on their next launch.
+
+## Alternative: Vercel
+
+`vercel.json` (at the repo root) builds with `npm run build:web` and serves `apps/app/dist` with an SPA
+rewrite and the same headers. Import the repo at vercel.com/new and set the two `EXPO_PUBLIC_*` variables
+to the Worker's values. Then add the Vercel origin to `ALLOWED_RETURN` and redeploy the Worker. The app
+then lives on Vercel, while sign-in stays on the Worker.

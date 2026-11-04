@@ -16,8 +16,8 @@
     "build:extension": "node apps/extension/build.mjs",
     "smoke": "node scripts/smoke.mjs",
     "check": "npm run typecheck && npm run lint && npm test && npm run build:extension && npm run build:web",
-    "deploy:auth": "npm --workspace services/edge run deploy",
-    "e2e:signin": "node scripts/e2e-signin.mjs"
+    "e2e:signin": "node scripts/e2e-signin.mjs",
+    "deploy": "node scripts/deploy.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",

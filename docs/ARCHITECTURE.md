@@ -96,8 +96,8 @@ POST /auth/exchange {code, code_verifier} →  + client_secret →  /login/oauth
 tokenStore.set(token); GET /user to validate
 ```
 
-- The OAuth App has **one** callback URL: the worker's `/auth/callback`. Web origins (localhost, Vercel,
-  Cloudflare Pages) and native (`gitling://`) all work through the worker's allowlist, so adding a host is a
+- The OAuth App has **one** callback URL: `<APP_URL>/auth/callback` (same Worker that serves the app). Web origins (localhost, Vercel,
+  other hosts) and native (`gitling://`) all work through the worker's allowlist, so adding a host is a
   config change, not a GitHub change.
 - The worker stores nothing. CORS on `/auth/exchange` only allows allowlisted origins. Native requests send
   no Origin header and are allowed.
@@ -123,9 +123,10 @@ tokenStore.set(token); GET /user to validate
   - It never touches api.github.com.
 - `src/pwa/register.ts` registers the worker (production only) and captures `beforeinstallprompt`. Account
   shows "Install app" (Chrome/Edge/Android) or Add-to-Home-Screen steps (iOS).
-- **Hosting:**
-  - `vercel.json`: build command, output dir, SPA rewrite, headers.
-  - `apps/app/public/_redirects` and `_headers`: Cloudflare Pages.
+- **Hosting:** production is one Cloudflare Worker (`services/edge`).
+  - Static assets serve the app, with SPA fallback; `_headers` sets caching and security headers.
+  - Only `/auth/*` and `/health` run Worker code, so the app and sign-in share one origin.
+  - `vercel.json` is kept as an alternative host.
 
   See `docs/DEPLOY.md`.
 

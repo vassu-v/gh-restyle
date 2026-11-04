@@ -1,5 +1,6 @@
 /**
- * Gitling auth worker (Cloudflare Workers). Stores nothing. Two jobs:
+ * Gitling Worker (Cloudflare). Serves the web app from static assets (wrangler.toml [assets]) and handles
+ * sign-in. Stores nothing. Routes that reach this code:
  *
  *   GET  /auth/callback?code&state  GitHub sends the user here (the OAuth App's single callback URL).
  *                                    We read where the app wants to land from `state`, check it against
@@ -12,6 +13,8 @@
  */
 
 export interface Env {
+  /** Static assets (the web app). Absent when the worker runs without assets (tests, auth-only deploys). */
+  ASSETS?: { fetch: (req: Request) => Promise<Response> };
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;
   /** Comma list: exact http(s) origins and/or custom schemes ("gitling://"). */
@@ -35,6 +38,7 @@ export async function handle(req: Request, env: Env, f: Fetch = fetch): Promise<
       if (req.headers.get('Origin') && !cors) return json({ error: 'This website is not allowed to sign in here.' }, 403);
       return exchange(req, url, env, f, cors);
     }
+    if (env.ASSETS) return env.ASSETS.fetch(req);
     return json({ error: 'Not found' }, 404, cors);
   } catch {
     return json({ error: 'Sign-in service error. Try again.' }, 500, cors);
