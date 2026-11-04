@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Gitling</title>
+<style>
+  @font-face { font-family: "Gitling Geist"; src: url("fonts/Geist_400Regular.ttf"); font-weight: 400; }
+  @font-face { font-family: "Gitling Geist"; src: url("fonts/Geist_600SemiBold.ttf"); font-weight: 600; }
+  @font-face { font-family: "Gitling Geist Mono"; src: url("fonts/GeistMono_400Regular.ttf"); }
+  :root { --bg: #0E0F11; --el: #16171A; --el2: #1E1F23; --line: #25262B; --fg: #ECECEE; --mut: #8D8F96; --ok: #5BD69A; --bad: #FF7A5C; }
+  * { box-sizing: border-box; }
+  body { margin: 0; width: 340px; padding: 16px; background: var(--bg); color: var(--fg); font: 14px/1.45 "Gitling Geist", system-ui, sans-serif; }
+  h1 { font-size: 17px; font-weight: 600; margin: 0 0 2px; }
+  .sub { color: var(--mut); margin: 0 0 14px; font-size: 13px; }
+  .row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--line); }
+  .seg { display: flex; background: var(--el2); border-radius: 10px; padding: 3px; }
+  .seg button { border: 0; background: none; color: var(--mut); font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 8px; cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: #33343A; color: var(--fg); }
+  textarea { width: 100%; min-height: 70px; margin-top: 8px; padding: 10px; border-radius: 12px; border: 1px solid var(--line); background: var(--el2); color: var(--fg); font: 12px "Gitling Geist Mono", monospace; resize: vertical; }
+  .btn { margin-top: 8px; width: 100%; height: 40px; border-radius: 20px; border: 0; background: var(--fg); color: var(--bg); font: 600 14px "Gitling Geist", sans-serif; cursor: pointer; }
+  .msg { font-size: 13px; margin-top: 8px; min-height: 18px; }
+  .ok { color: var(--ok); } .bad { color: var(--bad); }
+  label.lab { display: block; margin-top: 12px; font: 12px "Gitling Geist Mono", monospace; color: var(--mut); }
+  input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--fg); }
+</style>
+</head>
+<body>
+  <h1>Gitling</h1>
+  <p class="sub">Your design, applied to github.com.</p>
+  <div class="row"><span>Restyle GitHub</span><input type="checkbox" id="enabled"></div>
+  <div class="row"><span>Background</span><div class="seg" id="bg"><button data-v="graphite">Graphite</button><button data-v="black">Black</button><button data-v="paper">Paper</button></div></div>
+  <div class="row"><span>Counters</span><div class="seg" id="num"><button data-v="dot">Dot</button><button data-v="mono">Mono</button><button data-v="sans">Sans</button></div></div>
+  <label class="lab" for="code">paste a design code from the app</label>
+  <textarea id="code" placeholder="GITLING1.…" spellcheck="false"></textarea>
+  <button class="btn" id="apply">Apply design</button>
+  <div class="msg" id="msg" role="status"></div>
+  <script src="popup.js"></script>
+</body>
+</html>

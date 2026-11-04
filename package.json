@@ -1,0 +1,16 @@
+{
+  "name": "gitling",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "web": "npm --workspace apps/app run web",
+    "typecheck": "npm --workspace apps/app exec tsc -- --noEmit",
+    "export:web": "npm --workspace apps/app exec expo -- export --platform web"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

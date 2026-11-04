@@ -1,0 +1,34 @@
+/* Static rules. Colors come from CSS variables set by content.js, so everything here only reads tokens. */
+@font-face { font-family: "Gitling Geist"; src: url("chrome-extension://__MSG_@@extension_id__/fonts/Geist_400Regular.ttf") format("truetype"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Gitling Geist"; src: url("chrome-extension://__MSG_@@extension_id__/fonts/Geist_500Medium.ttf") format("truetype"); font-weight: 500; font-display: swap; }
+@font-face { font-family: "Gitling Geist"; src: url("chrome-extension://__MSG_@@extension_id__/fonts/Geist_600SemiBold.ttf") format("truetype"); font-weight: 600 700; font-display: swap; }
+@font-face { font-family: "Gitling Geist Mono"; src: url("chrome-extension://__MSG_@@extension_id__/fonts/GeistMono_400Regular.ttf") format("truetype"); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: "Gitling Doto"; src: url("chrome-extension://__MSG_@@extension_id__/fonts/Doto_800ExtraBold.ttf") format("truetype"); font-weight: 400 900; font-display: swap; }
+
+/* Glass header, like the app's tab bar. */
+html.gitling-on .AppHeader,
+html.gitling-on header[class*="AppHeader"] {
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+}
+
+/* Counters (issue/PR/star counts) use the instrument number style chosen in Studio. */
+html.gitling-on .Counter,
+html.gitling-on [class*="CounterLabel"] {
+  font-family: var(--gitling-num-font), var(--fontStack-monospace);
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+/* Repo, file and branch names read better in the mono face. */
+html.gitling-on .branch-name,
+html.gitling-on .commit-ref,
+html.gitling-on [class*="BranchName"] {
+  font-family: var(--fontStack-monospace);
+}
+
+/* Softer, pill-shaped primary buttons. */
+html.gitling-on .btn-primary,
+html.gitling-on [data-variant="primary"] {
+  border-radius: 999px;
+}

@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Gitling directions</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&family=JetBrains+Mono:wght@400;500;700&family=Geist:wght@300..800&family=Geist+Mono:wght@400;500;600&family=Doto:wght@400..900&display=swap">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#2a2a2a;padding:40px;display:grid;gap:60px;font-family:system-ui}
+.board{display:flex;gap:28px;align-items:flex-start}
+.phone{width:390px;height:844px;overflow:hidden;position:relative;border-radius:44px;flex:none}
+.lucide{width:18px;height:18px;flex:none}
+
+/* =============== A. LEDGER — Swiss index =============== */
+.L{--paper:#F3F1EC;--ink:#121212;--mut:#6E6B64;--rule:#121212;--hair:#D3CFC6;--sig:#2433FF;--ok:#0E7A3E;--bad:#D2341C;--merged:#6B3FD4;
+  background:var(--paper);color:var(--ink);font-family:"Archivo",sans-serif;font-stretch:100%}
+.L .mono{font-family:"JetBrains Mono",monospace}
+.L .status{height:47px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 28px 6px;font:600 15px "Archivo"}
+.L .top{display:flex;justify-content:space-between;align-items:center;padding:14px 20px 10px;border-bottom:2px solid var(--rule)}
+.L .top .mono{font-size:11px;letter-spacing:.04em;color:var(--mut)}
+.L h1{font:800 44px/0.95 "Archivo";font-stretch:75%;letter-spacing:-.01em;text-transform:uppercase}
+.L .hd{padding:16px 20px 14px;border-bottom:2px solid var(--rule)}
+.L .hd .mono{font-size:11px;color:var(--mut);margin-top:8px;display:block}
+.L .idx{display:grid;grid-template-columns:34px 1fr auto;align-items:baseline;padding:13px 20px;border-bottom:1px solid var(--hair)}
+.L .idx .n{font:500 11px "JetBrains Mono";color:var(--mut)}
+.L .idx .t{font:650 17px "Archivo"}
+.L .idx .c{font:500 15px "JetBrains Mono"}
+.L .idx .c b{font:800 26px "Archivo";font-stretch:75%;}
+.L .idx.hot .c b{color:var(--sig)}
+.L .lab{font:600 11px "JetBrains Mono";letter-spacing:.08em;text-transform:uppercase;padding:18px 20px 8px;display:flex;justify-content:space-between;color:var(--ink)}
+.L .lab span{color:var(--mut);font-weight:400}
+.L .cells{display:grid;grid-template-columns:1fr 1fr;border-top:2px solid var(--rule);border-bottom:2px solid var(--rule)}
+.L .cell{padding:12px 14px 14px;height:104px;display:flex;flex-direction:column;justify-content:space-between;border-right:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.L .cell:nth-child(2n){border-right:0}.L .cell:nth-last-child(-n+2){border-bottom:0}
+.L .cell .k{font:500 10.5px "JetBrains Mono";color:var(--mut);display:flex;justify-content:space-between}
+.L .cell .v{font:700 17px/1.1 "Archivo"}
+.L .cell.inv{background:var(--ink);color:var(--paper)}.L .cell.inv .k{color:#A8A49B}
+.L .cell.sig{background:var(--sig);color:#fff}.L .cell.sig .k{color:#C9CDFF}
+.L .tabs{position:absolute;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(4,1fr);border-top:2px solid var(--rule);background:var(--paper);height:84px;padding-bottom:28px}
+.L .tabs div{display:grid;place-items:center;font:600 11px "JetBrains Mono";letter-spacing:.06em;border-right:1px solid var(--rule)}
+.L .tabs div:last-child{border-right:0}
+.L .tabs .on{background:var(--ink);color:var(--paper)}
+.L .row{display:grid;grid-template-columns:14px 1fr auto;gap:12px;padding:13px 20px;border-bottom:1px solid var(--hair);align-items:start}
+.L .row .m{width:8px;height:8px;margin-top:7px;background:var(--sig)}
+.L .row .m.off{background:transparent;outline:1px solid var(--hair)}
+.L .row .t{font:600 16px/1.25 "Archivo"}
+.L .row .s{font:400 11.5px/1.5 "JetBrains Mono";color:var(--mut);margin-top:3px}
+.L .row .r{font:500 11px "JetBrains Mono";color:var(--mut)}
+.L .chipset{display:flex;border-bottom:2px solid var(--rule)}
+.L .chipset div{flex:1;text-align:center;padding:10px 0;font:600 11px "JetBrains Mono";letter-spacing:.05em;border-right:1px solid var(--rule)}
+.L .chipset div:last-child{border-right:0}.L .chipset .on{background:var(--ink);color:var(--paper)}
+.L .swipe{position:relative;overflow:hidden;border-bottom:1px solid var(--hair)}
+.L .swipe .act{position:absolute;inset:0;background:var(--sig);color:#fff;display:flex;align-items:center;padding-left:20px;font:700 12px "JetBrains Mono";letter-spacing:.08em}
+.L .swipe .row{transform:translateX(118px);background:var(--paper);border-bottom:0}
+.L .tag{display:inline-block;border:1.5px solid currentColor;padding:3px 7px;font:700 11px "JetBrains Mono";letter-spacing:.06em}
+.L .stat{display:grid;grid-template-columns:repeat(4,1fr);border-top:2px solid var(--rule);border-bottom:2px solid var(--rule);margin-top:14px}
+.L .stat div{padding:10px 12px;border-right:1px solid var(--rule)}.L .stat div:last-child{border-right:0}
+.L .stat b{display:block;font:800 26px "Archivo";font-stretch:75%}.L .stat span{font:500 10px "JetBrains Mono";color:var(--mut);letter-spacing:.05em}
+.L .check{display:grid;grid-template-columns:18px 1fr auto;gap:10px;padding:10px 20px;border-bottom:1px solid var(--hair);font:500 13px "JetBrains Mono";align-items:center}
+.L .band{position:absolute;left:0;right:0;bottom:84px;background:var(--ink);color:var(--paper);display:flex;justify-content:space-between;align-items:center;padding:18px 20px;font:800 20px "Archivo";font-stretch:80%;text-transform:uppercase;letter-spacing:.02em}
+.L .note{padding:12px 20px;display:grid;grid-template-columns:30px 1fr;gap:10px;border-bottom:1px solid var(--hair)}
+.L .av{width:26px;height:26px;background:var(--ink);color:var(--paper);display:grid;place-items:center;font:700 12px "JetBrains Mono"}
+.L .note p{font:400 14px/1.45 "Archivo"}
+.L .note .s{font:400 11px "JetBrains Mono";color:var(--mut);margin-bottom:3px}
+.L .skin{display:grid;grid-template-columns:28px 1fr 92px;align-items:center;gap:10px;padding:12px 20px;border-bottom:1px solid var(--hair)}
+.L .skin .n{font:500 11px "JetBrains Mono";color:var(--mut)}
+.L .skin b{font:700 16px "Archivo";display:block}.L .skin span{font:400 11px "JetBrains Mono";color:var(--mut)}
+.L .skin.on{background:var(--ink);color:var(--paper)}.L .skin.on .n,.L .skin.on span{color:#A8A49B}
+.L .sw{display:flex;height:34px;border:1.5px solid currentColor}.L .sw i{flex:1}
+.L .ctl{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid var(--hair);font:600 15px "Archivo"}
+.L .ctl .opts{display:flex;border:1.5px solid var(--ink)}.L .ctl .opts span{padding:5px 9px;font:600 11px "JetBrains Mono";border-right:1.5px solid var(--ink)}.L .ctl .opts span:last-child{border-right:0}.L .ctl .opts .on{background:var(--ink);color:var(--paper)}
+.L .sq{display:flex;gap:6px}.L .sq i{width:24px;height:24px;display:block}.L .sq i.on{outline:2px solid var(--ink);outline-offset:2px}
+
+/* =============== B. TELEMETRY — instrument panel =============== */
+.T{--bg:#0A0A0A;--panel:#121212;--fg:#F2F2F2;--mut:#8A8A8A;--line:#262626;--red:#FF3B1F;--grn:#3DFF8F;--amb:#FFB020;
+  background:var(--bg);color:var(--fg);font-family:"Geist",sans-serif}
+.T .gm{font-family:"Geist Mono",monospace}
+.T .status{height:47px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 28px 6px;font:600 15px "Geist"}
+.T .top{display:flex;justify-content:space-between;align-items:flex-start;padding:14px 20px 14px;border-bottom:1px solid var(--line)}
+.T .top .gm{font-size:10.5px;color:var(--mut);line-height:1.6;letter-spacing:.03em}
+.T .id{font:700 19px "Geist Mono";color:var(--red);letter-spacing:.02em}
+.T .big{display:flex;justify-content:space-between;align-items:flex-end;padding:18px 20px 16px;border-bottom:1px solid var(--line)}
+.T .dot{font-family:"Doto",monospace;font-weight:900;font-size:104px;line-height:.82;letter-spacing:-.02em}
+.T .bracket{display:inline-block;background:#2B2B2B;padding:6px 10px;font:600 11px "Geist Mono";letter-spacing:.06em;margin-bottom:12px}
+.T .kv{display:flex;justify-content:space-between;align-items:center;padding:13px 20px;border-bottom:1px solid var(--line)}
+.T .kv .k{font:500 11px "Geist Mono";color:var(--mut);letter-spacing:.06em}
+.T .kv .v{font:600 22px "Geist";letter-spacing:-.02em}
+.T .kv .v.red{color:var(--red)}
+.T .ticks{display:flex;gap:3px;height:22px;margin:4px 20px 0}.T .ticks i{flex:1;background:#2B2B2B}.T .ticks i.g{background:var(--grn)}.T .ticks i.r{background:var(--red)}
+.T .meterlab{display:flex;justify-content:space-between;padding:6px 20px 14px;font:500 10px "Geist Mono";color:var(--mut);border-bottom:1px solid var(--line)}
+.T .wins{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 14px}
+.T .win{border:1px solid #333;background:var(--panel)}
+.T .win .bar{display:flex;justify-content:space-between;padding:6px 9px;border-bottom:1px solid #333;font:500 9.5px "Geist Mono";color:var(--mut);letter-spacing:.06em}
+.T .win .body{padding:10px 10px 12px;display:flex;justify-content:space-between;align-items:flex-end}
+.T .win .body b{font:600 14px/1.15 "Geist"}
+.T .win .body .dot{font-size:34px}
+.T .win.alert{border-color:var(--red)}.T .win.alert .bar{background:var(--red);color:#000;border-color:var(--red)}
+.T .tabs{position:absolute;left:14px;right:14px;bottom:30px;display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.T .tabs div{height:46px;border-radius:23px;border:1px solid #333;display:grid;place-items:center;font:600 11px "Geist Mono";letter-spacing:.06em;color:var(--mut);background:var(--bg)}
+.T .tabs .on{background:var(--fg);color:#000;border-color:var(--fg)}
+.T .thead{display:grid;grid-template-columns:52px 1fr 54px;padding:9px 20px;background:#1E1E1E;font:600 10px "Geist Mono";letter-spacing:.06em;color:var(--mut)}
+.T .tr{display:grid;grid-template-columns:52px 1fr 54px;padding:12px 20px;border-bottom:1px solid var(--line);align-items:start}
+.T .tr .tm{font:500 12px "Geist Mono"}
+.T .tr .tm.red{color:var(--red)}
+.T .tr b{font:550 15px/1.3 "Geist";display:block}
+.T .tr .s{font:400 10.5px "Geist Mono";color:var(--mut);margin-top:4px;letter-spacing:.02em}
+.T .tr .e{font:600 10px "Geist Mono";text-align:right;letter-spacing:.04em}
+.T .e.r{color:var(--red)}.T .e.g{color:var(--grn)}.T .e.a{color:var(--amb)}
+.T .seg{display:flex;margin:12px 20px;border:1px solid #333}
+.T .seg div{flex:1;text-align:center;padding:9px;font:600 10.5px "Geist Mono";letter-spacing:.06em;color:var(--mut)}
+.T .seg .on{background:var(--fg);color:#000}
+.T .alertband{margin:0 14px;background:var(--red);color:#000;display:flex;justify-content:space-between;align-items:center;padding:12px 14px;font:700 11px "Geist Mono";letter-spacing:.06em}
+.T .merge{position:absolute;left:14px;right:14px;bottom:92px;height:54px;border-radius:27px;background:var(--fg);color:#000;display:flex;align-items:center;justify-content:center;gap:8px;font:700 12px "Geist Mono";letter-spacing:.08em}
+.T .diffbar{display:flex;gap:2px;height:14px}.T .diffbar i{width:7px}.T .diffbar .g{background:var(--grn)}.T .diffbar .r{background:var(--red)}.T .diffbar .n{background:#2B2B2B}
+.T .skin{margin:0 14px 8px;border:1px solid #333;display:grid;grid-template-columns:1fr 110px}
+.T .skin .info{padding:10px 12px}.T .skin .info b{font:600 15px "Geist";display:block}.T .skin .info span{font:400 10px "Geist Mono";color:var(--mut);letter-spacing:.04em}
+.T .skin .pv{border-left:1px solid #333;display:grid;place-items:center;font-family:"Doto";font-weight:900;font-size:30px}
+.T .skin.on{border-color:var(--fg)}.T .skin.on .info span:first-of-type{color:var(--grn)}
+.T .slider{margin:6px 20px 14px}.T .slider .track{display:flex;gap:3px;height:18px}.T .slider .track i{flex:1;background:#2B2B2B}.T .slider .track i.on{background:var(--fg)}
+
+/* =============== C. QUIET PRO — native, Linear/Raycast lineage =============== */
+.Q{--bg:#0F1012;--el:#17181B;--el2:#1F2024;--fg:#EDEDEF;--mut:#8B8D94;--line:#232428;--acc:#8B9CFF;--ok:#4CC38A;--bad:#F2555A;--merged:#B48CFF;--amb:#F5B547;
+  background:var(--bg);color:var(--fg);font-family:"Geist",sans-serif}
+.Q .status{height:47px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 28px 6px;font:600 15px "Geist"}
+.Q .bar{display:flex;align-items:center;gap:10px;padding:10px 16px}
+.Q .search{flex:1;height:38px;border-radius:12px;background:var(--el2);display:flex;align-items:center;gap:8px;padding:0 12px;color:var(--mut);font-size:15px}
+.Q .avatar{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font:600 13px "Geist";color:#fff;flex:none;position:relative}
+.Q .pins{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:14px 12px 6px}
+.Q .pin{display:grid;justify-items:center;gap:7px;font-size:12px;color:var(--fg)}
+.Q .pin .ic{width:52px;height:52px;border-radius:15px;display:grid;place-items:center;position:relative;background:var(--el2);border:1px solid #2A2B30}
+.Q .pin .ic .lucide{width:22px;height:22px}
+.Q .pin .bdg{position:absolute;top:-5px;right:-6px;min-width:19px;height:19px;border-radius:10px;background:var(--fg);color:#000;font:700 11px/19px "Geist";text-align:center;padding:0 5px}
+.Q .sh{display:flex;justify-content:space-between;align-items:baseline;padding:18px 18px 6px;font:600 13px "Geist";color:var(--mut)}
+.Q .sh span{font-weight:500;color:var(--acc)}
+.Q .item{display:grid;grid-template-columns:36px 1fr auto;gap:12px;padding:10px 18px;align-items:center}
+.Q .item .glyph{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;background:var(--el2)}
+.Q .item b{font:550 15.5px/1.3 "Geist";display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.Q .item .s{font-size:13px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.Q .item .t{font-size:13px;color:var(--mut)}
+.Q .ci{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.Q .tabs{position:absolute;left:16px;right:84px;bottom:30px;height:58px;border-radius:29px;background:rgba(40,41,46,.72);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-around;padding:0 6px}
+.Q .tabs div{width:62px;height:46px;border-radius:23px;display:grid;place-items:center;color:var(--mut)}
+.Q .tabs .on{background:rgba(255,255,255,.1);color:var(--fg)}
+.Q .tabs .lucide{width:22px;height:22px}
+.Q .fab{position:absolute;right:16px;bottom:30px;width:58px;height:58px;border-radius:29px;background:rgba(40,41,46,.72);border:1px solid rgba(255,255,255,.08);display:grid;place-items:center}
+.Q h1{font:650 30px/1.1 "Geist";letter-spacing:-.025em;padding:8px 18px 0}
+.Q .pills{display:flex;gap:6px;padding:12px 18px 6px}
+.Q .pills div{padding:7px 13px;border-radius:16px;font:550 14px "Geist";color:var(--mut)}
+.Q .pills .on{background:var(--el2);color:var(--fg)}
+.Q .pills .on i{font-style:normal;color:var(--mut);margin-left:4px}
+.Q .nrow{display:grid;grid-template-columns:42px 1fr auto;gap:12px;padding:11px 18px;position:relative}
+.Q .nrow .avatar{width:38px;height:38px;font-size:14px}
+.Q .nrow .badge{position:absolute;right:-4px;bottom:-4px;width:19px;height:19px;border-radius:50%;background:var(--bg);display:grid;place-items:center}
+.Q .nrow .badge .lucide{width:13px;height:13px}
+.Q .nrow b{font:550 15.5px/1.3 "Geist";display:flex;align-items:center;gap:6px}
+.Q .nrow b .u{width:7px;height:7px;border-radius:50%;background:var(--acc);flex:none}
+.Q .nrow p{font-size:14px;line-height:1.35;color:var(--mut);margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.Q .nrow .t{font-size:13px;color:var(--mut)}
+.Q .nrow.read b{color:var(--mut);font-weight:500}
+.Q .swq{position:relative;margin:2px 10px;border-radius:16px;overflow:hidden;background:var(--ok)}
+.Q .swq .lab{position:absolute;left:18px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:8px;color:#06281A;font:600 15px "Geist"}
+.Q .swq .nrow{background:var(--bg);transform:translateX(120px);border-radius:16px 0 0 16px;padding-left:16px}
+.Q .prh{padding:6px 18px 0}
+.Q .prh .repo{font:500 13px "Geist Mono";color:var(--mut)}
+.Q .prh h2{font:650 23px/1.2 "Geist";letter-spacing:-.02em;margin:6px 0 10px}
+.Q .state{display:inline-flex;align-items:center;gap:6px;padding:5px 10px 5px 8px;border-radius:14px;background:rgba(76,195,138,.14);color:var(--ok);font:600 13px "Geist"}
+.Q .br{font:500 12.5px "Geist Mono";color:var(--mut);margin-left:8px}
+.Q .card{margin:12px 14px 0;background:var(--el);border:1px solid var(--line);border-radius:16px}
+.Q .cl{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line);font-size:14.5px}
+.Q .cl:last-child{border-bottom:0}
+.Q .cl .t{color:var(--mut);font-size:13px}
+.Q .segq{display:flex;margin:14px 14px 0;padding:3px;background:var(--el2);border-radius:12px}
+.Q .segq div{flex:1;text-align:center;padding:8px;border-radius:9px;font:550 14px "Geist";color:var(--mut)}
+.Q .segq .on{background:#34353B;color:var(--fg)}
+.Q .cmt{display:grid;grid-template-columns:30px 1fr;gap:10px;padding:12px 18px}
+.Q .cmt .avatar{width:28px;height:28px;font-size:12px}
+.Q .cmt .h{font-size:13px;color:var(--mut)}.Q .cmt .h b{color:var(--fg);font-weight:600}
+.Q .cmt p{font-size:15px;line-height:1.45;margin-top:3px}
+.Q .actbar{position:absolute;left:14px;right:14px;bottom:30px;display:flex;gap:8px}
+.Q .actbar div{height:52px;border-radius:26px;display:flex;align-items:center;justify-content:center;gap:8px;font:600 15.5px "Geist"}
+.Q .actbar .p{flex:1;background:var(--fg);color:#000}
+.Q .actbar .s{width:52px;background:var(--el2);border:1px solid #2E2F35}
+.Q .stage{margin:6px 14px 0;height:300px;border-radius:22px;background:#E9E6DF;position:relative;overflow:hidden;color:#121212;font-family:"Archivo"}
+.Q .stage .mini{position:absolute;inset:14px 60px 0;background:#F3F1EC;border-radius:18px 18px 0 0;border:1px solid #CFCAC0;overflow:hidden}
+.Q .sheet{position:absolute;left:0;right:0;bottom:0;top:372px;background:var(--el);border-radius:24px 24px 0 0;border-top:1px solid #2A2B30}
+.Q .grab{width:38px;height:5px;border-radius:3px;background:#3A3B40;margin:8px auto 10px}
+.Q .sheet h3{display:flex;justify-content:space-between;align-items:center;padding:0 18px;font:650 20px "Geist"}
+.Q .sheet h3 span{font:600 14px "Geist";background:var(--fg);color:#000;padding:7px 14px;border-radius:16px}
+.Q .skins{display:flex;gap:10px;padding:14px 18px 4px;overflow:hidden}
+.Q .sk{width:96px;flex:none;display:grid;gap:6px;font-size:12.5px;color:var(--mut)}
+.Q .sk .p{height:112px;border-radius:14px;border:1px solid #2E2F35;padding:10px;display:flex;flex-direction:column;justify-content:space-between}
+.Q .sk.on .p{outline:2px solid var(--acc);outline-offset:2px}
+.Q .sk.on{color:var(--fg)}
+.Q .qrow{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-top:1px solid var(--line);font-size:15px}
+.Q .qrow .v{color:var(--mut);display:flex;align-items:center;gap:6px;font-size:14px}
+.Q .dots{display:flex;gap:7px}.Q .dots i{width:20px;height:20px;border-radius:50%;display:block}.Q .dots i.on{outline:2px solid var(--fg);outline-offset:2px}
+.cap{color:#ddd;font:600 15px system-ui;margin-bottom:-40px}
+</style></head><body>
+
+<!-- ======================= A. LEDGER ======================= -->
+<div class="board" id="ledger">
+  <div class="phone L">
+    <div class="status"><span>9:41</span><span>●●●</span></div>
+    <div class="top"><span class="mono">GITLING — @YOU</span><span class="mono">TUE 04.11</span></div>
+    <div class="hd"><h1>Today's<br>index</h1><span class="mono">14 OPEN · 3 NEED YOU · LAST SYNC 09:40</span></div>
+    <div class="idx hot"><span class="n">01</span><span class="t">Review requests</span><span class="c"><b>3</b></span></div>
+    <div class="idx"><span class="n">02</span><span class="t">Assigned to you</span><span class="c"><b>6</b></span></div>
+    <div class="idx"><span class="n">03</span><span class="t">Mentions</span><span class="c"><b>2</b></span></div>
+    <div class="idx"><span class="n">04</span><span class="t">Failing checks</span><span class="c"><b style="color:var(--bad)">1</b></span></div>
+    <div class="lab">Pinned <span>EDIT</span></div>
+    <div class="cells">
+      <div class="cell inv"><div class="k"><span>REPO</span><span>→</span></div><div class="v">trail-notes</div></div>
+      <div class="cell"><div class="k"><span>SEARCH</span><span>12</span></div><div class="v">label:bug<br>is:open</div></div>
+      <div class="cell sig"><div class="k"><span>PR QUEUE</span><span>3</span></div><div class="v">Ready to<br>merge</div></div>
+      <div class="cell"><div class="k"><span>LINK</span><span>↗</span></div><div class="v">Actions<br>dashboard</div></div>
+    </div>
+    <div class="tabs"><div class="on">INDEX</div><div>INBOX</div><div>REPOS</div><div>STUDIO</div></div>
+  </div>
+
+  <div class="phone L">
+    <div class="status"><span>9:41</span><span>●●●</span></div>
+    <div class="top"><span class="mono">INBOX</span><span class="mono">4 UNREAD</span></div>
+    <div class="hd" style="padding-bottom:12px"><h1>Inbox</h1></div>
+    <div class="chipset"><div class="on">ALL</div><div>REVIEW</div><div>MENTION</div><div>CI</div></div>
+    <div class="row"><span class="m"></span><div><div class="t">Merge offline edits instead of overwriting them</div><div class="s">you/trail-notes #45 · COMMENT · mira</div></div><span class="r">30M</span></div>
+    <div class="swipe"><div class="act">DONE ✓</div><div class="row"><span class="m"></span><div><div class="t">Offline sync drops edits in airplane mode</div><div class="s">you/trail-notes #42 · AUTHOR</div></div><span class="r">1H</span></div></div>
+    <div class="row"><span class="m"></span><div><div class="t">Batch writes during initial sync</div><div class="s">lin/tiny-sync #33 · REVIEW REQUESTED</div></div><span class="r">5H</span></div>
+    <div class="row"><span class="m"></span><div><div class="t">Rounding error when splitting 3 ways</div><div class="s">you/pocket-ledger #88 · MENTION</div></div><span class="r">8H</span></div>
+    <div class="lab" style="border-top:2px solid var(--rule);margin-top:-1px">Yesterday <span>2</span></div>
+    <div class="row"><span class="m off"></span><div><div class="t" style="color:var(--mut)">CI failed on main — lint</div><div class="s">you/weather-cli · CHECK SUITE</div></div><span class="r">20H</span></div>
+    <div class="row"><span class="m off"></span><div><div class="t" style="color:var(--mut)">tilekit v3.2.0 released</div><div class="s">openmaps/tilekit · RELEASE</div></div><span class="r">1D</span></div>
+    <div class="tabs"><div>INDEX</div><div class="on">INBOX</div><div>REPOS</div><div>STUDIO</div></div>
+  </div>
+
+  <div class="phone L">
+    <div class="status"><span>9:41</span><span>●●●</span></div>
+    <div class="top"><span class="mono">← INBOX</span><span class="mono">YOU/TRAIL-NOTES #45</span></div>
+    <div style="padding:16px 20px 0"><span class="tag" style="color:var(--ok)">OPEN</span> <span class="mono" style="font-size:11px;color:var(--mut);margin-left:8px">MAIN ← FIX/OFFLINE-MERGE</span>
+      <h1 style="font-size:36px;margin-top:12px;text-transform:none;font-stretch:80%">Merge offline edits instead of overwriting them</h1></div>
+    <div class="stat"><div><b style="color:var(--ok)">+184</b><span>ADDED</span></div><div><b style="color:var(--bad)">−37</b><span>REMOVED</span></div><div><b>3</b><span>FILES</span></div><div><b>4</b><span>COMMITS</span></div></div>
+    <div class="lab">Checks <span>3/3 PASSED</span></div>
+    <div class="check"><span style="color:var(--ok)">✓</span><span>build / node-22</span><span style="color:var(--mut)">1m 12s</span></div>
+    <div class="check"><span style="color:var(--ok)">✓</span><span>test / vitest</span><span style="color:var(--mut)">48s</span></div>
+    <div class="check"><span style="color:var(--ok)">✓</span><span>lint</span><span style="color:var(--mut)">9s</span></div>
+    <div class="lab">Conversation <span>2</span></div>
+    <div class="note"><span class="av">M</span><div><div class="s">MIRA · 30M</div><p>Tested on my phone, the title edit survives now. One nit on the timestamp comparison.</p></div></div>
+    <div class="band"><span>Merge into main</span><span>→</span></div>
+    <div class="tabs"><div>INDEX</div><div class="on">INBOX</div><div>REPOS</div><div>STUDIO</div></div>
+  </div>
+
+  <div class="phone L">
+    <div class="status"><span>9:41</span><span>●●●</span></div>
+    <div class="top"><span class="mono">STUDIO</span><span class="mono">UNDO · DONE</span></div>
+    <div class="hd" style="padding-bottom:12px"><h1>Studio</h1><span class="mono">SKINS CHANGE TYPE, SHAPE AND COLOR</span></div>
+    <div class="skin on"><span class="n">01</span><div><b>Ledger</b><span>Archivo / Mono · square</span></div><div class="sw"><i style="background:#F3F1EC"></i><i style="background:#121212"></i><i style="background:#2433FF"></i></div></div>
+    <div class="skin"><span class="n">02</span><div><b>Telemetry</b><span>Dot matrix · instrument</span></div><div class="sw"><i style="background:#0A0A0A"></i><i style="background:#F2F2F2"></i><i style="background:#FF3B1F"></i></div></div>
+    <div class="skin"><span class="n">03</span><div><b>Quiet Pro</b><span>Geist · soft native</span></div><div class="sw"><i style="background:#0F1012"></i><i style="background:#1F2024"></i><i style="background:#8B9CFF"></i></div></div>
+    <div class="lab" style="border-top:2px solid var(--rule)">Adjust <span>LEDGER</span></div>
+    <div class="ctl"><span>Signal color</span><div class="sq"><i class="on" style="background:#2433FF"></i><i style="background:#D2341C"></i><i style="background:#0E7A3E"></i><i style="background:#121212"></i><i style="background:#E0A100"></i></div></div>
+    <div class="ctl"><span>Paper</span><div class="opts"><span class="on">WARM</span><span>WHITE</span><span>NIGHT</span></div></div>
+    <div class="ctl"><span>Rules</span><div class="opts"><span>HAIR</span><span class="on">BOLD</span></div></div>
+    <div class="ctl"><span>Density</span><div class="opts"><span>8</span><span class="on">10</span><span>12</span></div></div>
+    <div class="ctl"><span>Home layout</span><span class="mono" style="font-size:12px">REARRANGE →</span></div>
+    <div class="tabs"><div>INDEX</div><div>INBOX</div><div>REPOS</div><div class="on">STUDIO</div></div>
+  </div>
+</div>
+
+<!-- ======================= B. TELEMETRY ======================= -->
+<div class="board" id="telemetry">
+  <div class="phone T">
+    <div class="status"><span>9:41</span><span>●●●</span></div>
+    <div class="top"><div class="gm">SYS.USER / @you<br>SYS.SYNC / 09:40:12</div><span class="id">GTL_01</span></div>
+    <div class="big"><div><span class="bracket">[ STATUS: 3_NEED_YOU ]</span><div class="dot">14</div><div class="gm" style="font-size:10.5px;color:var(--mut);margin-top:10px;letter-spacing:.06em">OPEN_ITEMS</div></div>
+      <div class="gm" style="font-size:11px;color:var(--mut);text-align:right;line-height:1.9">REVIEW_REQ 03<br>ASSIGNED 06<br>MENTIONS 02</div></div>
+    <div class="kv"><span class="k">CI_PASS_RATE · 7D</span><span class="v">92%</span></div>
+    <div class="ticks"><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="r"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="r"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i></div>
+    <div class="meterlab"><span>24 RUNS</span><span>2 FAILED</span></div>
+    <div class="wins">
+      <div class="win alert"><div class="bar"><span>TILE_01 // CI</span><span>!</span></div><div class="body"><b>weather-cli<br>main · lint</b><span class="dot" style="color:var(--red)">1</span></div></div>
+      <div class="win"><div class="bar"><span>TILE_02 // REVIEW</span><span>↗</span></div><div class="body"><b>Review<br>queue</b><span class="dot">3</span></div></div>
+      <div class="win"><div class="bar"><span>TILE_03 // REPO</span><span>→</span></div><div class="body"><b>trail-notes</b><span class="gm" style="font-size:11px;color:var(--grn)">● LIVE</span></div></div>
+      <div class="win"><div class="bar"><span>TILE_04 // QUERY</span><span>?</span></div><div class="body"><b>label:bug</b><span class="dot">12</span></div></div>
+    </div>
+    <div class="tabs"><div class="on">HOME</div><div>INBOX</div><div>REPOS</div><div>STUDIO</div></div>
+  </div>
+
+  <div class="phone T">
+    <div class="status"><span>9:41</span><span>●●●</span></div>
+    <div class="top"><span class="id">INBOX_FEED</span><div class="gm" style="text-align:right">UNREAD / 04<br>FILTER / ALL</div></div>
+    <div class="seg"><div class="on">ALL</div><div>REVIEW</div><div>MENTION</div><div>CI</div></div>
+    <div class="thead"><span>TIME</span><span>EVENT</span><span style="text-align:right">TYPE</span></div>
+    <div class="tr"><span class="tm red">09:10</span><div><b>Merge offline edits instead of overwriting them</b><div class="s">YOU/TRAIL-NOTES · PR_#45 · MIRA</div></div><span class="e g">CMNT</span></div>
+    <div class="tr"><span class="tm red">08:40</span><div><b>Offline sync drops edits in airplane mode</b><div class="s">YOU/TRAIL-NOTES · ISS_#42</div></div><span class="e">AUTH</span></div>
+    <div class="tr"><span class="tm red">04:40</span><div><b>Batch writes during initial sync</b><div class="s">LIN/TINY-SYNC · PR_#33</div></div><span class="e a">REVW</span></div>
+    <div class="tr"><span class="tm red">01:40</span><div><b>Rounding error when splitting 3 ways</b><div class="s">YOU/POCKET-LEDGER · ISS_#88</div></div><span class="e">MNTN</span></div>
+    <div class="tr" style="opacity:.55"><span class="tm">−20H</span><div><b>CI failed on main — lint</b><div class="s">YOU/WEATHER-CLI · CHECK_SUITE</div></div><span class="e r">FAIL</span></div>
+    <div class="tr" style="opacity:.55"><span class="tm">−1D</span><div><b>tilekit v3.2.0</b><div class="s">OPENMAPS/TILEKIT · RELEASE</div></div><span class="e">RLSE</span></div>
+    <div class="gm" style="padding:14px 20px;font-size:10px;color:var(--mut);letter-spacing:.04em">* SWIPE → DONE · ← MARK_READ<br>* POLL_INTERVAL: 60S</div>
+    <div class="tabs"><div>HOME</div><div class="on">INBOX</div><div>REPOS</div><div>STUDIO</div></div>
+  </div>
+
+  <div class="phone T">
+    <div class="status"><span>9:41</span><span>●●●</span></div>
+    <div class="top"><div class="gm">YOU/TRAIL-NOTES<br>MAIN ← FIX/OFFLINE-MERGE</div><span class="id">PR_#45</span></div>
+    <div style="padding:16px 20px 14px;border-bottom:1px solid var(--line)"><span class="bracket" style="color:var(--grn)">[ STATUS: OPEN · MERGEABLE ]</span>
+      <div style="font:600 26px/1.15 'Geist';letter-spacing:-.02em">Merge offline edits instead of overwriting them</div></div>
+    <div class="kv"><span class="k">DIFF_STAT</span><span class="gm" style="font-size:14px"><span style="color:var(--grn)">+184</span> <span style="color:var(--red)">−37</span></span></div>
+    <div style="padding:0 20px 14px;border-bottom:1px solid var(--line)"><div class="diffbar"><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="r"></i><i class="r"></i><i class="r"></i><i class="r"></i><i class="n"></i><i class="n"></i></div></div>
+    <div class="kv"><span class="k">CHECKS</span><span class="gm" style="font-size:13px;color:var(--grn)">3/3 PASS</span></div>
+    <div class="kv"><span class="k">REVIEWS</span><span class="gm" style="font-size:13px;color:var(--amb)">1 COMMENTED</span></div>
+    <div class="kv"><span class="k">FILES · COMMITS</span><span class="gm" style="font-size:13px">03 · 04</span></div>
+    <div style="height:14px"></div>
+    <div class="alertband"><span>NOTE: MIRA → "ONE NIT ON TIMESTAMP"</span><span>→</span></div>
+    <div class="merge">MERGE_INTO_MAIN →</div>
+    <div class="tabs"><div>HOME</div><div class="on">INBOX</div><div>REPOS</div><div>STUDIO</div></div>
+  </div>
+
+  <div class="phone T">
+    <div class="status"><span>9:41</span><span>●●●</span></div>
+    <div class="top"><span class="id">STUDIO</span><div class="gm" style="text-align:right">SKIN / TELEMETRY<br>UNDO · DONE</div></div>
+    <div class="gm" style="padding:14px 20px 8px;font-size:10.5px;color:var(--mut);letter-spacing:.06em">SKIN_SELECT</div>
+    <div class="skin"><div class="info"><b>Ledger</b><span>SWISS INDEX · LIGHT</span></div><div class="pv" style="background:#F3F1EC;color:#2433FF;font-family:Archivo;font-weight:800;font-size:28px">Aa</div></div>
+    <div class="skin on"><div class="info"><b>Telemetry</b><span>● ACTIVE</span><br><span>DOT MATRIX · DARK</span></div><div class="pv" style="color:var(--red)">14</div></div>
+    <div class="skin"><div class="info"><b>Quiet Pro</b><span>NATIVE · SOFT</span></div><div class="pv" style="background:#17181B;font-family:Geist;font-weight:600;font-size:26px;color:#8B9CFF">Aa</div></div>
+    <div class="kv" style="margin-top:6px"><span class="k">ALARM_COLOR</span><span style="display:flex;gap:6px"><i style="width:22px;height:22px;background:#FF3B1F;outline:2px solid #fff;outline-offset:2px"></i><i style="width:22px;height:22px;background:#FFB020"></i><i style="width:22px;height:22px;background:#3DFF8F"></i><i style="width:22px;height:22px;background:#4DA3FF"></i></span></div>
+    <div class="kv"><span class="k">NUMERALS</span><span class="gm" style="font-size:12px"><span style="background:var(--fg);color:#000;padding:4px 8px">DOT</span> <span style="padding:4px 8px;border:1px solid #333">MONO</span></span></div>
+    <div class="kv" style="border:0"><span class="k">DENSITY</span><span class="gm" style="font-size:12px">LVL_03</span></div>
+    <div class="slider"><div class="track"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div></div>
+    <div class="kv"><span class="k">HOME_LAYOUT</span><span class="gm" style="font-size:12px">REARRANGE →</span></div>
+    <div class="tabs"><div>HOME</div><div>INBOX</div><div>REPOS</div><div class="on">STUDIO</div></div>
+  </div>
+</div>
+
+<!-- ======================= C. QUIET PRO ======================= -->
+<div class="board" id="quiet">
+  <div class="phone Q">
+    <div class="status"><span>9:41</span><span>●●●</span></div>
+    <div class="bar"><div class="search"><i data-lucide="search"></i>Search or jump to…</div><div class="avatar" style="background:#7A4FD0">Y</div></div>
+    <div class="pins">
+      <div class="pin"><div class="ic" style="color:#F5B547"><i data-lucide="eye"></i><span class="bdg">3</span></div>Reviews</div>
+      <div class="pin"><div class="ic" style="color:#4CC38A"><i data-lucide="circle-dot"></i><span class="bdg">6</span></div>Assigned</div>
+      <div class="pin"><div class="ic" style="color:#8B9CFF"><i data-lucide="at-sign"></i></div>Mentions</div>
+      <div class="pin"><div class="ic" style="color:#F2555A"><i data-lucide="circle-x"></i><span class="bdg">1</span></div>Failing</div>
+    </div>
+    <div class="sh">Needs you <span>See all</span></div>
+    <div class="item"><div class="glyph" style="color:var(--amb)"><i data-lucide="git-pull-request"></i></div><div style="min-width:0"><b>Batch writes during initial sync</b><div class="s">lin/tiny-sync #33 · review requested</div></div><span class="t">5h</span></div>
+    <div class="item"><div class="glyph" style="color:var(--ok)"><i data-lucide="git-pull-request"></i></div><div style="min-width:0"><b>Merge offline edits instead of…</b><div class="s"><span class="ci" style="background:var(--ok)"></span>you/trail-notes #45 · checks passed</div></div><span class="t">1h</span></div>
+    <div class="item"><div class="glyph" style="color:var(--ok)"><i data-lucide="circle-dot"></i></div><div style="min-width:0"><b>Offline sync drops edits in airp…</b><div class="s">you/trail-notes #42 · 2 comments</div></div><span class="t">3h</span></div>
+    <div class="sh">Pinned repositories <span>Edit</span></div>
+    <div class="item"><div class="glyph"><i data-lucide="book-marked"></i></div><div><b>trail-notes</b><div class="s"><span class="ci" style="background:var(--ok)"></span>main passing · 9 open</div></div><span class="t">2h</span></div>
+    <div class="item"><div class="glyph"><i data-lucide="book-marked"></i></div><div><b>weather-cli</b><div class="s"><span class="ci" style="background:var(--bad)"></span>main failing · lint</div></div><span class="t">20h</span></div>
+    <div class="item"><div class="glyph"><i data-lucide="book-marked"></i></div><div><b>pocket-ledger</b><div class="s"><span class="ci" style="background:var(--ok)"></span>main passing · 14 open</div></div><span class="t">1d</span></div>
+    <div class="tabs"><div class="on"><i data-lucide="house"></i></div><div><i data-lucide="inbox"></i></div><div><i data-lucide="book-marked"></i></div><div><i data-lucide="palette"></i></div></div>
+    <div class="fab"><i data-lucide="search" style="width:22px;height:22px"></i></div>
+  </div>
+
+  <div class="phone Q">
+    <div class="status"><span>9:41</span><span>●●●</span></div>
+    <div class="bar" style="justify-content:space-between"><h1 style="padding:0 2px">Inbox</h1><div style="display:flex;gap:4px;background:var(--el2);border-radius:18px;padding:7px 12px;color:var(--fg)"><i data-lucide="list-filter"></i><i data-lucide="ellipsis" style="margin-left:10px"></i></div></div>
+    <div class="pills"><div class="on">Focused<i>4</i></div><div>Reviews</div><div>Mentions</div><div>CI</div></div>
+    <div class="nrow"><div class="avatar" style="background:#B5651D">M<span class="badge"><i data-lucide="message-circle" style="color:var(--fg)"></i></span></div><div style="min-width:0"><b><span class="u"></span>Merge offline edits instead of ov…</b><p>Mira: Tested on my phone, the title edit survives now. One nit on the timestamp.</p></div><span class="t">30m</span></div>
+    <div class="swq"><div class="lab"><i data-lucide="check"></i>Done</div><div class="nrow"><div class="avatar" style="background:#3F7D5A">Y<span class="badge"><i data-lucide="circle-dot" style="color:var(--ok)"></i></span></div><div style="min-width:0"><b><span class="u"></span>Offline sync drops ed…</b><p>Devansh: Same here on Android. Happy to test.</p></div><span class="t">1h</span></div></div>
+    <div class="nrow"><div class="avatar" style="background:#2F6FB0">L<span class="badge"><i data-lucide="git-pull-request" style="color:var(--amb)"></i></span></div><div style="min-width:0"><b><span class="u"></span>Batch writes during initial sync</b><p>Lin requested your review · lin/tiny-sync #33</p></div><span class="t">5h</span></div>
+    <div class="nrow"><div class="avatar" style="background:#B5651D">M<span class="badge"><i data-lucide="at-sign" style="color:var(--acc)"></i></span></div><div style="min-width:0"><b><span class="u"></span>Rounding error when splitting</b><p>Mira mentioned you · you/pocket-ledger #88</p></div><span class="t">8h</span></div>
+    <div class="nrow read"><div class="avatar" style="background:#2B2C31;color:var(--bad)">!<span class="badge"><i data-lucide="circle-x" style="color:var(--bad)"></i></span></div><div style="min-width:0"><b>CI failed on main</b><p>you/weather-cli · lint · 1 job failed</p></div><span class="t">20h</span></div>
+    <div class="nrow read"><div class="avatar" style="background:#2B2C31">T<span class="badge"><i data-lucide="tag" style="color:var(--mut)"></i></span></div><div style="min-width:0"><b>tilekit v3.2.0</b><p>New release in openmaps/tilekit</p></div><span class="t">1d</span></div>
+    <div class="tabs"><div><i data-lucide="house"></i></div><div class="on"><i data-lucide="inbox"></i></div><div><i data-lucide="book-marked"></i></div><div><i data-lucide="palette"></i></div></div>
+    <div class="fab"><i data-lucide="search" style="width:22px;height:22px"></i></div>
+  </div>
+
+  <div class="phone Q">
+    <div class="status"><span>9:41</span><span>●●●</span></div>
+    <div class="bar"><i data-lucide="chevron-left" style="width:24px;height:24px"></i><span style="flex:1"></span><i data-lucide="ellipsis" style="width:22px;height:22px"></i></div>
+    <div class="prh"><div class="repo">you/trail-notes #45</div><h2>Merge offline edits instead of overwriting them</h2><span class="state"><i data-lucide="git-pull-request" style="width:15px;height:15px"></i>Open</span><span class="br">main ← fix/offline-merge</span></div>
+    <div class="card">
+      <div class="cl"><i data-lucide="circle-check" style="color:var(--ok)"></i><span>All checks passed</span><span class="t">3 of 3</span></div>
+      <div class="cl"><i data-lucide="message-circle" style="color:var(--amb)"></i><span>Mira left a comment</span><span class="t">30m</span></div>
+      <div class="cl"><i data-lucide="git-merge" style="color:var(--mut)"></i><span>No conflicts with main</span><span class="t"><span style="color:var(--ok)">+184</span> <span style="color:var(--bad)">−37</span></span></div>
+    </div>
+    <div class="segq"><div class="on">Conversation</div><div>Files 3</div><div>Commits 4</div></div>
+    <div class="cmt"><div class="avatar" style="background:#7A4FD0">Y</div><div><div class="h"><b>you</b> · 1h</div><p>Fixes #42. Offline edits are stored as a patch queue and merged field by field on reconnect.</p></div></div>
+    <div class="cmt"><div class="avatar" style="background:#B5651D">M</div><div><div class="h"><b>mira</b> · 30m</div><p>Tested on my phone, the title edit survives now. One nit on the timestamp comparison.</p></div></div>
+    <div class="actbar"><div class="s"><i data-lucide="message-square"></i></div><div class="p"><i data-lucide="git-merge"></i>Merge</div><div class="s"><i data-lucide="check"></i></div></div>
+  </div>
+
+  <div class="phone Q">
+    <div class="status"><span>9:41</span><span>●●●</span></div>
+    <div class="bar" style="justify-content:space-between"><span style="font:600 15px Geist;color:var(--mut)">Studio</span><span style="font:600 15px Geist;color:var(--acc)">Undo</span></div>
+    <div class="stage"><div class="mini">
+      <div style="padding:10px 12px;border-bottom:2px solid #121212;font:800 22px/0.95 Archivo;font-stretch:75%;text-transform:uppercase">Today's<br>index</div>
+      <div style="display:flex;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #D3CFC6;font:600 12px Archivo"><span>Review requests</span><b style="color:#2433FF">3</b></div>
+      <div style="display:flex;justify-content:space-between;padding:8px 12px;border-bottom:1px solid #D3CFC6;font:600 12px Archivo"><span>Assigned</span><b>6</b></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-top:2px solid #121212;margin-top:10px"><div style="background:#121212;color:#F3F1EC;height:60px;padding:8px;font:700 11px Archivo">trail-notes</div><div style="background:#2433FF;color:#fff;height:60px;padding:8px;font:700 11px Archivo">Ready to merge</div></div>
+    </div></div>
+    <div class="sheet"><div class="grab"></div><h3>Choose a skin <span>Done</span></h3>
+      <div class="skins">
+        <div class="sk on"><div class="p" style="background:#F3F1EC;color:#121212;border-radius:4px"><b style="font:800 22px Archivo;font-stretch:75%">LEDGER</b><span style="display:flex;gap:3px"><i style="width:14px;height:14px;background:#121212"></i><i style="width:14px;height:14px;background:#2433FF"></i></span></div>Ledger</div>
+        <div class="sk"><div class="p" style="background:#0A0A0A;color:#F2F2F2"><b style="font:900 30px Doto;color:#FF3B1F">14</b><span style="font:500 8px 'Geist Mono'">[ STATUS: OK ]</span></div>Telemetry</div>
+        <div class="sk"><div class="p" style="background:#17181B"><b style="font:650 20px Geist">Aa</b><span class="dots"><i style="width:12px;height:12px;background:#8B9CFF"></i></span></div>Quiet Pro</div>
+        <div class="sk"><div class="p" style="background:#1A1A1A;border-style:dashed;display:grid;place-items:center"><i data-lucide="plus"></i></div>Make your own</div>
+      </div>
+      <div class="qrow" style="margin-top:10px"><span>Accent</span><span class="dots"><i class="on" style="background:#2433FF"></i><i style="background:#F2555A"></i><i style="background:#4CC38A"></i><i style="background:#F5B547"></i><i style="background:#EDEDEF"></i></span></div>
+      <div class="qrow"><span>Typeface</span><span class="v">Archivo Condensed <i data-lucide="chevron-right" style="width:16px;height:16px"></i></span></div>
+      <div class="qrow"><span>Home layout</span><span class="v">Index · Pins · Recent <i data-lucide="chevron-right" style="width:16px;height:16px"></i></span></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>lucide.createIcons({attrs:{'stroke-width':1.75}})</script>
+</body></html>

@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "Gitling",
+    "slug": "gitling",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.gitling"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "app.gitling"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "output": "single",
+      "bundler": "metro",
+      "name": "Gitling",
+      "shortName": "Gitling",
+      "themeColor": "#0E0F11",
+      "backgroundColor": "#0E0F11",
+      "display": "standalone"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-font",
+      "expo-secure-store"
+    ],
+    "scheme": "gitling",
+    "backgroundColor": "#0E0F11",
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

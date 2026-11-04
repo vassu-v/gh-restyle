@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Gitling Signal skin</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300..800&family=Geist+Mono:wght@400;500;600&family=Doto:wght@400..900&display=swap">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#202124;padding:40px;font-family:system-ui}
+.board{display:flex;gap:28px;align-items:flex-start}
+.phone{width:390px;height:844px;overflow:hidden;position:relative;border-radius:44px;flex:none}
+.lucide{width:18px;height:18px;flex:none}
+/* Signal skin: Quiet Pro structure + Telemetry instruments. Calm: color only for state, red only for real failures. */
+.H{--bg:#0E0F11;--el:#16171A;--el2:#1E1F23;--line:#25262B;--line2:#303137;--fg:#ECECEE;--mut:#8D8F96;--dim:#5E6067;
+  --acc:#A8B8FF;--ok:#5BD69A;--bad:#FF7A5C;--wait:#F2C25B;--merged:#C3A2FF;
+  background:var(--bg);color:var(--fg);font-family:"Geist",sans-serif}
+.H .gm{font-family:"Geist Mono",monospace}
+.H .dot{font-family:"Doto",monospace;font-weight:800;letter-spacing:-.02em;line-height:.8}
+.H .status{height:47px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 28px 6px;font:600 15px "Geist"}
+.H .bar{display:flex;align-items:center;gap:10px;padding:10px 16px}
+.H .search{flex:1;height:40px;border-radius:13px;background:var(--el2);display:flex;align-items:center;gap:8px;padding:0 12px;color:var(--mut);font-size:15px}
+.H .av{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font:600 13px "Geist";color:#fff;flex:none;position:relative}
+.H .lab{display:flex;justify-content:space-between;align-items:baseline;padding:20px 18px 8px;font:500 12px "Geist Mono";color:var(--mut);letter-spacing:.02em}
+.H .lab a{color:var(--acc);font-family:"Geist";font-size:13px;font-weight:550}
+/* hero instrument */
+.H .panel{margin:6px 14px 0;background:var(--el);border:1px solid var(--line);border-radius:20px;padding:16px 16px 14px}
+.H .hero{display:flex;justify-content:space-between;align-items:flex-end}
+.H .hero .dot{font-size:78px}
+.H .hero .cap{font:500 15px "Geist";color:var(--fg);margin-top:10px}
+.H .hero .cap span{color:var(--mut)}
+.H .kv{font:500 12px/2 "Geist Mono";color:var(--mut);text-align:right}
+.H .kv b{color:var(--fg);font-weight:500;margin-left:10px}
+.H .ticks{display:flex;gap:3px;height:16px;margin-top:16px}.H .ticks i{flex:1;border-radius:2px;background:var(--ok);opacity:.85}.H .ticks i.r{background:var(--bad)}.H .ticks i.n{background:var(--line2)}
+.H .tickcap{display:flex;justify-content:space-between;font:500 11px "Geist Mono";color:var(--mut);margin-top:7px}
+/* window tiles */
+.H .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 14px}
+.H .tile{background:var(--el);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.H .tile .tb{display:flex;justify-content:space-between;align-items:center;padding:8px 11px;border-bottom:1px solid var(--line);font:500 11px "Geist Mono";color:var(--mut)}
+.H .tile .tb .lucide{width:14px;height:14px}
+.H .tile .bd{display:flex;justify-content:space-between;align-items:flex-end;padding:12px 12px 12px;min-height:66px}
+.H .tile .bd b{font:600 15px/1.2 "Geist"}
+.H .tile .bd .dot{font-size:36px}
+.H .tile.warm .tb{color:var(--wait)}
+.H .tile.warm{border-color:rgba(242,194,91,.35)}
+/* rows */
+.H .item{display:grid;grid-template-columns:34px 1fr auto;gap:12px;padding:10px 18px;align-items:center}
+.H .item .g{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:var(--el2)}
+.H .item b{font:550 15.5px/1.3 "Geist";display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.H .item .s{font:400 12px "Geist Mono";color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
+.H .item .t{font:500 12px "Geist Mono";color:var(--mut)}
+.H .cd{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:1px}
+/* nav */
+.H .tabs{position:absolute;left:16px;right:84px;bottom:30px;height:58px;border-radius:29px;background:rgba(36,37,42,.78);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:space-around;padding:0 6px}
+.H .tabs div{width:62px;height:46px;border-radius:23px;display:grid;place-items:center;color:var(--mut);position:relative}
+.H .tabs .on{background:rgba(255,255,255,.09);color:var(--fg)}
+.H .tabs .lucide{width:22px;height:22px}
+.H .tabs .b{position:absolute;top:6px;right:13px;width:7px;height:7px;border-radius:50%;background:var(--acc)}
+.H .fab{position:absolute;right:16px;bottom:30px;width:58px;height:58px;border-radius:29px;background:rgba(36,37,42,.78);border:1px solid rgba(255,255,255,.07);display:grid;place-items:center}
+/* inbox */
+.H h1{font:650 30px/1.1 "Geist";letter-spacing:-.025em}
+.H .ihead{display:flex;justify-content:space-between;align-items:flex-end;padding:10px 18px 4px}
+.H .ihead .dot{font-size:40px;color:var(--fg)}
+.H .pills{display:flex;gap:6px;padding:12px 18px 2px}
+.H .pills div{padding:7px 13px;border-radius:16px;font:550 14px "Geist";color:var(--mut)}
+.H .pills .on{background:var(--el2);color:var(--fg)}
+.H .day{padding:16px 18px 4px;font:500 11.5px "Geist Mono";color:var(--dim)}
+.H .n{display:grid;grid-template-columns:40px 1fr auto;gap:12px;padding:10px 18px;position:relative}
+.H .n .av{width:38px;height:38px;font-size:14px}
+.H .n .bdg{position:absolute;right:-4px;bottom:-4px;width:19px;height:19px;border-radius:50%;background:var(--bg);display:grid;place-items:center}
+.H .n .bdg .lucide{width:13px;height:13px}
+.H .n b{font:550 15.5px/1.3 "Geist";display:flex;align-items:center;gap:7px}
+.H .n b .u{width:6px;height:6px;border-radius:50%;background:var(--acc);flex:none}
+.H .n p{font-size:14px;line-height:1.38;color:var(--mut);margin-top:2px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.H .n .r{font:500 12px "Geist Mono";color:var(--mut)}
+.H .n.read b{color:var(--mut);font-weight:500}
+.H .sw{position:relative;margin:2px 10px;border-radius:16px;overflow:hidden;background:#1F3B2D}
+.H .sw .l{position:absolute;left:16px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:8px;color:var(--ok);font:600 15px "Geist"}
+.H .sw .n{background:var(--bg);transform:translateX(112px);padding-left:16px;border-radius:16px 0 0 16px}
+/* pr */
+.H .prh{padding:6px 18px 0}
+.H .repo{font:500 12.5px "Geist Mono";color:var(--mut)}
+.H .prh h2{font:650 24px/1.2 "Geist";letter-spacing:-.02em;margin:7px 0 12px}
+.H .state{display:inline-flex;align-items:center;gap:6px;padding:5px 11px 5px 9px;border-radius:14px;background:rgba(91,214,154,.13);color:var(--ok);font:600 13px "Geist"}
+.H .br{font:500 12px "Geist Mono";color:var(--mut);margin-left:8px}
+.H .ins{margin:14px 14px 0;background:var(--el);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.H .ins .row{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center;padding:12px 14px;border-top:1px solid var(--line);font-size:14.5px}
+.H .ins .row .t{font:500 12px "Geist Mono";color:var(--mut)}
+.H .diff{padding:14px 14px 12px}
+.H .diff .top{display:flex;justify-content:space-between;align-items:baseline}
+.H .diff .top .gm{font-size:12px;color:var(--mut)}
+.H .diff .nums{font:500 13px "Geist Mono"}
+.H .db{display:flex;gap:2px;height:12px;margin-top:10px}.H .db i{flex:1;border-radius:2px}.H .db .g{background:var(--ok)}.H .db .r{background:var(--bad)}.H .db .n{background:var(--line2)}
+.H .segq{display:flex;margin:14px 14px 0;padding:3px;background:var(--el2);border-radius:12px}
+.H .segq div{flex:1;text-align:center;padding:8px;border-radius:9px;font:550 14px "Geist";color:var(--mut)}
+.H .segq .on{background:#33343A;color:var(--fg)}
+.H .segq span{font-family:"Geist Mono";font-size:12px;color:var(--dim);margin-left:3px}
+.H .cm{display:grid;grid-template-columns:28px 1fr;gap:10px;padding:12px 18px}
+.H .cm .av{width:28px;height:28px;font-size:12px}
+.H .cm .h{font:500 12px "Geist Mono";color:var(--mut)}.H .cm .h b{color:var(--fg);font:600 14px "Geist";margin-right:6px}
+.H .cm p{font-size:15px;line-height:1.45;margin-top:3px}
+.H .act{position:absolute;left:14px;right:14px;bottom:30px;display:flex;gap:8px}
+.H .act div{height:54px;border-radius:27px;display:flex;align-items:center;justify-content:center;gap:8px;font:600 16px "Geist"}
+.H .act .p{flex:1;background:var(--fg);color:#0E0F11}
+.H .act .s{width:54px;background:rgba(36,37,42,.85);border:1px solid rgba(255,255,255,.07)}
+/* studio */
+.H .stage{margin:6px 14px 0;height:318px;border-radius:24px;background:radial-gradient(120% 90% at 50% 0%,#23252B,#121316);position:relative;overflow:hidden;border:1px solid var(--line)}
+.H .mini{position:absolute;left:58px;right:58px;top:18px;bottom:-20px;border-radius:26px;background:var(--bg);border:1px solid var(--line2);overflow:hidden;transform-origin:top}
+.H .sheet{position:absolute;left:0;right:0;bottom:0;top:388px;background:var(--el);border-radius:26px 26px 0 0;border-top:1px solid var(--line2)}
+.H .grab{width:38px;height:5px;border-radius:3px;background:#3A3B41;margin:8px auto 8px}
+.H .sheet h3{display:flex;justify-content:space-between;align-items:center;padding:0 18px 6px;font:650 20px "Geist"}
+.H .sheet h3 span{font:600 14px "Geist";background:var(--fg);color:#000;padding:7px 14px;border-radius:16px}
+.H .stabs{display:flex;gap:4px;padding:6px 18px 4px}
+.H .stabs div{padding:6px 11px;border-radius:14px;font:550 13.5px "Geist";color:var(--mut)}
+.H .stabs .on{background:var(--el2);color:var(--fg)}
+.H .q{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-top:1px solid var(--line);font-size:15px}
+.H .q .v{color:var(--mut);font-size:14px;display:flex;align-items:center;gap:6px}
+.H .dots{display:flex;gap:8px}.H .dots i{width:20px;height:20px;border-radius:50%;display:block}.H .dots i.on{outline:2px solid var(--fg);outline-offset:2px}
+.H .opt{display:flex;padding:3px;background:var(--el2);border-radius:10px}
+.H .opt span{padding:5px 10px;border-radius:8px;font-size:13px;color:var(--mut)}
+.H .opt .on{background:#33343A;color:var(--fg)}
+.H .lvl{display:flex;gap:3px}.H .lvl i{width:16px;height:14px;border-radius:2px;background:var(--line2)}.H .lvl i.on{background:var(--fg)}
+/* tile editor */
+.H .tstage{margin:6px 14px 0;height:200px;border-radius:24px;background:radial-gradient(100% 100% at 50% 0%,#23252B,#121316);border:1px solid var(--line);display:grid;place-items:center}
+.H .field{margin:0 14px;background:var(--el);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.H .field .q:first-child{border-top:0}
+.H .glyphs{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;padding:4px 14px 12px}
+.H .glyphs div{height:40px;border-radius:11px;background:var(--el2);display:grid;place-items:center;color:var(--mut)}
+.H .glyphs .on{background:var(--fg);color:#0E0F11}
+.H .targets{display:flex;flex-wrap:wrap;gap:6px;padding:4px 14px 12px}
+.H .targets div{padding:7px 12px;border-radius:14px;background:var(--el2);font:550 13.5px "Geist";color:var(--mut)}
+.H .targets .on{background:var(--fg);color:#0E0F11}
+/* feed */
+.H .tabs div{width:52px}
+.H .ev{display:grid;grid-template-columns:38px 1fr;gap:12px;padding:10px 18px 12px}
+.H .ev .av{width:36px;height:36px;font-size:14px}
+.H .ev .bdg{position:absolute;right:-4px;bottom:-4px;width:19px;height:19px;border-radius:50%;background:var(--bg);display:grid;place-items:center}
+.H .ev .bdg .lucide{width:13px;height:13px}
+.H .evb{min-width:0}
+.H .evh{font-size:14.5px;color:var(--mut);line-height:1.35;display:flex;flex-wrap:wrap;gap:0 5px;align-items:baseline;padding-top:2px}
+.H .evh b{color:var(--fg);font-weight:600}
+.H .evh .r{margin-left:auto;font:500 12px "Geist Mono"}
+.H .tile.rel{margin-top:9px}
+.H .tile.rel .bd{padding:12px}
+.H .note{font-size:13.5px;line-height:1.4;color:var(--mut);margin-top:9px}
+.H .chips{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
+.H .chips span{padding:6px 10px;border-radius:10px;background:var(--el);border:1px solid var(--line);font:500 12px "Geist Mono"}
+.H .commits{margin-top:9px;border-left:2px solid var(--line2);padding-left:11px;display:grid;gap:6px;font-size:14px}
+.H .commits .sha{font:500 11.5px "Geist Mono";color:var(--ok);margin-right:8px}
+.H .commits .more{font:500 12px "Geist Mono";color:var(--mut)}
+.H .repo-c{position:relative;margin-top:9px;background:var(--el);border:1px solid var(--line);border-radius:14px;padding:12px 12px 11px}
+.H .repo-c b{font:600 15.5px "Geist"}
+.H .repo-c p{font-size:13.5px;color:var(--mut);margin:3px 0 8px;line-height:1.4;padding-right:4px}
+.H .repo-c .star{position:absolute;right:10px;top:10px;display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:12px;background:var(--el2);font:550 13px "Geist"}
+.H .input{margin:0 14px 0;padding:12px 14px;border-radius:13px;background:var(--el2);font:500 13.5px "Geist Mono";color:var(--fg)}
+</style></head><body>
+<div class="board" id="signal">
+
+  <!-- HOME -->
+  <div class="phone H">
+    <div class="status"><span>9:41</span><span>●●●</span></div>
+    <div class="bar"><div class="search"><i data-lucide="search"></i>Search or jump to…</div><div class="av" style="background:#6E56CF">Y</div></div>
+    <div class="panel">
+      <div class="hero"><div><div class="dot">03</div><div class="cap">need you <span>· 14 open</span></div></div>
+        <div class="kv">reviews<b>2</b><br>assigned<b>6</b><br>mentions<b>1</b></div></div>
+      <div class="ticks"><i></i><i></i><i></i><i></i><i></i><i class="r"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="n"></i></div>
+      <div class="tickcap"><span>checks · last 24 runs</span><span>96% passing</span></div>
+    </div>
+    <div class="lab"><span>shortcuts</span><a>Edit</a></div>
+    <div class="tiles">
+      <div class="tile warm"><div class="tb"><span>review queue</span><i data-lucide="eye"></i></div><div class="bd"><b>Waiting<br>on you</b><span class="dot">2</span></div></div>
+      <div class="tile"><div class="tb"><span>repo</span><i data-lucide="book-marked"></i></div><div class="bd"><b>trail-notes</b><span class="gm" style="font-size:11px;color:var(--ok)">● passing</span></div></div>
+      <div class="tile"><div class="tb"><span>search</span><i data-lucide="search"></i></div><div class="bd"><b>label:bug</b><span class="dot">12</span></div></div>
+      <div class="tile"><div class="tb"><span>link</span><i data-lucide="arrow-up-right"></i></div><div class="bd"><b>Actions</b><span class="gm" style="font-size:11px;color:var(--mut)">github.com</span></div></div>
+    </div>
+    <div class="lab"><span>needs you</span><a>See all</a></div>
+    <div class="item"><div class="g" style="color:var(--wait)"><i data-lucide="git-pull-request"></i></div><div style="min-width:0"><b>Batch writes during initial sync</b><div class="s">lin/tiny-sync #33 · review requested</div></div><span class="t">5h</span></div>
+    <div class="item"><div class="g" style="color:var(--ok)"><i data-lucide="git-pull-request"></i></div><div style="min-width:0"><b>Merge offline edits instead of overwr…</b><div class="s"><span class="cd" style="background:var(--ok)"></span>you/trail-notes #45 · ready</div></div><span class="t">1h</span></div>
+    <div class="tabs"><div class="on"><i data-lucide="house"></i></div><div class=""><i data-lucide="activity"></i></div><div class=""><i data-lucide="inbox"></i><span class="b"></span></div><div class=""><i data-lucide="book-marked"></i></div><div class=""><i data-lucide="palette"></i></div></div>
+    <div class="fab"><i data-lucide="search" style="width:22px;height:22px"></i></div>
+  </div>
+
+  <!-- FEED -->
+  <div class="phone H">
+    <div class="status"><span>9:41</span><span>●●●</span></div>
+    <div class="ihead"><h1>Feed</h1><div class="gm" style="font-size:11px;color:var(--mut);text-align:right;line-height:1.7">following 31<br>watching 12 repos</div></div>
+    <div class="pills"><div class="on">Following</div><div>Releases</div><div>Stars</div><div>You</div></div>
+    <div class="day">today</div>
+    <div class="ev"><div class="av" style="background:#2B4C7E">O<span class="bdg"><i data-lucide="tag" style="color:var(--acc)"></i></span></div>
+      <div class="evb"><div class="evh"><b>openmaps/tilekit</b> published a release <span class="r">2h</span></div>
+        <div class="tile rel"><div class="tb"><span>release</span><span>latest</span></div>
+          <div class="bd" style="display:block"><div style="display:flex;align-items:flex-end;justify-content:space-between"><span class="dot" style="font-size:34px">3.2.0</span><span class="gm" style="font-size:11px;color:var(--mut)">12 changes</span></div>
+          <p class="note">Vector tiles are 40% smaller on device. New offline style packs.</p></div></div></div></div>
+    <div class="ev"><div class="av" style="background:#2F69A8">L<span class="bdg"><i data-lucide="star" style="color:var(--wait)"></i></span></div>
+      <div class="evb"><div class="evh"><b>lin</b> starred 3 repositories <span class="r">4h</span></div>
+        <div class="chips"><span>tursodatabase/limbo</span><span>yjs/yjs</span><span>+1</span></div></div></div>
+    <div class="ev"><div class="av" style="background:#A35A2A">M<span class="bdg"><i data-lucide="git-commit-horizontal" style="color:var(--ok)"></i></span></div>
+      <div class="evb"><div class="evh"><b>mira</b> pushed 4 commits to <b>trail-notes</b> <span class="r">6h</span></div>
+        <div class="commits"><div><span class="sha">a91f3c2</span>Merge field-level patches on reconnect</div><div><span class="sha">77be019</span>Add PatchQueue with tests</div><div class="more">2 more</div></div></div></div>
+    <div class="day">yesterday</div>
+    <div class="ev"><div class="av" style="background:#3E7A59">D<span class="bdg"><i data-lucide="book-plus" style="color:var(--fg)"></i></span></div>
+      <div class="evb"><div class="evh"><b>devansh</b> created a repository <span class="r">1d</span></div>
+        <div class="repo-c"><b>gpx-tools</b><p>Merge, trim and simplify GPX tracks from the CLI.</p><span class="gm" style="font-size:11px;color:var(--mut)"><span class="cd" style="background:#00ADD8"></span>Go · ★ 14</span><span class="star"><i data-lucide="star" style="width:15px;height:15px"></i>Star</span></div></div></div>
+    <div class="tabs"><div><i data-lucide="house"></i></div><div class="on"><i data-lucide="activity"></i></div><div><i data-lucide="inbox"></i><span class="b"></span></div><div><i data-lucide="book-marked"></i></div><div><i data-lucide="palette"></i></div></div>
+    <div class="fab"><i data-lucide="search" style="width:22px;height:22px"></i></div>
+  </div>
+
+  <!-- INBOX -->
+  <div class="phone H">
+    <div class="status"><span>9:41</span><span>●●●</span></div>
+    <div class="ihead"><h1>Inbox</h1><div style="text-align:right"><div class="dot">04</div><div class="gm" style="font-size:11px;color:var(--mut);margin-top:6px">unread</div></div></div>
+    <div class="pills"><div class="on">Focused</div><div>Reviews</div><div>Mentions</div><div>Checks</div></div>
+    <div class="day">today</div>
+    <div class="n"><div class="av" style="background:#A35A2A">M<span class="bdg"><i data-lucide="message-circle" style="color:var(--fg)"></i></span></div><div style="min-width:0"><b><span class="u"></span>Merge offline edits instead of ov…</b><p>Mira: Tested on my phone, the title edit survives now. One nit on the timestamp.</p></div><span class="r">30m</span></div>
+    <div class="sw"><div class="l"><i data-lucide="check"></i>Done</div><div class="n"><div class="av" style="background:#3E7A59">D<span class="bdg"><i data-lucide="circle-dot" style="color:var(--ok)"></i></span></div><div style="min-width:0"><b><span class="u"></span>Offline sync drops ed…</b><p>Devansh: Same here on Android. Happy to test.</p></div><span class="r">1h</span></div></div>
+    <div class="n"><div class="av" style="background:#2F69A8">L<span class="bdg"><i data-lucide="git-pull-request" style="color:var(--wait)"></i></span></div><div style="min-width:0"><b><span class="u"></span>Batch writes during initial sync</b><p>Lin asked for your review · lin/tiny-sync #33</p></div><span class="r">5h</span></div>
+    <div class="n"><div class="av" style="background:#A35A2A">M<span class="bdg"><i data-lucide="at-sign" style="color:var(--acc)"></i></span></div><div style="min-width:0"><b><span class="u"></span>Rounding error when splitting</b><p>Mira mentioned you · you/pocket-ledger #88</p></div><span class="r">8h</span></div>
+    <div class="day">earlier</div>
+    <div class="n read"><div class="av" style="background:#26272C;color:var(--bad)"><i data-lucide="circle-x" style="width:18px;height:18px"></i></div><div style="min-width:0"><b>Check failed on main</b><p>you/weather-cli · lint · fixed 2 runs later</p></div><span class="r">20h</span></div>
+    <div class="n read"><div class="av" style="background:#26272C;color:var(--mut)"><i data-lucide="tag" style="width:18px;height:18px"></i></div><div style="min-width:0"><b>tilekit v3.2.0</b><p>New release in openmaps/tilekit</p></div><span class="r">1d</span></div>
+    <div class="tabs"><div class=""><i data-lucide="house"></i></div><div class=""><i data-lucide="activity"></i></div><div class="on"><i data-lucide="inbox"></i></div><div class=""><i data-lucide="book-marked"></i></div><div class=""><i data-lucide="palette"></i></div></div>
+    <div class="fab"><i data-lucide="search" style="width:22px;height:22px"></i></div>
+  </div>
+
+  <!-- PR -->
+  <div class="phone H">
+    <div class="status"><span>9:41</span><span>●●●</span></div>
+    <div class="bar"><i data-lucide="chevron-left" style="width:24px;height:24px"></i><span style="flex:1"></span><i data-lucide="share" style="width:20px;height:20px;color:var(--mut)"></i><i data-lucide="ellipsis" style="width:22px;height:22px;margin-left:14px"></i></div>
+    <div class="prh"><div class="repo">you/trail-notes · #45</div><h2>Merge offline edits instead of overwriting them</h2><span class="state"><i data-lucide="git-pull-request" style="width:15px;height:15px"></i>Open</span><span class="br">main ← fix/offline-merge</span></div>
+    <div class="ins">
+      <div class="diff"><div class="top"><span class="gm">3 files · 4 commits</span><span class="nums"><span style="color:var(--ok)">+184</span>&nbsp; <span style="color:var(--bad)">−37</span></span></div>
+        <div class="db"><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="g"></i><i class="r"></i><i class="r"></i><i class="r"></i><i class="n"></i></div></div>
+      <div class="row"><i data-lucide="circle-check" style="color:var(--ok)"></i><span>All checks passed</span><span class="t">3/3</span></div>
+      <div class="row"><i data-lucide="message-circle" style="color:var(--wait)"></i><span>Mira left one comment</span><span class="t">30m</span></div>
+      <div class="row"><i data-lucide="git-merge" style="color:var(--mut)"></i><span>Ready to merge, no conflicts</span><span class="t">main</span></div>
+    </div>
+    <div class="segq"><div class="on">Conversation<span>2</span></div><div>Files<span>3</span></div><div>Commits<span>4</span></div></div>
+    <div class="cm"><div class="av" style="background:#6E56CF">Y</div><div><div class="h"><b>you</b>1h</div><p>Fixes #42. Offline edits are stored as a patch queue and merged field by field on reconnect.</p></div></div>
+    <div class="cm"><div class="av" style="background:#A35A2A">M</div><div><div class="h"><b>mira</b>30m</div><p>Tested on my phone, the title edit survives now. One nit on the timestamp comparison.</p></div></div>
+    <div class="act"><div class="s"><i data-lucide="message-square"></i></div><div class="p"><i data-lucide="git-merge"></i>Merge</div><div class="s"><i data-lucide="check"></i></div></div>
+  </div>
+
+  <!-- STUDIO -->
+  <div class="phone H">
+    <div class="status"><span>9:41</span><span>●●●</span></div>
+    <div class="bar" style="justify-content:space-between;padding:10px 18px"><span style="font:650 17px Geist">Studio</span><span style="font:550 15px Geist;color:var(--acc)">Undo</span></div>
+    <div class="stage"><div class="mini">
+      <div style="display:flex;gap:6px;padding:12px 10px 6px"><div style="flex:1;height:24px;border-radius:8px;background:var(--el2)"></div><div style="width:24px;height:24px;border-radius:50%;background:#6E56CF"></div></div>
+      <div style="margin:6px 8px;background:var(--el);border:1px solid var(--line);border-radius:12px;padding:10px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end"><span class="dot" style="font-size:42px">03</span><span class="gm" style="font-size:8.5px;color:var(--mut);line-height:1.8;text-align:right">reviews 2<br>assigned 6</span></div>
+        <div style="display:flex;gap:2px;height:8px;margin-top:9px">
+          <i style="flex:1;background:var(--ok);border-radius:1px"></i><i style="flex:1;background:var(--ok);border-radius:1px"></i><i style="flex:1;background:var(--ok);border-radius:1px"></i><i style="flex:1;background:var(--bad);border-radius:1px"></i><i style="flex:1;background:var(--ok);border-radius:1px"></i><i style="flex:1;background:var(--ok);border-radius:1px"></i><i style="flex:1;background:var(--ok);border-radius:1px"></i><i style="flex:1;background:var(--ok);border-radius:1px"></i><i style="flex:1;background:var(--ok);border-radius:1px"></i><i style="flex:1;background:var(--ok);border-radius:1px"></i><i style="flex:1;background:var(--ok);border-radius:1px"></i><i style="flex:1;background:var(--ok);border-radius:1px"></i></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0 8px">
+        <div style="background:var(--el);border:1px solid rgba(242,194,91,.4);border-radius:10px;height:64px;padding:6px 8px;display:flex;justify-content:space-between;align-items:flex-end"><span style="font:600 10px Geist">Waiting on you</span><span class="dot" style="font-size:22px">2</span></div>
+        <div style="background:var(--el);border:1px solid var(--line);border-radius:10px;height:64px;padding:6px 8px;display:flex;align-items:flex-end"><span style="font:600 10px Geist">trail-notes</span></div>
+      </div>
+    </div></div>
+    <div class="sheet"><div class="grab"></div><h3>Signal <span>Done</span></h3>
+      <div class="stabs"><div class="on">Look</div><div>Home</div><div>Tabs</div><div>Tiles</div><div>Share</div></div>
+      <div class="q" style="margin-top:6px"><span>Accent</span><span class="dots"><i class="on" style="background:#A8B8FF"></i><i style="background:#5BD69A"></i><i style="background:#F2C25B"></i><i style="background:#FF9CC8"></i><i style="background:#ECECEE"></i></span></div>
+      <div class="q"><span>Numbers</span><span class="opt"><span class="on">Dot</span><span>Mono</span><span>Sans</span></span></div>
+      <div class="q"><span>Tiles</span><span class="opt"><span class="on">Window</span><span>Plain</span></span></div>
+      <div class="q"><span>Density</span><span class="lvl"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span></div>
+      <div class="q"><span>Background</span><span class="v">Graphite <i data-lucide="chevron-right" style="width:16px;height:16px"></i></span></div>
+    </div>
+  </div>
+
+  <!-- TILE EDITOR -->
+  <div class="phone H">
+    <div class="status"><span>9:41</span><span>●●●</span></div>
+    <div class="bar" style="justify-content:space-between;padding:10px 18px"><span style="font:550 15px Geist;color:var(--mut)">Cancel</span><span style="font:650 17px Geist">New shortcut</span><span style="font:600 15px Geist;color:var(--acc)">Save</span></div>
+    <div class="tstage"><div class="tile warm" style="width:176px"><div class="tb"><span>review queue</span><i data-lucide="eye"></i></div><div class="bd"><b>Waiting<br>on you</b><span class="dot">2</span></div></div></div>
+    <div class="lab"><span>what it opens</span></div>
+    <div class="targets"><div class="on">Search</div><div>Repo</div><div>Person</div><div>File</div><div>Inbox filter</div><div>Link</div><div>Ask first</div></div>
+    <div class="input">is:open is:pr review-requested:@me</div>
+    <div class="lab"><span>icon</span></div>
+    <div class="glyphs"><div class="on"><i data-lucide="eye"></i></div><div><i data-lucide="git-pull-request"></i></div><div><i data-lucide="circle-dot"></i></div><div><i data-lucide="bug"></i></div><div><i data-lucide="rocket"></i></div><div><i data-lucide="flag"></i></div><div><i data-lucide="sparkles"></i></div></div>
+    <div class="field">
+      <div class="q"><span>Label</span><span class="v">Waiting on you</span></div>
+      <div class="q"><span>Tint</span><span class="dots"><i style="background:#8D8F96"></i><i class="on" style="background:#F2C25B"></i><i style="background:#5BD69A"></i><i style="background:#A8B8FF"></i><i style="background:#FF9CC8"></i></span></div>
+      <div class="q"><span>Live count</span><span class="opt"><span class="on">On</span><span>Off</span></span></div>
+      <div class="q"><span>Size</span><span class="opt"><span class="on">Half</span><span>Full</span></span></div>
+    </div>
+  </div>
+</div>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>lucide.createIcons({attrs:{'stroke-width':1.75}})</script>
+</body></html>
