@@ -1,9 +1,11 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, View } from 'react-native';
 import { useTokens } from '@/design/DesignProvider';
 import { MAX_FILE_BYTES, useFile } from '@/data/queries';
+import { BranchPicker } from '@/features/repo/BranchPicker';
 import { Icon } from '@/ui/Icon';
+import { CodeLines, languageForPath } from '@/ui/Code';
 import { Markdown } from '@/ui/Markdown';
 import { BackHeader, Button, ErrorNote, Loading, Panel, Screen, Seg, T } from '@/ui/primitives';
 
@@ -29,6 +31,7 @@ export default function Blob() {
         <T v="h2" lines={2}>{fileName}</T>
         {dir ? <T v="monoS" c="mut" lines={1}>{dir}</T> : null}
       </View>
+      <BranchPicker owner={owner} name={name} path={path} ref={ref} kind="blob" />
       {isMd && text.data ? <View style={{ marginHorizontal: 14, marginBottom: 12 }}><Seg small value={view} onChange={setView} options={[{ value: 'rendered', label: 'Preview' }, { value: 'source', label: 'Source' }]} /></View> : null}
       {err ? <ErrorNote error={err} onRetry={() => { info.refetch(); text.refetch(); }} />
         : tooBig || binary ? (
@@ -38,23 +41,19 @@ export default function Blob() {
           </Panel>
         ) : text.isLoading || info.isLoading ? <Loading rows={6} />
         : isMd && view === 'rendered' ? <View style={{ paddingHorizontal: 18 }}><Markdown source={text.data} base={{ owner, repo: name, ref, dir }} /></View>
-        : <Source text={text.data ?? ''} />}
+        : <Source text={text.data ?? ''} path={path} />}
     </Screen>
   );
 }
 
-function Source({ text }: { text: string }) {
-  const t = useTokens();
+function Source({ text, path }: { text: string; path: string }) {
   const all = text.replace(/\n$/, '').split('\n');
-  const lines = all.slice(0, MAX_LINES);
-  const w = String(lines.length).length;
-  const style = { fontFamily: t.font.mono.regular, fontSize: 12.5, lineHeight: 19 } as const;
+  const shown = all.length > MAX_LINES ? all.slice(0, MAX_LINES).join('\n') : text.replace(/\n$/, '');
   return (
     <Panel style={{ marginHorizontal: 14 }}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={{ flexDirection: 'row', paddingVertical: 10 }}>
-          <Text style={{ ...style, color: t.c.dim, textAlign: 'right', paddingHorizontal: 10, minWidth: w * 8 + 20 }}>{lines.map((_, i) => i + 1).join('\n')}</Text>
-          <Text selectable style={{ ...style, color: t.c.fg, paddingRight: 16 }}>{lines.join('\n')}</Text>
+        <View style={{ paddingVertical: 10 }}>
+          <CodeLines code={shown} lang={languageForPath(path)} numbers />
         </View>
       </ScrollView>
       {all.length > MAX_LINES ? <T v="monoS" c="mut" style={{ padding: 12 }}>Showing the first {MAX_LINES} of {all.length} lines.</T> : null}

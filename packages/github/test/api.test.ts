@@ -35,6 +35,7 @@ describe('api against sample data', () => {
     expect((await api.issues('you', 'trail-notes', 'open')).items.every((i) => !i.pull_request)).toBe(true);
     expect((await api.pulls('you', 'trail-notes', 'open')).items[0].head.sha).toBeTruthy();
     expect((await api.runs('you/trail-notes')).workflow_runs.length).toBe(24);
+    expect((await api.branches('you', 'trail-notes')).map((b) => b.name)).toContain('main');
   });
   it('threads and actions', async () => {
     expect((await api.issue('you', 'trail-notes', 42)).body).toMatch(/airplane mode/);

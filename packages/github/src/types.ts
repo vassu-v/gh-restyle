@@ -82,6 +82,9 @@ export type FeedEvent = {
   };
 };
 
+/** GET /repos/{o}/{r}/branches */
+export type Branch = { name: string; protected?: boolean; commit: { sha: string } };
+
 export type SearchResult<T> = { total_count: number; items: T[] };
 
 /** A page of a list endpoint. `next` is the page number to ask for next, or null on the last page. */

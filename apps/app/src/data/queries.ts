@@ -94,6 +94,10 @@ export function useStar(full: string) {
   });
   return { starred: q.data ?? false, known: q.isSuccess, toggle: () => m.mutate(!q.data), error: m.error };
 }
+export function useBranches(owner: string, name: string, enabled = true) {
+  const { api, k } = useApi();
+  return useQuery({ queryKey: [k, 'branches', owner, name], queryFn: () => api.branches(owner, name), enabled, staleTime: 5 * 60e3 });
+}
 export function useDir(owner: string, name: string, path: string, ref?: string) {
   const { api, k } = useApi();
   return useQuery({ queryKey: [k, 'dir', owner, name, ref, path], queryFn: () => api.dir(owner, name, path, ref), staleTime: 5 * 60e3 });

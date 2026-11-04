@@ -17,6 +17,7 @@ describe(`live GitHub · ${owner}/${name}`, () => {
     expect(r.full_name.toLowerCase()).toBe(`${owner}/${name}`.toLowerCase());
     const readme = await api.readme(owner, name);
     expect(readme === null || typeof readme === 'string').toBe(true);
+    expect((await api.branches(owner, name)).some((b) => b.name === r.default_branch)).toBe(true);
     const root = await api.dir(owner, name, '');
     expect(root.length).toBeGreaterThan(0);
     const firstDir = root.find((x) => x.type === 'dir');

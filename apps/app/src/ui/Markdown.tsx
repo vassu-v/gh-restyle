@@ -3,6 +3,7 @@ import { memo, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Image, Platform, ScrollView, Text, View, type TextStyle } from 'react-native';
 import { useTokens } from '@/design/DesignProvider';
 import { openUrl, routes } from '@/lib/links';
+import { CodeLines, languageForFence } from './Code';
 import { router } from 'expo-router';
 
 /**
@@ -62,7 +63,7 @@ function Block({ tk, base }: { tk: Token; base?: MarkdownBase }) {
       const c = tk as Tokens.Code;
       return (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ backgroundColor: t.c.el2, borderRadius: 12, borderWidth: 1, borderColor: t.c.line }}>
-          <Text selectable style={{ fontFamily: t.font.mono.regular, fontSize: s(12.5), lineHeight: s(19), color: t.c.fg, padding: 12 }}>{c.text}</Text>
+          <View style={{ paddingVertical: 12 }}><CodeLines code={c.text} lang={languageForFence(c.lang)} /></View>
         </ScrollView>
       );
     }

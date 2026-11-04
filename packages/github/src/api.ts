@@ -1,6 +1,6 @@
 import { nextPage, type GitHubClient, type RequestOptions } from './client';
 import type {
-  CheckRuns, Comment, ContentFile, ContentItem, FeedEvent, Issue, MergeMethod, Notification, Page,
+  Branch, CheckRuns, Comment, ContentFile, ContentItem, FeedEvent, Issue, MergeMethod, Notification, Page,
   PrFile, PullRequest, Repo, SearchResult, User, WorkflowRuns,
 } from './types';
 
@@ -64,6 +64,8 @@ export function createApi(client: GitHubClient) {
     fileInfo: (owner: string, repo: string, path: string, ref?: string) => get<ContentFile>(`${repoPath(owner, repo)}${contentsPath(path, ref)}`),
     /** File text. Callers check size first (fileInfo) — GitHub serves raw files up to 100 MB. */
     fileText: (owner: string, repo: string, path: string, ref?: string) => get<string>(`${repoPath(owner, repo)}${contentsPath(path, ref)}`, { accept: RAW, text: true }),
+    /** Up to 300 branches, for the branch picker. */
+    branches: (owner: string, repo: string) => all<Branch>(`${repoPath(owner, repo)}/branches?per_page=100`, 3),
     runs: (full: string) => get<WorkflowRuns>(`/repos/${full}/actions/runs?per_page=24`),
     /** Issues only (GitHub's /issues list also returns PRs; they're filtered out). */
     issues: async (owner: string, repo: string, state: 'open' | 'closed', p = 1) => {

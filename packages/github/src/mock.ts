@@ -187,6 +187,7 @@ function route(path: string, o: RequestOptions): unknown {
     const rp = ALL.find((x) => x.full_name === full);
     if (!rest) return rp ? { ...rp, permissions: { admin: rp.owner.login === 'you', push: rp.owner.login === 'you', pull: true }, allow_merge_commit: true, allow_squash_merge: true, allow_rebase_merge: false } : notFound();
     if (rest === '/actions/runs') return { total_count: RUNS.length, workflow_runs: RUNS };
+    if (rest === '/branches') return ['main', 'fix/offline-merge', 'feat/csv-import', 'docs/guide'].map((name, i) => ({ name, protected: name === 'main', commit: { sha: 'b' + i + 'c0ffee' } }));
     if (rest === '/readme') return rp ? readme(rp) : notFound();
     if (rest === '/contents' || rest.startsWith('/contents/')) {
       const c = contents(rp ?? notFound(), decodeURIComponent(rest.slice('/contents/'.length)));
