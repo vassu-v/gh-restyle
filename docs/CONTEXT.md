@@ -98,6 +98,13 @@ If `CLOUDFLARE_API_TOKEN` isn't set in the session, ask the owner to add it unde
 **Network secrets**, then start a new session. Env changes only reach new sessions. Don't ask them to paste
 it in chat.
 
+## Bug found late: the service worker never registered
+
+Until 2026-11-04 the PWA's offline support was silently off. `register.ts` waited for `window` 'load', which
+had already fired by the time the lazily loaded app code ran. It now registers immediately when the page is
+already loaded. The install prompt is captured by an inline script in `index.html`, and `npm run smoke` now
+fails if the service worker doesn't register or the app doesn't open offline.
+
 ## Incident: secret wiped by a deploy
 
 - The owner added `GITHUB_CLIENT_SECRET` in the Cloudflare dashboard as a plain-text **variable**, not a

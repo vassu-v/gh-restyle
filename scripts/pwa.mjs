@@ -34,6 +34,8 @@ const HEAD = `
     <meta name="apple-mobile-web-app-title" content="Gitling" />
     <meta name="description" content="A GitHub client whose interface you design yourself." />
     <style>html, body { background: #0E0F11; }</style>
+    <script>/* Catch the install prompt before the app bundle loads; src/pwa/register.ts picks it up. */
+      addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); window.__gitlingInstall = e; });</script>
     <!-- /gitling:pwa -->`;
 html = html.replace(/\n\s*<!-- gitling:pwa -->[\s\S]*?<!-- \/gitling:pwa -->/, '');
 html = html.replace('</head>', `${HEAD}\n</head>`);
@@ -56,8 +58,10 @@ const PRECACHE = ${JSON.stringify(precache)};
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
 });
+// Keep the two previous builds too: an app that was open during a deploy still loads its own (old) code chunks.
+// caches.keys() lists caches in creation order, so everything before the last three is old.
 self.addEventListener('activate', (e) => {
-  e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(caches.keys().then((keys) => { const ours = keys.filter((k) => k.startsWith('gitling-')); return Promise.all(ours.slice(0, Math.max(0, ours.length - 3)).map((k) => caches.delete(k))); }).then(() => self.clients.claim()));
 });
 self.addEventListener('fetch', (e) => {
   const req = e.request;
@@ -66,10 +70,10 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET' || url.origin !== self.location.origin) return;
   if (req.mode === 'navigate') {
     // App shell: network first so deploys show up, cached shell when offline.
-    e.respondWith(fetch(req).catch(() => caches.match('/', { cacheName: CACHE })));
+    e.respondWith(fetch(req).catch(() => caches.match('/', { cacheName: CACHE }).then((r) => r || caches.match('/'))));
     return;
   }
-  e.respondWith(caches.match(req, { cacheName: CACHE }).then((hit) => hit || fetch(req).then((res) => {
+  e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((res) => {
     if (res.ok && url.pathname.startsWith('/_expo/static/')) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
     return res;
   })));

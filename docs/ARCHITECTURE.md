@@ -132,7 +132,8 @@ tokenStore.set(token); GET /user to validate
   - It writes `sw.js`. Its cache name is the hash of the build's files, and it precaches the build.
 - **Service worker behaviour:**
   - Navigations are network-first, falling back to the cached shell.
-  - Same-origin static files are cache-first.
+  - Same-origin static files are cache-first, looked up across the current build's cache and the two
+    previous builds' caches, so an app left open during a deploy can still load its own code chunks.
   - It never touches api.github.com.
 - `src/pwa/register.ts` registers the worker (production only) and captures `beforeinstallprompt`. Account
   shows "Install app" (Chrome/Edge/Android) or Add-to-Home-Screen steps (iOS).

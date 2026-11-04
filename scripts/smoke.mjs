@@ -50,6 +50,20 @@ for (const [path, expect] of SCREENS) {
   if (!ok) failed++;
   console.log(`${ok ? '✓' : '✗'} ${path.padEnd(48)} ${ok ? '' : `expected "${expect}" · ${text.replace(/\s+/g, ' ').slice(0, 80)} ${errors.slice(before).join(' | ')}`}`);
 }
+// Service worker registers, and the app shell opens offline afterwards.
+await page.goto(base + '/', { waitUntil: 'networkidle' });
+const swOk = await page.evaluate(() => Promise.race([navigator.serviceWorker.ready.then(() => true), new Promise((r) => setTimeout(() => r(false), 8000))]));
+let offlineOk = false;
+if (swOk) {
+  await page.reload({ waitUntil: 'networkidle' }); // let the worker take control and fill its cache
+  await page.context().setOffline(true);
+  await page.reload({ waitUntil: 'load' }).catch(() => {});
+  offlineOk = await page.waitForFunction(() => document.body.innerText.includes('need you'), null, { timeout: 8000 }).then(() => true, () => false);
+  await page.context().setOffline(false);
+}
+console.log(`${swOk ? '✓' : '✗'} service worker registers`);
+console.log(`${offlineOk ? '✓' : '✗'} app opens offline`);
+if (!swOk || !offlineOk) failed++;
 const manifest = await (await fetch(base + '/manifest.webmanifest')).json();
 const sw = await (await fetch(base + '/sw.js')).text();
 const head = await (await fetch(base + '/')).text();

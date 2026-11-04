@@ -22,7 +22,7 @@ defers something.
 | Types (app + worker) | `npm run typecheck` | clean |
 | Lint | `npm run lint` | clean |
 | Unit tests: client, api × sample data, PKCE/state, worker, design + presets | `npm test` | 46/46 |
-| Every screen in Chromium at phone size, plus PWA files | `npm run smoke` | 16/16 screens, PWA ok |
+| Every screen in Chromium at phone size, plus PWA files, service worker and offline launch | `npm run smoke` | 16/16 screens, SW registers, opens offline |
 | Full sign-in flow, GitHub simulated, real worker code | `npm run e2e:signin` | 12/12 |
 | Studio: presets, mouse drag reorder, share link preview/apply | `npm run e2e:studio` | 12/12 |
 | PR reviews: line comments, request changes, timeline, own-PR rules | `npm run e2e:review` | 13/13 |
@@ -40,8 +40,7 @@ defers something.
   allowed repo-scoped paths.
 - **iOS / Android builds:** none made yet. Native sign-in uses `expo-web-browser` `openAuthSessionAsync`
   with `gitling://auth/callback`, which isn't exercised on a device.
-- **Service worker offline behaviour on a real phone.** Install prompt UI is checked only in desktop
-  Chromium.
+- **On a real phone:** install and offline behaviour. Chrome's installability check reports no errors on the live site, and offline launch passes in Chromium.
 
 ## Known gaps / next up
 

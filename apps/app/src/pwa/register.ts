@@ -29,9 +29,15 @@ export const pwa = {
 
 if (Platform.OS === 'web' && typeof window !== 'undefined') {
   installed = window.matchMedia?.('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
+  // The inline script in index.html (scripts/pwa.mjs) may have caught the prompt before this bundle loaded.
+  const early = (window as { __gitlingInstall?: InstallEvent }).__gitlingInstall;
+  if (early) deferred = early;
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferred = e as InstallEvent; emit(); });
   window.addEventListener('appinstalled', () => { installed = true; deferred = null; emit(); });
   if (!__DEV__ && 'serviceWorker' in navigator) {
-    window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => { /* offline support is optional */ }); });
+    // This module loads with the app bundle, often after the page's load event has already fired,
+    // so register now if it has (waiting for 'load' alone meant the worker never registered).
+    const register = () => { navigator.serviceWorker.register('/sw.js').catch(() => { /* offline support is optional */ }); };
+    if (document.readyState === 'complete') register(); else window.addEventListener('load', register, { once: true });
   }
 }
