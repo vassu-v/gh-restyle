@@ -8,7 +8,7 @@
   ],
   "scripts": {
     "web": "npm --workspace apps/app run web",
-    "typecheck": "npm --workspace apps/app exec tsc -- --noEmit && tsc -p services/edge --noEmit",
+    "typecheck": "npm --workspace apps/app exec tsc -- --noEmit && tsc -p services/edge --noEmit && tsc -p apps/extension --noEmit",
     "lint": "npm --workspace apps/app run lint",
     "test": "vitest run",
     "test:live": "vitest run --config /dev/null packages/github/test/github.live.test.ts",

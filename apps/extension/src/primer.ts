@@ -1,4 +1,6 @@
-import { resolveTokens, type Design } from '@gitling/design';
+// Deep imports keep zod out of the content script (see storage.ts).
+import type { Design } from '@gitling/design/src/schema';
+import { mix, resolveTokens } from '@gitling/design/src/tokens';
 
 /**
  * Map a Gitling design onto GitHub's own Primer design tokens.
@@ -41,12 +43,24 @@ export function primerVars(design: Design): Record<string, string> {
     '--button-primary-fgColor-rest': c.onFg,
     '--button-primary-borderColor-rest': 'transparent',
     '--button-default-bgColor-rest': c.el2,
+    '--button-default-bgColor-hover': mix(c.el2, c.fg, 0.08),
+    '--button-default-bgColor-active': mix(c.el2, c.fg, 0.12),
     '--button-default-borderColor-rest': c.line2,
+    '--button-default-fgColor-rest': c.fg,
+    '--button-invisible-fgColor-rest': c.fg,
+    '--control-fgColor-rest': c.fg,
+    '--control-bgColor-rest': c.el2,
+    '--control-bgColor-hover': mix(c.el2, c.fg, 0.08),
     '--fontStack-system': '"Gitling Geist", -apple-system, "Segoe UI", sans-serif',
     '--fontStack-sansSerif': '"Gitling Geist", -apple-system, "Segoe UI", sans-serif',
     '--fontStack-monospace': '"Gitling Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
     '--borderRadius-medium': `${radius / 16}rem`,
     '--borderRadius-large': `${(radius + 4) / 16}rem`,
+    // Our own copies: some GitHub regions (the signed-out header) re-scope Primer tokens, so content.css uses these.
+    '--gitling-bg': c.bg,
+    '--gitling-el': c.el,
+    '--gitling-fg': c.fg,
+    '--gitling-line': c.line,
     '--gitling-num-font': t.numbers === 'dot' ? '"Gitling Doto"' : t.numbers === 'mono' ? '"Gitling Geist Mono"' : '"Gitling Geist"',
     'color-scheme': t.mode,
   };

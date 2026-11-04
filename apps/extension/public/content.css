@@ -32,3 +32,21 @@ html.gitling-on .btn-primary,
 html.gitling-on [data-variant="primary"] {
   border-radius: 999px;
 }
+
+/* Signed-out pages use GitHub's marketing header, which hardcodes black and re-scopes Primer tokens.
+   This is the one place we target class names, scoped to that header only, using our own --gitling-* copies. */
+html.gitling-on .HeaderMktg,
+html.gitling-on .header-logged-out {
+  background-color: var(--gitling-bg) !important;
+  color: var(--gitling-fg) !important;
+  border-bottom: 1px solid var(--gitling-line);
+}
+html.gitling-on .HeaderMktg a,
+html.gitling-on .HeaderMktg button:not([class*="backdrop"]),
+html.gitling-on .HeaderMktg svg { color: var(--gitling-fg) !important; fill: currentColor; }
+html.gitling-on .HeaderMktg [class*="Dropdown"] { background-color: var(--gitling-el) !important; }
+/* Text spans inside the header's subtle links ("Sign in") and the search button carry their own white. */
+html.gitling-on .HeaderMktg [class*="Button--subtle"] *,
+html.gitling-on .HeaderMktg .header-search-button,
+html.gitling-on .HeaderMktg .header-search-button * { color: var(--gitling-fg) !important; }
+html.gitling-on .HeaderMktg .header-search-button { background-color: var(--gitling-el) !important; border-color: var(--gitling-line) !important; }
