@@ -98,6 +98,18 @@ If `CLOUDFLARE_API_TOKEN` isn't set in the session, ask the owner to add it unde
 **Network secrets**, then start a new session. Env changes only reach new sessions. Don't ask them to paste
 it in chat.
 
+## Incident: secret wiped by a deploy
+
+- The owner added `GITHUB_CLIENT_SECRET` in the Cloudflare dashboard as a plain-text **variable**, not a
+  **Secret**.
+- The next `npm run deploy` replaced the dashboard variables with `wrangler.toml` [vars], so the secret
+  disappeared and `/health` went back to `configured:false`.
+- **Fixes:**
+  - `keep_vars = true` in `wrangler.toml`.
+  - `deploy.mjs` now warns when the live Worker isn't configured.
+  - The owner re-adds the value as type **Secret**, which deploys never touch.
+- **After any deploy,** check `/health` says `configured:true`.
+
 ## Security history and rules
 
 - The owner once pasted a Cloudflare API token and R2 keys into chat. They were told to **roll the token**

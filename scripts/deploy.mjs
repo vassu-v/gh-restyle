@@ -20,4 +20,9 @@ const run = (cmd, cwd = root) => execSync(cmd, { cwd, env, stdio: 'inherit' });
 
 run('npm run build:web');
 run(`npx --yes wrangler@4 deploy${process.argv.includes('--dry-run') ? ' --dry-run' : ''}`, `${root}services/edge`);
-if (origin) console.log(`\nLive: ${origin}  ·  check: ${origin}/health`);
+if (origin && !process.argv.includes('--dry-run')) {
+  console.log(`\nLive: ${origin}  ·  check: ${origin}/health`);
+  // Sign-in needs GITHUB_CLIENT_SECRET on the Worker; say so loudly if it's missing after a deploy.
+  const health = await fetch(`${origin}/health`).then((r) => r.json()).catch(() => null);
+  if (health && !health.configured) console.warn('\n! Sign-in is NOT configured on the live Worker: GITHUB_CLIENT_SECRET is missing. Add it as a Secret (docs/SETUP-SIGNIN.md).');
+}

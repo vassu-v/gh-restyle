@@ -3,6 +3,9 @@
 name = "gitling"
 main = "src/index.ts"
 compatibility_date = "2026-10-01"
+# Don't delete variables added in the Cloudflare dashboard on deploy (a plain-text GITHUB_CLIENT_SECRET was
+# wiped once this way). The secret should still be stored as type "Secret", which deploys never touch.
+keep_vars = true
 
 [assets]
 # The PWA built by `npm run build:web`. Unknown paths fall back to index.html (single-page app).
