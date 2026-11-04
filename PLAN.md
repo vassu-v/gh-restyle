@@ -2,6 +2,8 @@
 
 A GitHub client for your phone whose interface you design yourself.
 
+> Current state: `docs/STATUS.md`. How it works: `docs/ARCHITECTURE.md`. Why: `docs/decisions/`. Agents: `AGENTS.md`.
+
 ## 1. Decisions
 
 | Question | Decision | Why |
@@ -36,18 +38,9 @@ All API calls go straight from the phone to api.github.com. The worker never see
 
 ## 3. Repository layout
 
-```
-gitling/
-  apps/app/                 Expo app (web/PWA + iOS + Android)
-    app/                    routes: (tabs)/home, feed, inbox, repos, studio · repo/[owner]/[name]/… · pr/… · studio/…
-    src/features/           feed, inbox, repo, pr, issue, code, search, studio, tiles, auth
-    src/ui/                 primitives built only from design tokens (Text, Row, Pill, Sheet, TabBar…)
-  packages/github/          typed REST client, ETag cache, rate-limit + X-Poll-Interval handling
-  packages/design/          design schema (zod), presets, token resolver, contrast fixes, share codes
-  services/edge/            Cloudflare Worker: /auth/exchange now; /push/* + cron poller in phase 2
-  design/                   references, direction boards, approved mockups
-  prototype/                the first HTML prototype (kept for reference)
-```
+See the map in `AGENTS.md` and the layer diagram in `docs/ARCHITECTURE.md`. Top level: `apps/app` (Expo),
+`apps/extension`, `packages/github`, `packages/design`, `services/edge` (auth worker), `scripts/`, `docs/`,
+`design/` (mockups), `prototype/`.
 
 ## 4. Feed
 
@@ -98,15 +91,14 @@ Design = {
 
 ## 8. Milestones
 
-1. **M0 — Design direction.** Reference research → 3 directions as mockups → you pick one.
-2. **M1 — Skeleton. ✅ Done.** Monorepo, Expo app (web/iOS/Android), design token engine, five-tab nav, sample-data mode. All screens run on sample data or a pasted token. The desktop extension v0 restyles github.com.
-3. **M2 — Sign-in.** OAuth App + auth worker deployed, secure token storage, fallback token paste.
-4. **M3 — Core GitHub.** Feed, inbox with swipe triage, repos, issues, PRs (conversation, files/diff, merge), code browser, search.
-5. **M4 — Studio.** Presets, theme controls, tab/home editing, tile editor, share codes.
-6. **M5 — Ship the PWA.** Install prompt, offline cache, icons, deploy to GitHub Pages / Cloudflare Pages.
+1. **M0 — Design direction. ✅ Done.** Reference research → 3 directions as mockups → Signal chosen.
+2. **M1 — Skeleton. ✅ Done.** Monorepo, Expo app, design token engine, five-tab nav, sample-data mode, desktop extension v0.
+3. **M2 — Sign-in. ✅ Code done and tested.** OAuth App + PKCE, auth worker, encrypted token storage, PAT fallback. Goes live after the one-time setup in `docs/SETUP-SIGNIN.md`.
+4. **M3 — Core GitHub. ✅ Done.** Feed, inbox triage, repo home, code browser, issue/PR lists, threads (markdown, diff, checks, merge methods, approve), profiles, in-app link routing.
+5. **M4 — Studio.** Basic editor exists; presets gallery, tile reordering and polish remain.
+6. **M5 — Ship the PWA. ✅ Build ready.** Installable manifest + icons, offline shell service worker, Vercel and Cloudflare Pages configs (`docs/DEPLOY.md`). Not deployed yet.
 7. **Phase 2.** Push notifications, gist sync, native builds (Android APK; iOS through TestFlight once there's an Apple developer account).
 
-## 9. What you'll need to do (once, at M2)
+## 9. What you'll need to do (once)
 
-1. Create a GitHub OAuth App at github.com/settings/developers → New OAuth App. I'll give you the exact callback URL.
-2. Create a free Cloudflare account so the auth worker can be deployed, or let me deploy it if you give this session access.
+Follow `docs/SETUP-SIGNIN.md` (GitHub OAuth App + free Cloudflare account, ~10 min) and `docs/DEPLOY.md` (Vercel or Cloudflare Pages).

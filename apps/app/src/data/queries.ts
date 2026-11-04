@@ -1,114 +1,156 @@
-import type { Comment, FeedEvent, Issue, Notification, PrFile, PullRequest, Repo, SearchResult, User } from '@gitling/github';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { MergeMethod } from '@gitling/github';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSession } from '@/session/SessionProvider';
 
-const FULL = 'application/vnd.github.full+json';
+/**
+ * Data hooks. The only place screens get GitHub data from.
+ * Rules (see docs/ARCHITECTURE.md § Data):
+ *  - every hook calls a function on `api` (packages/github/src/api.ts), never a raw path
+ *  - query keys start with the session kind, so sample data and live data never mix in the cache
+ *  - mutations invalidate exactly the keys they affect
+ */
 
-/** Query keys include the session kind so sample data and real data never mix. */
 function useApi() {
-  const { client, isSample } = useSession();
-  return { req: client.request, k: isSample ? 'sample' : 'live', client };
+  const { api, client, isSample } = useSession();
+  return { api, client, k: isSample ? 'sample' : 'live' } as const;
 }
 
+// ── people
 export function useMe() {
-  const { req, k } = useApi();
-  return useQuery({ queryKey: [k, 'me'], queryFn: () => req<User>('/user'), staleTime: 10 * 60e3 });
+  const { api, k } = useApi();
+  return useQuery({ queryKey: [k, 'me'], queryFn: api.me, staleTime: 10 * 60e3 });
+}
+export function useUser(login: string) {
+  const { api, k } = useApi();
+  return useQuery({ queryKey: [k, 'user', login], queryFn: () => api.user(login), staleTime: 10 * 60e3 });
+}
+export function useUserRepos(login: string) {
+  const { api, k } = useApi();
+  return useQuery({ queryKey: [k, 'user-repos', login], queryFn: () => api.userRepos(login), staleTime: 5 * 60e3 });
 }
 
+// ── search
 /** `@me` works in GitHub search, so queries stay portable between accounts. */
 export function useSearchIssues(q: string, perPage = 20, enabled = true) {
-  const { req, k } = useApi();
-  return useQuery({
-    queryKey: [k, 'search', q, perPage],
-    queryFn: () => req<SearchResult<Issue>>(`/search/issues?sort=updated&per_page=${perPage}&q=${encodeURIComponent(q)}`),
-    enabled,
-    staleTime: 60e3,
-  });
+  const { api, k } = useApi();
+  return useQuery({ queryKey: [k, 'search', q, perPage], queryFn: () => api.searchIssues(q, perPage), enabled, staleTime: 60e3 });
 }
-
 export function useSearchRepos(q: string, enabled = true) {
-  const { req, k } = useApi();
-  return useQuery({ queryKey: [k, 'search-repos', q], queryFn: () => req<SearchResult<Repo>>(`/search/repositories?per_page=30&q=${encodeURIComponent(q)}`), enabled, staleTime: 60e3 });
+  const { api, k } = useApi();
+  return useQuery({ queryKey: [k, 'search-repos', q], queryFn: () => api.searchRepos(q), enabled, staleTime: 60e3 });
 }
 
+// ── inbox
 export function useNotifications(all = false) {
-  const { req, k, client } = useApi();
-  return useQuery({
-    queryKey: [k, 'notifications', all],
-    queryFn: () => req<Notification[]>(`/notifications?per_page=50${all ? '&all=true' : ''}`),
-    refetchInterval: () => client.pollInterval() * 1000,
-  });
+  const { api, k, client } = useApi();
+  return useQuery({ queryKey: [k, 'notifications', all], queryFn: () => api.notifications(all), refetchInterval: () => client.pollInterval() * 1000 });
 }
-
 export function useTriage() {
-  const { req, k } = useApi();
+  const { api, k } = useApi();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, kind }: { id: string; kind: 'done' | 'read' }) => req(`/notifications/threads/${id}`, { method: kind === 'done' ? 'DELETE' : 'PATCH' }),
+    mutationFn: ({ id, kind }: { id: string; kind: 'done' | 'read' }) => api.markThread(id, kind),
     onSettled: () => qc.invalidateQueries({ queryKey: [k, 'notifications'] }),
   });
 }
 
+// ── feed
 export function useFeed(login: string | undefined, mine = false) {
-  const { req, k } = useApi();
-  return useQuery({
-    queryKey: [k, 'feed', login, mine],
-    queryFn: () => req<FeedEvent[]>(`/users/${login}/${mine ? 'events' : 'received_events'}?per_page=60`),
-    enabled: !!login,
-    staleTime: 2 * 60e3,
-  });
+  const { api, k } = useApi();
+  return useQuery({ queryKey: [k, 'feed', login, mine], queryFn: () => api.feed(login!, mine), enabled: !!login, staleTime: 2 * 60e3 });
 }
 
+// ── repos
 export function useMyRepos() {
-  const { req, k } = useApi();
-  return useQuery({ queryKey: [k, 'my-repos'], queryFn: () => req<Repo[]>('/user/repos?sort=pushed&per_page=50'), staleTime: 5 * 60e3 });
+  const { api, k } = useApi();
+  return useQuery({ queryKey: [k, 'my-repos'], queryFn: api.myRepos, staleTime: 5 * 60e3 });
 }
 export function useStarred() {
-  const { req, k } = useApi();
-  return useQuery({ queryKey: [k, 'starred'], queryFn: () => req<Repo[]>('/user/starred?per_page=50'), staleTime: 5 * 60e3 });
+  const { api, k } = useApi();
+  return useQuery({ queryKey: [k, 'starred'], queryFn: api.starred, staleTime: 5 * 60e3 });
 }
-
 export function useRuns(repo: string | undefined) {
-  const { req, k } = useApi();
-  return useQuery({
-    queryKey: [k, 'runs', repo],
-    queryFn: () => req<{ workflow_runs: { conclusion: string | null }[] }>(`/repos/${repo}/actions/runs?per_page=24`),
-    enabled: !!repo,
-    staleTime: 5 * 60e3,
+  const { api, k } = useApi();
+  return useQuery({ queryKey: [k, 'runs', repo], queryFn: () => api.runs(repo!), enabled: !!repo, staleTime: 5 * 60e3 });
+}
+export function useRepo(owner: string, name: string) {
+  const { api, k } = useApi();
+  return useQuery({ queryKey: [k, 'repo', owner, name], queryFn: () => api.repo(owner, name), staleTime: 5 * 60e3 });
+}
+export function useReadme(owner: string, name: string) {
+  const { api, k } = useApi();
+  return useQuery({ queryKey: [k, 'readme', owner, name], queryFn: () => api.readme(owner, name), staleTime: 10 * 60e3 });
+}
+export function useStar(full: string) {
+  const { api, k } = useApi();
+  const qc = useQueryClient();
+  const key = [k, 'starred?', full];
+  const q = useQuery({ queryKey: key, queryFn: () => api.isStarred(full), staleTime: 5 * 60e3 });
+  const m = useMutation({
+    mutationFn: (on: boolean) => api.setStar(full, on),
+    onMutate: (on) => { qc.setQueryData(key, on); },
+    onError: (_e, on) => { qc.setQueryData(key, !on); },
+    onSettled: () => qc.invalidateQueries({ queryKey: [k, 'starred'] }),
+  });
+  return { starred: q.data ?? false, known: q.isSuccess, toggle: () => m.mutate(!q.data), error: m.error };
+}
+export function useDir(owner: string, name: string, path: string, ref?: string) {
+  const { api, k } = useApi();
+  return useQuery({ queryKey: [k, 'dir', owner, name, ref, path], queryFn: () => api.dir(owner, name, path, ref), staleTime: 5 * 60e3 });
+}
+/** Max bytes shown in the file viewer; bigger files open on GitHub. */
+export const MAX_FILE_BYTES = 512 * 1024;
+export function useFile(owner: string, name: string, path: string, ref?: string) {
+  const { api, k } = useApi();
+  const info = useQuery({ queryKey: [k, 'file-info', owner, name, ref, path], queryFn: () => api.fileInfo(owner, name, path, ref), staleTime: 5 * 60e3 });
+  const small = !!info.data && info.data.size <= MAX_FILE_BYTES;
+  const text = useQuery({ queryKey: [k, 'file', owner, name, ref, path], queryFn: () => api.fileText(owner, name, path, ref), enabled: small, staleTime: 5 * 60e3 });
+  return { info, text, tooBig: !!info.data && !small };
+}
+export function useRepoList(owner: string, name: string, kind: 'issues' | 'pulls', state: 'open' | 'closed') {
+  const { api, k } = useApi();
+  return useInfiniteQuery({
+    queryKey: [k, 'repo-list', owner, name, kind, state],
+    queryFn: ({ pageParam }) => (kind === 'issues' ? api.issues(owner, name, state, pageParam) : api.pulls(owner, name, state, pageParam)),
+    initialPageParam: 1,
+    getNextPageParam: (last) => last.next,
+    staleTime: 60e3,
   });
 }
 
+// ── threads
 export function useThread(owner: string, repo: string, n: number) {
-  const { req, k } = useApi();
-  const base = `/repos/${owner}/${repo}`;
-  const issue = useQuery({ queryKey: [k, 'issue', owner, repo, n], queryFn: () => req<Issue>(`${base}/issues/${n}`, { accept: FULL }) });
+  const { api, k } = useApi();
+  const issue = useQuery({ queryKey: [k, 'issue', owner, repo, n], queryFn: () => api.issue(owner, repo, n) });
   const isPr = !!issue.data?.pull_request;
-  const pr = useQuery({ queryKey: [k, 'pr', owner, repo, n], queryFn: () => req<PullRequest>(`${base}/pulls/${n}`), enabled: isPr });
-  const comments = useQuery({ queryKey: [k, 'comments', owner, repo, n], queryFn: () => req<Comment[]>(`${base}/issues/${n}/comments?per_page=100`, { accept: FULL }) });
+  const pr = useQuery({
+    queryKey: [k, 'pr', owner, repo, n],
+    queryFn: () => api.pull(owner, repo, n),
+    enabled: isPr,
+    // GitHub computes mergeability in the background and returns null until it's ready.
+    refetchInterval: (q) => (q.state.data && q.state.data.state === 'open' && q.state.data.mergeable === null && q.state.dataUpdateCount < 6 ? 2500 : false),
+  });
+  const comments = useQuery({ queryKey: [k, 'comments', owner, repo, n], queryFn: () => api.comments(owner, repo, n) });
   return { issue, pr, comments, isPr };
 }
-
 export function usePrFiles(owner: string, repo: string, n: number, enabled: boolean) {
-  const { req, k } = useApi();
-  return useQuery({ queryKey: [k, 'files', owner, repo, n], queryFn: () => req<PrFile[]>(`/repos/${owner}/${repo}/pulls/${n}/files?per_page=100`), enabled });
+  const { api, k } = useApi();
+  return useQuery({ queryKey: [k, 'files', owner, repo, n], queryFn: () => api.prFiles(owner, repo, n), enabled });
 }
-
-export function useChecks(owner: string, repo: string, ref: string | undefined) {
-  const { req, k } = useApi();
-  return useQuery({
-    queryKey: [k, 'checks', owner, repo, ref],
-    queryFn: () => req<{ total_count: number; check_runs: { name: string; conclusion: string | null; status: string }[] }>(`/repos/${owner}/${repo}/commits/${encodeURIComponent(ref!)}/check-runs`),
-    enabled: !!ref,
-  });
+export function useChecks(owner: string, repo: string, sha: string | undefined) {
+  const { api, k } = useApi();
+  return useQuery({ queryKey: [k, 'checks', owner, repo, sha], queryFn: () => api.checks(owner, repo, sha!), enabled: !!sha, staleTime: 30e3 });
 }
-
 export function useThreadActions(owner: string, repo: string, n: number) {
-  const { req, k } = useApi();
+  const { api, k } = useApi();
   const qc = useQueryClient();
-  const refresh = () => qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === k && [owner, repo].every((x) => q.queryKey.includes(x)) });
+  const refresh = () => qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === k && q.queryKey.includes(owner) && q.queryKey.includes(repo) });
+  const refreshLists = () => qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === k && (q.queryKey[1] === 'search' || q.queryKey[1] === 'notifications') });
+  const after = () => Promise.all([refresh(), refreshLists()]);
   return {
-    comment: useMutation({ mutationFn: (body: string) => req(`/repos/${owner}/${repo}/issues/${n}/comments`, { method: 'POST', body: { body } }), onSuccess: refresh }),
-    setState: useMutation({ mutationFn: (state: 'open' | 'closed') => req(`/repos/${owner}/${repo}/issues/${n}`, { method: 'PATCH', body: { state } }), onSuccess: refresh }),
-    merge: useMutation({ mutationFn: () => req(`/repos/${owner}/${repo}/pulls/${n}/merge`, { method: 'PUT', body: {} }), onSuccess: refresh }),
+    comment: useMutation({ mutationFn: (body: string) => api.comment(owner, repo, n, body), onSuccess: refresh }),
+    setState: useMutation({ mutationFn: (state: 'open' | 'closed') => api.setState(owner, repo, n, state), onSuccess: after }),
+    merge: useMutation({ mutationFn: (method: MergeMethod) => api.merge(owner, repo, n, method), onSuccess: after }),
+    approve: useMutation({ mutationFn: () => api.approve(owner, repo, n), onSuccess: refresh }),
   };
 }

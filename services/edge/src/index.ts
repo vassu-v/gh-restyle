@@ -1,0 +1,129 @@
+/**
+ * Gitling auth worker (Cloudflare Workers). Stores nothing. Two jobs:
+ *
+ *   GET  /auth/callback?code&state  GitHub sends the user here (the OAuth App's single callback URL).
+ *                                    We read where the app wants to land from `state`, check it against
+ *                                    ALLOWED_RETURN, and redirect there with the same code + state.
+ *   POST /auth/exchange             {code, code_verifier} → adds the client secret → GitHub → {access_token, scope}.
+ *                                    GitHub's token endpoint needs the secret and blocks browser CORS, hence this hop.
+ *   GET  /health                    liveness check.
+ *
+ * Phase 2 adds /push/* and a cron poller here (see PLAN.md § 7).
+ */
+
+export interface Env {
+  GITHUB_CLIENT_ID: string;
+  GITHUB_CLIENT_SECRET: string;
+  /** Comma list: exact http(s) origins and/or custom schemes ("gitling://"). */
+  ALLOWED_RETURN: string;
+}
+
+type Fetch = typeof fetch;
+
+export default {
+  fetch: (req: Request, env: Env) => handle(req, env),
+};
+
+export async function handle(req: Request, env: Env, f: Fetch = fetch): Promise<Response> {
+  const url = new URL(req.url);
+  const cors = corsHeaders(req, env);
+  try {
+    if (req.method === 'OPTIONS') return new Response(null, { status: cors ? 204 : 403, headers: cors ?? {} });
+    if (url.pathname === '/health') return json({ ok: true, configured: !!(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET) }, 200, cors);
+    if (url.pathname === '/auth/callback' && req.method === 'GET') return callback(url, env);
+    if (url.pathname === '/auth/exchange' && req.method === 'POST') {
+      if (req.headers.get('Origin') && !cors) return json({ error: 'This website is not allowed to sign in here.' }, 403);
+      return exchange(req, url, env, f, cors);
+    }
+    return json({ error: 'Not found' }, 404, cors);
+  } catch {
+    return json({ error: 'Sign-in service error. Try again.' }, 500, cors);
+  }
+}
+
+/* ─── callback: bounce GitHub's redirect back into the app ─── */
+
+function callback(url: URL, env: Env): Response {
+  const state = url.searchParams.get('state') ?? '';
+  const target = returnTarget(state);
+  if (!target || !isAllowedReturn(target, env)) return page(400, 'This sign-in link is not valid. Go back to Gitling and try again.');
+  const out = new URL(target);
+  for (const k of ['code', 'state', 'error', 'error_description']) {
+    const v = url.searchParams.get(k);
+    if (v) out.searchParams.set(k, v);
+  }
+  return new Response(null, { status: 302, headers: { Location: out.toString(), 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' } });
+}
+
+/** state = "<nonce>.<base64url(returnTo)>" (packages/github/src/auth.ts encodeState). */
+export function returnTarget(state: string): string | null {
+  const i = state.indexOf('.');
+  if (i < 1) return null;
+  try {
+    const b64 = state.slice(i + 1).replace(/-/g, '+').replace(/_/g, '/');
+    const bin = atob(b64 + '='.repeat((4 - (b64.length % 4)) % 4));
+    return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
+  } catch { return null; }
+}
+
+function allowList(env: Env) { return (env.ALLOWED_RETURN ?? '').split(',').map((s) => s.trim()).filter(Boolean); }
+
+export function isAllowedReturn(target: string, env: Env): boolean {
+  let t: URL;
+  try { t = new URL(target); } catch { return false; }
+  return allowList(env).some((rule) => {
+    if (/^https?:\/\//.test(rule)) { try { return t.origin === new URL(rule).origin; } catch { return false; } }
+    const scheme = rule.replace(/:\/*$/, '') + ':';
+    return t.protocol === scheme;
+  });
+}
+
+/* ─── exchange: code + verifier → token ─── */
+
+async function exchange(req: Request, url: URL, env: Env, f: Fetch, cors: Record<string, string> | null): Promise<Response> {
+  if (!env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET) return json({ error: 'Sign-in is not configured on the server yet.' }, 503, cors);
+  let body: { code?: unknown; code_verifier?: unknown };
+  try { body = await req.json(); } catch { return json({ error: 'Bad request.' }, 400, cors); }
+  const code = typeof body.code === 'string' ? body.code : '';
+  const verifier = typeof body.code_verifier === 'string' ? body.code_verifier : '';
+  if (!/^[\w-]{8,100}$/.test(code) || !/^[A-Za-z0-9._~-]{43,128}$/.test(verifier)) return json({ error: 'Bad request.' }, 400, cors);
+
+  const gh = await f('https://github.com/login/oauth/access_token', {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json', 'User-Agent': 'gitling-auth' },
+    body: JSON.stringify({
+      client_id: env.GITHUB_CLIENT_ID,
+      client_secret: env.GITHUB_CLIENT_SECRET,
+      code,
+      code_verifier: verifier,
+      redirect_uri: `${url.origin}/auth/callback`,
+    }),
+  });
+  const data = (await gh.json().catch(() => ({}))) as { access_token?: string; scope?: string; token_type?: string; error?: string; error_description?: string };
+  if (!gh.ok || !data.access_token) {
+    const expired = data.error === 'bad_verification_code';
+    return json({ error: expired ? 'That sign-in expired. Try again.' : (data.error_description ?? 'GitHub refused the sign-in.') }, 400, cors);
+  }
+  return json({ access_token: data.access_token, scope: data.scope ?? '', token_type: data.token_type ?? 'bearer' }, 200, cors);
+}
+
+/* ─── helpers ─── */
+
+function corsHeaders(req: Request, env: Env): Record<string, string> | null {
+  const origin = req.headers.get('Origin');
+  if (!origin) return null;
+  const ok = allowList(env).some((rule) => { try { return /^https?:\/\//.test(rule) && new URL(rule).origin === origin; } catch { return false; } });
+  if (!ok) return null;
+  return { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Methods': 'POST, GET, OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type', 'Access-Control-Max-Age': '86400', Vary: 'Origin' };
+}
+
+function json(data: unknown, status: number, extra?: Record<string, string> | null): Response {
+  return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...(extra ?? {}) } });
+}
+
+function page(status: number, message: string): Response {
+  const esc = message.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+  return new Response(`<!doctype html><meta name="viewport" content="width=device-width"><title>Gitling</title><body style="font:16px system-ui;background:#0E0F11;color:#ECECEE;padding:32px"><h1 style="font-size:20px">Gitling</h1><p>${esc}</p>`, {
+    status, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
+  });
+}

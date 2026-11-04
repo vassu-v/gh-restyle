@@ -1,6 +1,7 @@
 import type { Tokens } from '@gitling/design';
 import type { ReactNode } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTokens } from '@/design/DesignProvider';
 import { Icon } from './Icon';
@@ -123,6 +124,36 @@ export function Button({ label, icon, onPress, kind = 'primary', disabled, style
       style={({ pressed }) => [{ height: 50, minWidth: 50, paddingHorizontal: label ? 20 : 0, borderRadius: 25, backgroundColor: bg, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, opacity: disabled ? 0.4 : pressed ? 0.8 : 1, borderWidth: kind === 'primary' ? 0 : 1, borderColor: t.c.glassBorder }, style]}>
       {icon ? <Icon name={icon} size={19} color={fg} /> : null}
       {label ? <Text style={{ color: fg, fontFamily: t.font.ui.semibold, fontSize: t.scale(16) }}>{label}</Text> : null}
+    </Pressable>
+  );
+}
+
+/* ---------- navigation ---------- */
+/** Back chevron on the left, optional actions on the right. Falls back to Home when there's no history (deep link). */
+export function BackHeader({ right, title }: { right?: ReactNode; title?: string }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, gap: 14 }}>
+      <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))} hitSlop={10} accessibilityLabel="Back"><Icon name="chevron-left" size={26} /></Pressable>
+      <View style={{ flex: 1, minWidth: 0 }}>{title ? <T v="mono" c="mut" lines={1}>{title}</T> : null}</View>
+      {right}
+    </View>
+  );
+}
+
+/** A tappable list row: icon tile, title, subtitle, trailing text. */
+export function Row({ icon, iconColor, title, sub, trail, onPress, mono }: { icon: string; iconColor?: string; title: string; sub?: string; trail?: string; onPress?: () => void; mono?: boolean }) {
+  const t = useTokens();
+  return (
+    <Pressable onPress={onPress} disabled={!onPress} accessibilityRole={onPress ? 'button' : undefined}
+      style={({ pressed }) => ({ flexDirection: 'row', gap: 12, paddingHorizontal: 18, paddingVertical: t.rowPad, alignItems: 'center', opacity: pressed ? 0.6 : 1 })}>
+      <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: t.c.el2, alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name={icon} size={17} color={iconColor ?? t.c.mut} />
+      </View>
+      <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+        <T v={mono ? 'mono' : 'title'} lines={1} style={mono ? { fontSize: t.scale(14) } : undefined}>{title}</T>
+        {sub ? <T v="monoS" c="mut" lines={1}>{sub}</T> : null}
+      </View>
+      {trail ? <T v="mono" c="mut">{trail}</T> : null}
     </Pressable>
   );
 }

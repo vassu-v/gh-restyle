@@ -1,40 +1,55 @@
 # Gitling
 
-A GitHub client you design yourself. One Expo app for phone and web, plus a browser extension that restyles github.com on desktop.
+A GitHub client you design yourself. One Expo app for phone and web (installable PWA), plus a browser
+extension that restyles github.com on desktop.
 
-## Layout
+- **New here, or an AI agent?** Read [`AGENTS.md`](AGENTS.md) first.
+- **Where things stand:** [`docs/STATUS.md`](docs/STATUS.md)
+- **How it works:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · **why:** [`docs/decisions/`](docs/decisions/)
+- **Plan:** [`PLAN.md`](PLAN.md)
 
-```
-apps/app         Expo app (web/PWA + iOS + Android): Home, Feed, Inbox, Repos, Studio, PR/issue threads, search, tile editor
-apps/extension   Browser extension (Manifest V3) that applies your design to github.com
-packages/design  The Design schema, the Signal skin, token resolver, share codes (used by app + extension)
-packages/github  Typed GitHub REST client with ETag caching, plus sample data
-design/          Research mockups (Signal skin)
-prototype/       The first HTML prototype, kept for reference
-PLAN.md          Architecture, decisions and milestones
-```
-
-## Run the app
+## Run it
 
 ```bash
 npm install
 npm run web
 ```
 
-It opens with sample data. To use your real account before one-tap sign-in lands (M2), open the avatar → paste a classic token with `repo`, `notifications`, `read:user`.
+It opens with sample data, so every screen works without an account. To use your own GitHub:
 
-On a phone: install **Expo Go** and scan the QR code that `npx expo start` prints in `apps/app`.
+- **One-tap sign-in:** set up once with [`docs/SETUP-SIGNIN.md`](docs/SETUP-SIGNIN.md) (GitHub OAuth App + free Cloudflare worker).
+- **Or paste a token:** avatar → Account → "Use a personal access token instead" (classic token with `repo`, `notifications`, `read:user`).
 
-## Build and load the extension
+On a phone during development: install **Expo Go** and scan the QR code that `npx expo start` prints in `apps/app`.
+
+## Install it on your phone
+
+Deploy the web build to Vercel or Cloudflare Pages ([`docs/DEPLOY.md`](docs/DEPLOY.md)), open the URL, then
+Account → **Install app** (Android/Chrome) or Share → **Add to Home Screen** (iPhone).
+
+## Desktop extension
 
 ```bash
-npm run build -w @gitling/extension
+npm run build:extension
 ```
 
-Then in Chrome go to `chrome://extensions` → turn on **Developer mode** → **Load unpacked** → pick `apps/extension/dist`. Open github.com. Click the Gitling icon to switch background or number style, or paste a design code from the app's Studio → Share.
+Chrome → `chrome://extensions` → **Developer mode** → **Load unpacked** → `apps/extension/dist`. Open github.com.
+Use the Gitling icon to change background or number style, or paste a design code from the app (Studio → Share).
 
 ## Checks
 
 ```bash
-cd apps/app && npx tsc --noEmit && npx expo lint
+npm run check
 ```
+
+That runs types, lint, unit tests, and the extension and web builds. Then:
+
+```bash
+npm run smoke
+```
+
+```bash
+npm run e2e:signin
+```
+
+`smoke` opens every screen in a browser. `e2e:signin` runs the full sign-in flow with GitHub simulated.

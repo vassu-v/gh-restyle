@@ -1,0 +1,57 @@
+import { describe, expect, it } from 'vitest';
+import { createApi } from '../src/api';
+import { createClient } from '../src/client';
+
+// Every endpoint in api.ts must work against sample data, so the app never shows an error before sign-in.
+const api = createApi(createClient({ kind: 'sample' }));
+
+describe('api against sample data', () => {
+  it('people, search, inbox, feed', async () => {
+    expect((await api.me()).login).toBe('you');
+    expect((await api.user('lin')).login).toBe('lin');
+    expect((await api.userRepos('lin')).length).toBeGreaterThan(0);
+    expect((await api.searchIssues('is:open is:pr')).items.length).toBeGreaterThan(0);
+    expect((await api.searchIssues('repo:you/trail-notes is:open is:issue')).items.every((i) => !i.pull_request)).toBe(true);
+    expect((await api.searchRepos('sync')).items.length).toBeGreaterThan(0);
+    expect((await api.notifications()).length).toBeGreaterThan(0);
+    expect(await api.markThread('n6', 'read')).toBe(true);
+    expect((await api.feed('you')).length).toBeGreaterThan(0);
+    expect((await api.feed('you', true)).length).toBeGreaterThan(0);
+  });
+  it('repos and code', async () => {
+    const r = await api.repo('you', 'trail-notes');
+    expect(r.permissions?.push).toBe(true);
+    expect(await api.readme('you', 'trail-notes')).toMatch(/^# trail-notes/);
+    const root = await api.dir('you', 'trail-notes', '');
+    expect(root[0].type).toBe('dir');
+    expect(root.map((x) => x.name)).toContain('README.md');
+    expect((await api.dir('you', 'trail-notes', 'src/sync')).map((x) => x.name)).toEqual(['queue.ts']);
+    expect((await api.fileInfo('you', 'trail-notes', 'src/types.ts')).size).toBeGreaterThan(10);
+    expect(await api.fileText('you', 'trail-notes', 'src/types.ts')).toMatch(/export type Entry/);
+    await expect(api.dir('you', 'trail-notes', 'src/types.ts')).rejects.toThrow(/file/);
+    expect(await api.isStarred('lin/tiny-sync')).toBe(true);
+    await api.setStar('lin/tiny-sync', false);
+    expect(await api.isStarred('lin/tiny-sync')).toBe(false);
+    expect((await api.issues('you', 'trail-notes', 'open')).items.every((i) => !i.pull_request)).toBe(true);
+    expect((await api.pulls('you', 'trail-notes', 'open')).items[0].head.sha).toBeTruthy();
+    expect((await api.runs('you/trail-notes')).workflow_runs.length).toBe(24);
+  });
+  it('threads and actions', async () => {
+    expect((await api.issue('you', 'trail-notes', 42)).body).toMatch(/airplane mode/);
+    const pr = await api.pull('you', 'trail-notes', 45);
+    expect(pr.head.sha).toBe('a91f3c2e');
+    expect((await api.comments('you', 'trail-notes', 42)).length).toBe(2);
+    expect((await api.prFiles('you', 'trail-notes', 45)).length).toBe(3);
+    expect((await api.checks('you', 'trail-notes', pr.head.sha)).check_runs.length).toBe(3);
+    expect((await api.comment('you', 'trail-notes', 42, 'hi **there**')).body).toBe('hi **there**');
+    await api.approve('lin', 'tiny-sync', 33);
+    expect((await api.merge('you', 'trail-notes', 45, 'squash')).merged).toBe(true);
+    expect((await api.pull('you', 'trail-notes', 45)).merged).toBe(true);
+    await api.setState('you', 'trail-notes', 42, 'closed');
+    expect((await api.issue('you', 'trail-notes', 42)).state).toBe('closed');
+  });
+  it('404s on unknown things like the real API', async () => {
+    await expect(api.issue('acme', 'rocket', 1)).rejects.toMatchObject({ status: 404 });
+    expect(await api.readme('acme', 'rocket')).toBeNull(); // no README is not an error
+  });
+});

@@ -1,5 +1,6 @@
 import { fit, type Tile, type TileTarget } from '@gitling/design';
 import { router } from 'expo-router';
+import { openUrl, routes } from '@/lib/links';
 import { Linking, Pressable, View } from 'react-native';
 import { useTokens } from '@/design/DesignProvider';
 import { useSearchIssues, useNotifications } from '@/data/queries';
@@ -22,11 +23,18 @@ function useTileCount(tile: Tile) {
 export function openTarget(target: TileTarget, label: string) {
   switch (target.type) {
     case 'search': return router.push({ pathname: '/search', params: { q: target.q, title: label, kind: 'issues' } });
-    case 'repo': return router.push({ pathname: '/search', params: { q: `repo:${target.repo} is:open ${target.tab === 'prs' ? 'is:pr' : target.tab === 'issues' ? 'is:issue' : ''}`.trim(), title: target.repo, kind: 'issues' } });
-    case 'user': return router.push({ pathname: '/search', params: { q: `involves:${target.login} is:open`, title: `@${target.login}`, kind: 'issues' } });
-    case 'file': return Linking.openURL(`https://github.com/${target.repo}/blob/HEAD/${target.path}`);
+    case 'repo': {
+      const [o, n] = target.repo.split('/');
+      if (target.tab === 'issues') return router.push(routes.list(o, n, 'issues'));
+      if (target.tab === 'prs') return router.push(routes.list(o, n, 'pulls'));
+      if (target.tab === 'code') return router.push(routes.tree(o, n));
+      if (target.tab === 'commits') return Linking.openURL(`https://github.com/${target.repo}/commits`);
+      return router.push(routes.repo(o, n));
+    }
+    case 'user': return router.push(routes.user(target.login));
+    case 'file': { const [o, n] = target.repo.split('/'); return router.push(routes.blob(o, n, target.path)); }
+    case 'link': return openUrl(target.url);
     case 'inbox': return router.navigate({ pathname: '/inbox', params: { filter: target.filter } });
-    case 'link': return Linking.openURL(target.url);
     case 'ask': return router.push({ pathname: '/ask', params: { prompt: target.prompt, template: target.template, dest: target.dest } });
   }
 }

@@ -3,14 +3,28 @@
   "private": true,
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "services/*"
   ],
   "scripts": {
     "web": "npm --workspace apps/app run web",
-    "typecheck": "npm --workspace apps/app exec tsc -- --noEmit",
-    "export:web": "npm --workspace apps/app exec expo -- export --platform web"
+    "typecheck": "npm --workspace apps/app exec tsc -- --noEmit && tsc -p services/edge --noEmit",
+    "lint": "npm --workspace apps/app run lint",
+    "test": "vitest run",
+    "test:live": "vitest run --config /dev/null packages/github/test/github.live.test.ts",
+    "build:web": "npm --workspace apps/app exec expo -- export --platform web && node scripts/pwa.mjs",
+    "build:extension": "node apps/extension/build.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "check": "npm run typecheck && npm run lint && npm test && npm run build:extension && npm run build:web",
+    "deploy:auth": "npm --workspace services/edge run deploy",
+    "e2e:signin": "node scripts/e2e-signin.mjs"
   },
   "devDependencies": {
-    "esbuild": "^0.28.2"
+    "esbuild": "^0.28.2",
+    "playwright": "^1.63.0",
+    "vitest": "^3.2.7"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

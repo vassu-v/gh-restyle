@@ -1,0 +1,13 @@
+# Gitling auth worker. Deploy: `npm run deploy -w services/edge` (see docs/SETUP-SIGNIN.md).
+name = "gitling-auth"
+main = "src/index.ts"
+compatibility_date = "2026-10-01"
+
+[vars]
+# Comma-separated places the worker may send people back to after GitHub approves.
+# http(s) entries match by exact origin; scheme entries (gitling://, exp://) match by scheme.
+# Add your deployed web app's origin here, e.g. "https://gitling.vercel.app".
+ALLOWED_RETURN = "http://localhost:8081,gitling://"
+GITHUB_CLIENT_ID = ""
+
+# Secret, never in this file:  npx wrangler secret put GITHUB_CLIENT_SECRET

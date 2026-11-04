@@ -36,33 +36,33 @@ let cid = 1;
 function add(full: string, n: number, title: string, who: string, state: 'open' | 'closed', h: number, body: string, labels: [string, string][] = [], pr?: Partial<PrExtra>) {
   const it: Stored = {
     number: n, title, user: u(who), state, created_at: ago(h + 30), updated_at: ago(h), closed_at: state === 'closed' ? ago(h) : null,
-    body_html: body, comments: 0, labels: labels.map(([name, color]) => ({ name, color })), repository_url: `${API}/repos/${full}`,
+    body, comments: 0, labels: labels.map(([name, color]) => ({ name, color })), repository_url: `${API}/repos/${full}`,
     html_url: `https://github.com/${full}/issues/${n}`, _comments: [],
   };
   if (pr) {
     it.pull_request = { url: `${API}/repos/${full}/pulls/${n}`, merged_at: pr.merged ? ago(h) : null };
     it.draft = !!pr.draft;
-    it._pr = { draft: false, merged: false, merged_at: null, mergeable: true, head: { ref: 'feature' }, base: { ref: 'main' }, additions: 20, deletions: 4, changed_files: 1, commits: 1, ...pr };
+    it._pr = { draft: false, merged: false, merged_at: null, mergeable: true, head: { ref: 'feature', sha: 'f00dfeed' }, base: { ref: 'main' }, additions: 20, deletions: 4, changed_files: 1, commits: 1, ...pr };
   }
   (ISSUES[full] ??= []).push(it);
   return it;
 }
-const comment = (it: Stored, who: string, h: number, html: string) => { it._comments.push({ id: cid++, user: u(who), created_at: ago(h), body_html: html }); it.comments = it._comments.length; };
+const comment = (it: Stored, who: string, h: number, md: string) => { it._comments.push({ id: cid++, user: u(who), created_at: ago(h), body: md }); it.comments = it._comments.length; };
 
 const i42 = add('you/trail-notes', 42, 'Offline sync drops edits made in airplane mode', 'mira', 'open', 3,
-  '<p>When I edit an entry with airplane mode on, then reconnect, the edit is gone. The server copy wins.</p><ol><li>Open an existing entry</li><li>Turn on airplane mode, change the title</li><li>Turn airplane mode off</li></ol><p>Seen on iOS 18.4 and Pixel 8.</p>',
+  'When I edit an entry with **airplane mode** on, then reconnect, the edit is gone. The server copy wins.\n\n1. Open an existing entry\n2. Turn on airplane mode, change the title\n3. Turn airplane mode off\n\nSeen on iOS 18.4 and Pixel 8. cc @devansh',
   [['bug', 'd73a4a'], ['sync', '1d76db']]);
-comment(i42, 'you', 2.5, '<p>Reproduced. The queue flushes before the merge step reads the local version. Working on a fix in #45.</p>');
-comment(i42, 'devansh', 1, '<p>Same here on Android. Happy to test the branch.</p>');
+comment(i42, 'you', 2.5, 'Reproduced. The queue flushes before the merge step reads the local version. Working on a fix in #45.\n\n```ts\nawait flush(local); // runs before merge()\n```');
+comment(i42, 'devansh', 1, 'Same here on Android. Happy to test the branch.');
 const p45 = add('you/trail-notes', 45, 'Merge offline edits instead of overwriting them', 'you', 'open', 1,
-  '<p>Fixes #42. Offline edits are stored as a patch queue and merged field by field on reconnect.</p>', [['sync', '1d76db']],
-  { head: { ref: 'fix/offline-merge' }, base: { ref: 'main' }, additions: 184, deletions: 37, changed_files: 3, commits: 4, mergeable: true });
-comment(p45, 'mira', 0.5, '<p>Tested on my phone, the title edit survives now. One nit on the timestamp comparison.</p>');
-add('you/trail-notes', 44, 'Export a trip as GPX', 'devansh', 'open', 26, '<p>Would love to bring my routes into other map apps.</p>', [['enhancement', 'a2eeef']]);
-add('you/trail-notes', 39, 'Tag chips are hard to read in dark mode', 'lin', 'closed', 50, '<p>The grey chips almost vanish.</p>', [['design', 'c5def5']]);
-add('you/pocket-ledger', 88, 'Rounding error when splitting 3 ways', 'mira', 'open', 8, '<p>Splitting ₹100 three ways gives ₹99.99 total.</p>', [['bug', 'd73a4a']]);
-add('you/pocket-ledger', 90, 'Add CSV import for bank statements', 'you', 'open', 12, '<p>First pass at importing statement formats.</p>', [['enhancement', 'a2eeef']], { draft: true, head: { ref: 'feat/csv-import' }, additions: 402, deletions: 3, changed_files: 6, commits: 9 });
-add('lin/tiny-sync', 33, 'Batch writes during initial sync', 'lin', 'open', 5, '<p>Cuts first-sync time roughly in half on large docs.</p>', [], { head: { ref: 'perf/batch' }, additions: 96, deletions: 41, changed_files: 4, commits: 3 });
+  'Fixes #42. Offline edits are stored as a patch queue and merged field by field on reconnect.\n\n- [x] Patch queue\n- [x] Field-level merge\n- [ ] Conflict UI\n\n| Case | Before | After |\n|---|---|---|\n| Title edit offline | lost | kept |\n| Both sides edit | server wins | newest wins |', [['sync', '1d76db']],
+  { head: { ref: 'fix/offline-merge', sha: 'a91f3c2e' }, base: { ref: 'main' }, additions: 184, deletions: 37, changed_files: 3, commits: 4, mergeable: true });
+comment(p45, 'mira', 0.5, 'Tested on my phone, the title edit survives now. One nit on the timestamp comparison:\n\n> newer timestamp wins\n\nShould be `>=` so ties keep the local edit.');
+add('you/trail-notes', 44, 'Export a trip as GPX', 'devansh', 'open', 26, 'Would love to bring my routes into other map apps.', [['enhancement', 'a2eeef']]);
+add('you/trail-notes', 39, 'Tag chips are hard to read in dark mode', 'lin', 'closed', 50, 'The grey chips almost vanish.', [['design', 'c5def5']]);
+add('you/pocket-ledger', 88, 'Rounding error when splitting 3 ways', 'mira', 'open', 8, 'Splitting ₹100 three ways gives ₹99.99 total.', [['bug', 'd73a4a']]);
+add('you/pocket-ledger', 90, 'Add CSV import for bank statements', 'you', 'open', 12, 'First pass at importing statement formats.', [['enhancement', 'a2eeef']], { draft: true, head: { ref: 'feat/csv-import', sha: 'c5f1d2aa' }, additions: 402, deletions: 3, changed_files: 6, commits: 9 });
+add('lin/tiny-sync', 33, 'Batch writes during initial sync', 'lin', 'open', 5, 'Cuts first-sync time roughly in half on large docs.', [], { head: { ref: 'perf/batch', sha: 'b47c0e19' }, additions: 96, deletions: 41, changed_files: 4, commits: 3 });
 
 const FILES: Record<string, PrFile[]> = {
   'you/trail-notes#45': [
@@ -114,11 +114,40 @@ const strip = ({ _comments, _pr, ...rest }: Stored): Issue => rest;
 const asPr = (s: Stored): PullRequest => ({ ...strip(s), ...(s._pr as PrExtra) });
 const notFound = (): never => { throw Object.assign(new Error('Not in the sample data.'), { status: 404 }); };
 const find = (full: string, n: string) => (ISSUES[full] ?? []).find((i) => i.number === +n) ?? notFound();
-const param = (q: string, k: string) => decodeURIComponent((q.match(new RegExp(`${k}=([^&]*)`)) ?? [])[1] ?? '').replace(/\+/g, ' ');
+const param = (q: string, k: string) => decodeURIComponent((q.match(new RegExp(`(?:^|&)${k}=([^&]*)`)) ?? [])[1] ?? '').replace(/\+/g, ' ');
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export async function mockRequest(path: string, o: RequestOptions = {}): Promise<unknown> {
-  await sleep(90 + Math.random() * 120);
+/* A tiny file tree per repo, so the code browser works offline. */
+const readme = (r: Repo) => `# ${r.name}\n\n${r.description ?? ''}\n\n![build](https://img.shields.io/badge/build-passing-brightgreen)\n\n## Install\n\n\`\`\`sh\nnpm install ${r.name}\n\`\`\`\n\n## Usage\n\n- Works **offline** first\n- Syncs when you get signal\n- See [the docs](docs/guide.md) or open an [issue](https://github.com/${r.full_name}/issues/42)\n\n> This README is sample data.\n`;
+const TREE: Record<string, string> = {
+  'README.md': '', 'package.json': '{\n  "name": "sample",\n  "version": "1.4.0",\n  "type": "module"\n}\n',
+  'docs/guide.md': '# Guide\n\nStart with `npm install`, then run `npm start`.\n',
+  'src/index.ts': "export { syncEntries } from './sync';\nexport type { Entry } from './types';\n",
+  'src/sync/queue.ts': "import { Entry, Patch } from '../types';\n\nexport class PatchQueue {\n  private patches: Patch[] = [];\n\n  push(entryId: string, field: keyof Entry, value: unknown) {\n    this.patches.push({ entryId, field, value, at: Date.now() });\n  }\n}\n",
+  'src/types.ts': 'export type Entry = { id: string; title: string; body: string; updatedAt: number };\n',
+};
+function contents(r: Repo, path: string) {
+  const files = Object.keys(TREE);
+  if (files.includes(path)) {
+    const text = path === 'README.md' ? readme(r) : TREE[path];
+    return { file: { type: 'file' as const, name: path.split('/').pop()!, path, size: text.length, sha: 'f' + path.length }, text };
+  }
+  const prefix = path ? path + '/' : '';
+  const kids = new Map<string, 'file' | 'dir'>();
+  for (const f of files) if (f.startsWith(prefix)) { const rest = f.slice(prefix.length); const [head, ...more] = rest.split('/'); kids.set(head, more.length ? 'dir' : 'file'); }
+  if (!kids.size) return notFound();
+  return { dir: [...kids].map(([name, type]) => ({ type, name, path: prefix + name, size: type === 'file' ? (TREE[prefix + name] || readme(r)).length : 0, sha: 's' + name.length })) };
+}
+
+export type MockResponse = { data: unknown; link?: string };
+
+/** Answers the same paths as api.ts, from in-memory sample data. Mutations change the data for the session. */
+export async function mockRequest(path: string, o: RequestOptions = {}): Promise<MockResponse> {
+  await sleep(60 + Math.random() * 100);
+  return { data: route(path, o) };
+}
+
+function route(path: string, o: RequestOptions): unknown {
   const m = o.method ?? 'GET';
   const [p, q = ''] = path.split('?');
   let r: RegExpMatchArray | null;
@@ -133,7 +162,7 @@ export async function mockRequest(path: string, o: RequestOptions = {}): Promise
   if ((r = p.match(/^\/users\/([^/]+)\/received_events$/))) return EVENTS;
   if ((r = p.match(/^\/users\/([^/]+)\/events$/))) return MY_EVENTS;
   if ((r = p.match(/^\/users\/([^/]+)\/repos$/))) return ALL.filter((x) => x.owner.login === r![1]);
-  if ((r = p.match(/^\/users\/([^/]+)$/))) return r[1] === 'you' ? ME : { ...ME, login: r[1], name: NAMES[r[1]] ?? r[1], bio: null };
+  if ((r = p.match(/^\/users\/([^/]+)$/))) return r[1] === 'you' ? ME : { ...ME, login: r[1], name: NAMES[r[1]] ?? r[1], bio: null, public_repos: ALL.filter((x) => x.owner.login === r![1]).length };
   if (p === '/notifications') {
     if (m === 'PUT') { NOTIFS.forEach((n) => (n.unread = false)); return true; }
     return /all=true/.test(q) ? NOTIFS : NOTIFS.filter((n) => n.unread);
@@ -142,7 +171,9 @@ export async function mockRequest(path: string, o: RequestOptions = {}): Promise
   if (p === '/search/issues') {
     const s = param(q, 'q'); const isPr = /is:pr/.test(s), isIssue = /is:issue/.test(s), open = /is:open/.test(s);
     const label = (s.match(/label:(\S+)/) ?? [])[1];
-    let items = Object.values(ISSUES).flat().filter((i) => (!isPr || i.pull_request) && (!isIssue || !i.pull_request) && (!open || i.state === 'open') && (!label || i.labels.some((l) => l.name === label)));
+    const inRepo = (s.match(/repo:(\S+)/) ?? [])[1];
+    let items = Object.entries(ISSUES).filter(([full]) => !inRepo || full === inRepo).flatMap(([, v]) => v)
+      .filter((i) => (!isPr || i.pull_request) && (!isIssue || !i.pull_request) && (!open || i.state === 'open') && (!label || i.labels.some((l) => l.name === label)));
     if (/review-requested/.test(s)) items = items.filter((i) => i.pull_request && i.user.login !== 'you');
     if (/assignee/.test(s)) items = items.filter((i) => !i.pull_request);
     if (/mentions/.test(s)) items = items.filter((i) => i.number === 88);
@@ -152,20 +183,27 @@ export async function mockRequest(path: string, o: RequestOptions = {}): Promise
   }
   if (p === '/search/repositories') { const s = param(q, 'q').toLowerCase(); const items = ALL.filter((x) => `${x.full_name} ${x.description}`.toLowerCase().includes(s)); return { total_count: items.length, items }; }
   if ((r = p.match(/^\/repos\/([^/]+)\/([^/]+)(\/.*)?$/))) {
-    const full = `${r[1]}/${r[2]}`; const rest = r[3] ?? '';
-    if (!rest) return ALL.find((x) => x.full_name === full) ?? notFound();
+    const full = `${decodeURIComponent(r[1])}/${decodeURIComponent(r[2])}`; const rest = r[3] ?? '';
+    const rp = ALL.find((x) => x.full_name === full);
+    if (!rest) return rp ? { ...rp, permissions: { admin: rp.owner.login === 'you', push: rp.owner.login === 'you', pull: true }, allow_merge_commit: true, allow_squash_merge: true, allow_rebase_merge: false } : notFound();
     if (rest === '/actions/runs') return { total_count: RUNS.length, workflow_runs: RUNS };
-    if (rest === '/readme') return `<h2>${r[2]}</h2><p>${ALL.find((x) => x.full_name === full)?.description ?? ''}</p><p>This README is sample data.</p>`;
-    if (rest === '/issues' && m === 'GET') { const st = param(q, 'state') || 'open'; return (ISSUES[full] ?? []).filter((i) => !i.pull_request && (st === 'all' || i.state === st)).map(strip); }
+    if (rest === '/readme') return rp ? readme(rp) : notFound();
+    if (rest === '/contents' || rest.startsWith('/contents/')) {
+      const c = contents(rp ?? notFound(), decodeURIComponent(rest.slice('/contents/'.length)));
+      if ('dir' in c) return c.dir;
+      return o.text ? c.text : c.file;
+    }
+    if (rest === '/issues' && m === 'GET') { const st = param(q, 'state') || 'open'; return (ISSUES[full] ?? []).filter((i) => st === 'all' || i.state === st).map(strip); }
     if (rest === '/pulls') { const st = param(q, 'state') || 'open'; return (ISSUES[full] ?? []).filter((i) => i.pull_request && (st === 'all' || i.state === st)).map(asPr); }
     if ((r = rest.match(/^\/issues\/(\d+)$/))) { const it = find(full, r[1]); if (m === 'PATCH') Object.assign(it, o.body as object); return strip(it); }
     if ((r = rest.match(/^\/issues\/(\d+)\/comments$/))) {
       const it = find(full, r[1]);
-      if (m === 'POST') { const body = String((o.body as { body: string }).body).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]!); comment(it, 'you', 0, `<p>${body}</p>`); return true; }
+      if (m === 'POST') { comment(it, 'you', 0, String((o.body as { body: string }).body)); return it._comments[it._comments.length - 1]; }
       return it._comments;
     }
     if ((r = rest.match(/^\/pulls\/(\d+)$/))) return asPr(find(full, r[1]));
     if ((r = rest.match(/^\/pulls\/(\d+)\/files$/))) return FILES[`${full}#${r[1]}`] ?? [];
+    if ((r = rest.match(/^\/pulls\/(\d+)\/reviews$/))) { find(full, r[1]); return { id: 1, state: 'APPROVED' }; }
     if ((r = rest.match(/^\/pulls\/(\d+)\/merge$/))) { const it = find(full, r[1]); it.state = 'closed'; it.closed_at = new Date().toISOString(); if (it._pr) { it._pr.merged = true; it._pr.merged_at = it.closed_at; } if (it.pull_request) it.pull_request.merged_at = it.closed_at; return { merged: true }; }
     if ((r = rest.match(/^\/commits\/[^/]+\/check-runs$/))) return { total_count: 3, check_runs: ['build / node-22', 'test / vitest', 'lint'].map((name) => ({ name, status: 'completed', conclusion: 'success', started_at: ago(1.1), completed_at: ago(1) })) };
   }

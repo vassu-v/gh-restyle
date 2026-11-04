@@ -1,8 +1,9 @@
 import type { FeedEvent, Issue, Repo } from '@gitling/github';
 import { router } from 'expo-router';
-import { Linking, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useTokens } from '@/design/DesignProvider';
 import { rel, repoOf, short } from '@/lib/format';
+import { openUrl, routes } from '@/lib/links';
 import { Icon } from '@/ui/Icon';
 import { Avatar, Num, Panel, T } from '@/ui/primitives';
 
@@ -16,7 +17,7 @@ export function stateOf(it: Issue) {
 
 export function openIssue(it: Issue) {
   const [owner, repo] = repoOf(it.repository_url).split('/');
-  router.push({ pathname: '/thread/[owner]/[repo]/[number]', params: { owner, repo, number: String(it.number) } });
+  router.push(routes.thread(owner, repo, it.number));
 }
 
 export function IssueRow({ it, note }: { it: Issue; note?: string }) {
@@ -38,7 +39,7 @@ export function IssueRow({ it, note }: { it: Issue; note?: string }) {
 export function RepoRow({ r }: { r: Repo }) {
   const t = useTokens();
   return (
-    <Pressable onPress={() => router.push({ pathname: '/search', params: { q: `repo:${r.full_name} is:open`, title: r.name, kind: 'issues' } })}
+    <Pressable onPress={() => { const [o, n] = r.full_name.split('/'); router.push(routes.repo(o, n)); }}
       style={({ pressed }) => ({ flexDirection: 'row', gap: 12, paddingHorizontal: 18, paddingVertical: t.rowPad, alignItems: 'center', opacity: pressed ? 0.6 : 1 })}>
       <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: t.c.el2, alignItems: 'center', justifyContent: 'center' }}>
         <Icon name={r.private ? 'lock' : 'book-marked'} size={17} color={t.c.mut} />
@@ -57,6 +58,16 @@ const EVENT_BADGE: Record<string, [string, 'acc' | 'wait' | 'ok' | 'fg' | 'mut' 
   ReleaseEvent: ['tag', 'acc'], WatchEvent: ['star', 'wait'], PushEvent: ['git-commit-horizontal', 'ok'], CreateEvent: ['book-plus', 'fg'],
   ForkEvent: ['git-fork', 'mut'], PullRequestEvent: ['git-pull-request', 'ok'], IssuesEvent: ['circle-dot', 'ok'],
 };
+
+/** Opens what a feed event is about: the PR/issue, the release, the fork, or the repo. */
+function openFeedEvent(e: FeedEvent) {
+  const [owner, name] = e.repo.name.split('/');
+  const n = e.payload.pull_request?.number ?? e.payload.issue?.number;
+  if (n) return router.push(routes.thread(owner, name, n));
+  if (e.payload.release?.html_url) return openUrl(e.payload.release.html_url);
+  if (e.payload.forkee) { const [fo, fn] = e.payload.forkee.full_name.split('/'); return router.push(routes.repo(fo, fn)); }
+  router.push(routes.repo(owner, name));
+}
 
 /** Consecutive events of the same type by the same person collapse into one item. */
 export type FeedGroup = { key: string; type: string; actor: string; events: FeedEvent[] };
@@ -129,6 +140,8 @@ export function FeedItem({ g, compact }: { g: FeedGroup; compact?: boolean }) {
         </Panel>
       );
       break;
+    case 'IssueCommentEvent': head = <><B>{g.actor}</B> commented in <B>{e.repo.name}</B></>;
+      if (!compact && e.payload.issue) body = <T v="sub" style={{ marginTop: 6 }} lines={2}>{e.payload.issue.title}</T>; break;
     case 'ForkEvent': head = <><B>{g.actor}</B> forked <B>{e.repo.name}</B></>; break;
     case 'PullRequestEvent': head = <><B>{g.actor}</B> {e.payload.action} a pull request in <B>{e.repo.name}</B></>;
       if (!compact && e.payload.pull_request) body = <T v="sub" style={{ marginTop: 6 }}>{e.payload.pull_request.title}</T>; break;
@@ -137,7 +150,7 @@ export function FeedItem({ g, compact }: { g: FeedGroup; compact?: boolean }) {
     default: head = <><B>{g.actor}</B> {g.type.replace(/Event$/, '').toLowerCase()} in <B>{e.repo.name}</B></>;
   }
   return (
-    <Pressable onPress={() => Linking.openURL(e.payload.release?.html_url || `https://github.com/${e.repo.name}`)}
+    <Pressable onPress={() => openFeedEvent(e)}
       style={({ pressed }) => ({ flexDirection: 'row', gap: 12, paddingHorizontal: 18, paddingVertical: t.rowPad + 2, opacity: pressed ? 0.7 : 1 })}>
       <Avatar login={g.actor} size={36} badge={icon} badgeColor={t.c[col]} />
       <View style={{ flex: 1, minWidth: 0, paddingTop: 2 }}>

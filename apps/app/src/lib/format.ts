@@ -29,17 +29,6 @@ export const pad2 = (n: number) => (n < 10 ? `0${n}` : String(n));
 export const repoOf = (url: string) => url.split('/repos/')[1] ?? '';
 export const short = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '')}k` : String(n));
 
-/** Turn GitHub's rendered HTML into plain paragraphs. M3 replaces this with a markdown renderer. */
-export function htmlToText(html?: string | null) {
-  if (!html) return '';
-  return html
-    .replace(/<\/(p|li|h\d|pre|blockquote)>/g, '\n')
-    .replace(/<li>/g, '• ')
-    .replace(/<br\s*\/?>/g, '\n')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
-}
-
 export const LANG: Record<string, string> = { TypeScript: '#3178C6', JavaScript: '#E6C62F', Rust: '#DEA584', Go: '#00ADD8', Python: '#3572A5', Shell: '#89E051', 'C++': '#F34B7D', Swift: '#F05138', Kotlin: '#A97BFF', Ruby: '#CC342D' };
+
+export const bytes = (n: number) => (n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
