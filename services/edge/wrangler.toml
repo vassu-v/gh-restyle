@@ -18,6 +18,6 @@ run_worker_first = ["/auth/*", "/health"]
 # The deployed origin (https://gitling.<subdomain>.workers.dev) must be listed here.
 ALLOWED_RETURN = "https://gitling.truckcoding.workers.dev,http://localhost:8081,gitling://"
 # The GitHub OAuth App's client ID (public).
-GITHUB_CLIENT_ID = ""
+GITHUB_CLIENT_ID = "Ov23likikLApWz5YvJtj"
 
 # Secret, never in this file:  npx wrangler@4 secret put GITHUB_CLIENT_SECRET -c services/edge/wrangler.toml
