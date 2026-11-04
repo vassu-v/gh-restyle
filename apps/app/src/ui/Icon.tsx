@@ -31,6 +31,7 @@ import GitFork from 'lucide-react-native/icons/git-fork';
 import GitMerge from 'lucide-react-native/icons/git-merge';
 import GitPullRequest from 'lucide-react-native/icons/git-pull-request';
 import Globe from 'lucide-react-native/icons/globe';
+import GripVertical from 'lucide-react-native/icons/grip-vertical';
 import House from 'lucide-react-native/icons/house';
 import Inbox from 'lucide-react-native/icons/inbox';
 import KeyRound from 'lucide-react-native/icons/key-round';
@@ -64,7 +65,7 @@ export const ICONS = {
   'book-marked': BookMarked, 'book-plus': BookPlus, bug: Bug, check: Check, 'chevron-left': ChevronLeft, 'chevron-right': ChevronRight,
   'circle-check': CircleCheck, 'circle-dot': CircleDot, 'circle-x': CircleX, clock: Clock, code: Code, copy: Copy, download: Download, ellipsis: Ellipsis, file: File, 'file-text': FileText,
   eye: Eye, 'eye-off': EyeOff, 'file-code': FileCode, flag: Flag, folder: Folder, 'git-commit-horizontal': GitCommitHorizontal,
-  'git-fork': GitFork, 'git-merge': GitMerge, 'git-pull-request': GitPullRequest, globe: Globe, house: House, inbox: Inbox,
+  'git-fork': GitFork, 'git-merge': GitMerge, 'git-pull-request': GitPullRequest, globe: Globe, 'grip-vertical': GripVertical, house: House, inbox: Inbox,
   'key-round': KeyRound, link: Link, 'list-checks': ListChecks, lock: Lock, 'log-out': LogOut, 'message-circle': MessageCircle,
   'message-square': MessageSquare, package: Package, palette: Palette, plus: Plus, rocket: Rocket, search: Search, share: Share, smartphone: Smartphone,
   sparkles: Sparkles, star: Star, tag: Tag, terminal: Terminal, 'undo-2': Undo2, user: User, users: Users, x: X, zap: Zap,

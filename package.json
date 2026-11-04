@@ -17,7 +17,8 @@
     "smoke": "node scripts/smoke.mjs",
     "check": "npm run typecheck && npm run lint && npm test && npm run build:extension && npm run build:web",
     "e2e:signin": "node scripts/e2e-signin.mjs",
-    "deploy": "node scripts/deploy.mjs"
+    "deploy": "node scripts/deploy.mjs",
+    "e2e:studio": "node scripts/e2e-studio.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",

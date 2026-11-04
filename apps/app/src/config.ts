@@ -10,5 +10,8 @@ export const config = {
   authUrl: (process.env.EXPO_PUBLIC_AUTH_URL ?? '').replace(/\/+$/, ''),
 };
 
+/** Public address of the web app, for share links. Same Worker as sign-in; empty in builds without it. */
+export const appUrl = config.authUrl;
+
 /** One-tap sign-in is available only when both values are set; otherwise the token paste still works. */
 export const oauthConfigured = !!(config.githubClientId && config.authUrl);

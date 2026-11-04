@@ -66,7 +66,8 @@ environment's quirks. **No secrets live in this repo.**
 5. **First live deploy** came up blank. The cause: Cloudflare's asset server loops forever on `%40` (`@`) in
    paths, so the fonts never loaded. `scripts/pwa.mjs` now renames `@` folders to `_at_`, and the smoke test
    now fails on broken same-origin requests.
-6. **GitHub OAuth App created** by the owner, and the client secret was set on the Worker. `/health` now
+6. **Studio polish (M4):** preset gallery, drag-to-reorder, share links with a live preview.
+7. **GitHub OAuth App created** by the owner, and the client secret was set on the Worker. `/health` now
    reports `configured:true`. A live click-through reaches GitHub's login page with the correct parameters.
 
 ## Live setup (non-secret facts)
@@ -123,7 +124,7 @@ it in chat.
 
 1. **Owner tests real sign-in** and sends screenshots of anything off. Inbox, Feed, Search and Profiles
    haven't been exercised with a real account yet.
-2. **M4 Studio polish:** presets gallery, drag-to-reorder tiles, share-code preview.
+2. **Studio follow-ups:** saved custom presets, custom accent picker. Studio polish (M4) shipped: presets, drag reorder, share links.
 3. **Code browser:** syntax highlighting, a branch picker.
 4. **PR review:** line comments, request changes.
 5. **Extension:** slim the about 450 KB bundle (zod); the signed-out header stays dark.

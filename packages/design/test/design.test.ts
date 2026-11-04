@@ -24,3 +24,28 @@ describe('design', () => {
     }
   });
 });
+
+import { applyPreset, Design, describeDesign, PRESETS, presetOf } from '../src';
+
+describe('presets', () => {
+  it('are all valid, distinct and readable', () => {
+    expect(new Set(PRESETS.map((p) => p.id)).size).toBe(PRESETS.length);
+    for (const p of PRESETS) {
+      const d = applyPreset(DEFAULT_DESIGN, p);
+      expect(Design.safeParse(d).success).toBe(true);
+      const t = resolveTokens(d);
+      expect(contrast(t.c.acc, t.c.bg)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(t.c.fg, t.c.bg)).toBeGreaterThan(7);
+    }
+  });
+  it('only change the theme', () => {
+    const d = applyPreset(DEFAULT_DESIGN, PRESETS[1]);
+    expect(d.tiles).toEqual(DEFAULT_DESIGN.tiles);
+    expect(d.nav).toEqual(DEFAULT_DESIGN.nav);
+    expect(presetOf(d)?.id).toBe('terminal');
+  });
+  it('the default design is the Signal preset', () => {
+    expect(presetOf(DEFAULT_DESIGN)?.id).toBe('signal');
+    expect(describeDesign(DEFAULT_DESIGN)).toMatch(/^Signal · 5 tabs/);
+  });
+});

@@ -23,7 +23,7 @@ apps/app/            Expo app (Expo Router, React Native, react-native-web). Has
   src/data/queries.ts  the only place screens get GitHub data (TanStack Query hooks over packages/github api)
   src/session/       sign-in (oauth.ts), token vault (tokenStore.ts), SessionProvider
   src/design/        DesignProvider: the user's Design document, persisted, with undo
-  src/ui/            primitives (T, Panel, Row, Button, Screen, BackHeader…), Markdown renderer, Icon
+  src/ui/            primitives (T, Panel, Row, Button, Screen, BackHeader…), Markdown, Icon, Reorder (drag lists)
   src/features/      shared rows (issues, repos, feed), tiles, inbox swipe, tab bar
   src/lib/           links.ts (in-app routes + github.com URL → route), format.ts
   src/pwa/           service-worker registration + install prompt
@@ -32,7 +32,7 @@ apps/extension/      Manifest V3 extension; restyles github.com via Primer CSS v
 packages/github/     typed GitHub REST: client.ts (transport), api.ts (every endpoint), auth.ts (OAuth/PKCE), mock.ts (sample data)
 packages/design/     Design schema (zod), Signal skin, token resolver, contrast fitting, share codes
 services/edge/       Cloudflare Worker "gitling": serves the web app (static assets) + sign-in routes (phase 2: push)
-scripts/             pwa.mjs (post-build), smoke.mjs (browser check of every screen), e2e-signin.mjs, deploy.mjs
+scripts/             pwa.mjs (post-build), smoke.mjs (every screen), e2e-signin.mjs, e2e-studio.mjs, deploy.mjs
 docs/                CONTEXT, STATUS, ARCHITECTURE, SETUP-SIGNIN, DEPLOY, decisions/
 ```
 
@@ -46,6 +46,7 @@ docs/                CONTEXT, STATUS, ARCHITECTURE, SETUP-SIGNIN, DEPLOY, decisi
 | `npm test` | unit tests (vitest): packages/github, packages/design, services/edge |
 | `npm run smoke` | after `build:web`: opens every screen in Chromium at phone size, fails on errors |
 | `npm run e2e:signin` | full "Sign in with GitHub" flow in a browser with GitHub simulated (real worker code) |
+| `npm run e2e:studio` | after `build:web`: Studio presets, drag-to-reorder, share links in a browser |
 | `npm run test:live` | read-only tests against the real api.github.com (`LIVE_REPO=owner/name`, optional `GITHUB_TOKEN`) |
 | `npm run build:web` | `expo export` + `scripts/pwa.mjs` → `apps/app/dist` (what Vercel/Cloudflare serve) |
 | `npm run build:extension` | → `apps/extension/dist` (load unpacked) |

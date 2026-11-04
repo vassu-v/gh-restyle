@@ -58,9 +58,22 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   return <DesignContext.Provider value={value}>{children}</DesignContext.Provider>;
 }
 
+/**
+ * Draws a subtree with another design's tokens (Studio previews of presets and imported share codes).
+ * Components read tokens with useTokens(), which prefers this override.
+ */
+const TokensOverride = createContext<Tokens | null>(null);
+export function TokensScope({ tokens, children }: { tokens: Tokens; children: ReactNode }) {
+  return <TokensOverride.Provider value={tokens}>{children}</TokensOverride.Provider>;
+}
+
 export function useDesign() {
   const c = useContext(DesignContext);
   if (!c) throw new Error('useDesign outside DesignProvider');
   return c;
 }
-export const useTokens = () => useDesign().tokens;
+export function useTokens() {
+  const override = useContext(TokensOverride);
+  const own = useDesign().tokens;
+  return override ?? own;
+}

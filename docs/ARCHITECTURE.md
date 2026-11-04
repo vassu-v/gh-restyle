@@ -141,6 +141,13 @@ tokenStore.set(token); GET /user to validate
   colors until they reach a minimum contrast on the chosen background.
 - `DesignProvider` persists the Design to AsyncStorage (`gitling.design.v1`) with an undo stack.
 - Share codes (`GITLING1.…`) move a design between phone and the desktop extension.
+  Share links (`<app>/studio?import=<code>`) open Studio with a live preview, and the person picks
+  "Apply this design" or "Only the look".
+- **Presets** (`packages/design/src/presets.ts`) are curated themes that change only `theme`.
+  `TokensScope` (in `DesignProvider`) lets a subtree render with another design's tokens. That's how the
+  preset cards and share previews draw.
+- **Reordering** (tiles, home sections, tabs) uses `src/ui/Reorder.tsx`: a drag grip that works with touch
+  and mouse. Screen readers get Move up / Move down actions instead.
 - New skins add palettes in `packages/design` and keep the same token names.
 
 ## Desktop extension
