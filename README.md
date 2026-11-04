@@ -1,5 +1,11 @@
 # Gitling
 
+[![CI](https://github.com/vassu-v/gh-restyle/actions/workflows/ci.yml/badge.svg)](https://github.com/vassu-v/gh-restyle/actions/workflows/ci.yml)
+![Built for GitHub](https://img.shields.io/badge/built%20for-GitHub-181717?logo=github)
+![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8)
+
+> Gitling is an independent app that uses the GitHub API. It is not made or endorsed by GitHub.
+
 A GitHub client you design yourself. One Expo app for phone and web (installable PWA), plus a browser
 extension that restyles github.com on desktop.
 
