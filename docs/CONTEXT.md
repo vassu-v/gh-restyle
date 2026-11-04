@@ -67,6 +67,9 @@ environment's quirks. **No secrets live in this repo.**
    paths, so the fonts never loaded. `scripts/pwa.mjs` now renames `@` folders to `_at_`, and the smoke test
    now fails on broken same-origin requests.
 6. **Studio polish (M4):** preset gallery, drag-to-reorder, share links with a live preview.
+   The same push also shipped: syntax colors, a branch picker, full PR reviews (line comments, request
+   changes), and the extension cleanup (450 KB → 6 KB content script, readable buttons, themed signed-out
+   header).
 7. **GitHub OAuth App created** by the owner, and the client secret was set on the Worker. `/health` now
    reports `configured:true`. A live click-through reaches GitHub's login page with the correct parameters.
 
@@ -125,9 +128,8 @@ it in chat.
 1. **Owner tests real sign-in** and sends screenshots of anything off. Inbox, Feed, Search and Profiles
    haven't been exercised with a real account yet.
 2. **Studio follow-ups:** saved custom presets, custom accent picker. Studio polish (M4) shipped: presets, drag reorder, share links.
-3. **Code browser:** syntax highlighting, a branch picker.
-4. **PR review:** line comments, request changes.
-5. **Extension:** slim the about 450 KB bundle (zod); the signed-out header stays dark.
-6. **Phase 2:** push notifications through the same Worker; design sync through a private gist; native
-   builds with EAS.
+3. **Push notifications (phase 2):** the plan is in `PLAN.md` § 7; the owner asked how it would work and was shown that plan.
+4. **Review follow-ups:** replies to review threads, suggested changes.
+5. **Extension:** optionally slim the popup (zod).
+6. **Phase 2:** design sync through a private gist; native builds with EAS.
 7. **Optional:** GitHub Developer Program application, and a custom domain in place of `workers.dev`.

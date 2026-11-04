@@ -18,7 +18,8 @@
     "check": "npm run typecheck && npm run lint && npm test && npm run build:extension && npm run build:web",
     "e2e:signin": "node scripts/e2e-signin.mjs",
     "deploy": "node scripts/deploy.mjs",
-    "e2e:studio": "node scripts/e2e-studio.mjs"
+    "e2e:studio": "node scripts/e2e-studio.mjs",
+    "e2e:review": "node scripts/e2e-review.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",

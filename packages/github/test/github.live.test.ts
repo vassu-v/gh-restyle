@@ -41,6 +41,8 @@ describe(`live GitHub · ${owner}/${name}`, () => {
     expect(Array.isArray(await api.comments(owner, name, pr.number))).toBe(true);
     expect((await api.checks(owner, name, pr.head.sha)).total_count).toBeGreaterThanOrEqual(0);
     expect((await api.issue(owner, name, pr.number)).pull_request).toBeTruthy();
+    expect(Array.isArray(await api.reviews(owner, name, pr.number))).toBe(true);
+    expect(Array.isArray(await api.reviewComments(owner, name, pr.number))).toBe(true);
   });
 
   it.skipIf(process.env.LIVE_REPO_ONLY === '1')('people, search, feed', async () => {

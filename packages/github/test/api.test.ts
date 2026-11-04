@@ -45,7 +45,12 @@ describe('api against sample data', () => {
     expect((await api.prFiles('you', 'trail-notes', 45)).length).toBe(3);
     expect((await api.checks('you', 'trail-notes', pr.head.sha)).check_runs.length).toBe(3);
     expect((await api.comment('you', 'trail-notes', 42, 'hi **there**')).body).toBe('hi **there**');
-    await api.approve('lin', 'tiny-sync', 33);
+    expect((await api.reviews('you', 'trail-notes', 45))[0].state).toBe('COMMENTED');
+    expect((await api.reviewComments('you', 'trail-notes', 45))[0].path).toBe('src/sync/queue.ts');
+    const rv = await api.submitReview('lin', 'tiny-sync', 33, { event: 'REQUEST_CHANGES', body: 'see inline', comments: [{ path: 'a.ts', line: 3, side: 'RIGHT', body: 'nit' }] });
+    expect(rv.state).toBe('CHANGES_REQUESTED');
+    expect((await api.reviewComments('lin', 'tiny-sync', 33)).map((c) => c.body)).toEqual(['nit']);
+    await expect(api.submitReview('you', 'trail-notes', 45, { event: 'APPROVE' })).rejects.toMatchObject({ status: 422 });
     expect((await api.merge('you', 'trail-notes', 45, 'squash')).merged).toBe(true);
     expect((await api.pull('you', 'trail-notes', 45)).merged).toBe(true);
     await api.setState('you', 'trail-notes', 42, 'closed');

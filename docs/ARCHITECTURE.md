@@ -52,6 +52,19 @@ Dependency direction is one way: screens → hooks → `api` → `client` → ne
   images resolve against the repo, `@user` and `#123` become in-app links, and `github.com` links open
   Gitling screens when one exists.
 
+## Code and reviews
+
+- **Syntax colors:** `src/ui/Code.tsx` runs highlight.js core with about 25 languages, each imported one by
+  one. Its HTML output is parsed into lines of segments, and the colors come from design tokens (keyword =
+  accent, string = ok, number = wait, comment = dim, type = merged). Files over 3,000 lines skip
+  highlighting. It's used by the file viewer and markdown code fences.
+- **Reviews:**
+  - `packages/github/src/diff.ts` turns a PR file's `patch` into lines with old and new line numbers.
+    `anchorFor()` gives the `{line, side}` a review comment needs (deletions LEFT, everything else RIGHT).
+  - Line comments collect as drafts in the thread screen, then go out in one `submitReview` call with the
+    verdict. GitHub doesn't allow approving or requesting changes on your own PR, so the UI only offers
+    Comment there.
+
 ## Routes (`apps/app/src/app`)
 
 | Path | Screen |
@@ -62,10 +75,10 @@ Dependency direction is one way: screens → hooks → `api` → `client` → ne
 | `/repos` | Your repos / starred |
 | `/studio` | Design editor (theme, tabs, sections, tiles, share codes) |
 | `/repo/[owner]/[name]` | Repo home: stats, star, Code/Issues/PRs, README |
-| `/repo/[owner]/[name]/tree?path&ref` | Directory listing |
-| `/repo/[owner]/[name]/blob?path&ref` | File viewer (line numbers; markdown preview) |
+| `/repo/[owner]/[name]/tree?path&ref` | Directory listing, branch picker |
+| `/repo/[owner]/[name]/blob?path&ref` | File viewer (syntax colors, line numbers; markdown preview), branch picker |
 | `/repo/[owner]/[name]/list?kind=issues\|pulls` | Paged open/closed list |
-| `/thread/[owner]/[repo]/[number]` | Issue or PR: conversation, files/diff, checks, comment, close, merge (method), approve |
+| `/thread/[owner]/[repo]/[number]` | Issue or PR: timeline (comments + reviews), files/diff with line comments, checks, comment, close, merge (method), review (comment / approve / request changes) |
 | `/user/[login]` | Profile and repos |
 | `/search?q&kind&title` | Search issues/PRs/repos |
 | `/tile/[id]` | Tile editor |

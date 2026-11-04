@@ -1,10 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Linking, Pressable, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTokens } from '@/design/DesignProvider';
-import type { MergeMethod } from '@gitling/github';
-import { useChecks, useMe, usePrFiles, useRepo, useThread, useThreadActions } from '@/data/queries';
+import type { DraftComment, MergeMethod, ReviewState } from '@gitling/github';
+import { useChecks, useMe, usePrFiles, useRepo, useReviews, useThread, useThreadActions } from '@/data/queries';
+import { DiffFile } from '@/features/thread/DiffFile';
+import { ReviewPanel } from '@/features/thread/ReviewPanel';
 import { stateOf } from '@/features/rows';
 import { rel } from '@/lib/format';
 import { routes } from '@/lib/links';
@@ -25,6 +27,10 @@ export default function Thread() {
   const me = useMe();
   const [draft, setDraft] = useState(''); const [composing, setComposing] = useState(false);
   const [armed, setArmed] = useState(false);
+  const review = useReviews(owner, repo, n, isPr);
+  const [drafts, setDrafts] = useState<DraftComment[]>([]);
+  const [reviewing, setReviewing] = useState(false);
+  const [reviewDone, setReviewDone] = useState<string | null>(null);
   const methods = mergeMethods(repoInfo.data);
   const [method, setMethod] = useState<MergeMethod | null>(null);
   const chosen = method && methods.includes(method) ? method : methods[0];
@@ -88,33 +94,36 @@ export default function Thread() {
         {p ? <View style={{ marginHorizontal: 14, marginTop: 14 }}><Seg value={seg} onChange={setSeg} options={[{ value: 'conv', label: 'Conversation', n: (comments.data?.length ?? 0) + 1 }, { value: 'files', label: 'Files', n: p.changed_files }]} /></View> : null}
 
         {seg === 'files' && p ? (
-          files.isLoading ? <Loading rows={3} /> : files.error ? <ErrorNote error={files.error} onRetry={() => files.refetch()} /> : (files.data ?? []).map((f) => (
-            <Panel key={f.filename} style={{ marginHorizontal: 14, marginTop: 12 }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', padding: 12, borderBottomWidth: 1, borderColor: t.c.line, gap: 8 }}>
-                <T v="mono" lines={1} style={{ flex: 1 }}>{f.filename}</T>
-                <T v="monoS"><T v="monoS" c="ok">+{f.additions}</T> <T v="monoS" c="bad">−{f.deletions}</T></T>
-              </View>
-              {f.patch === undefined ? <T v="sub" c="mut" style={{ padding: 12 }}>{f.status === 'renamed' ? 'Renamed, no content changes.' : 'Diff too large or binary. Open the PR on GitHub to see it.'}</T> : (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={{ paddingVertical: 6 }}>
-                  {(f.patch ?? '').split('\n').map((ln, i) => {
-                    const k = ln.startsWith('@@') ? 'hunk' : ln[0] === '+' ? 'add' : ln[0] === '-' ? 'del' : 'ctx';
-                    return (
-                      <Text key={i} style={{ fontFamily: t.font.mono.regular, fontSize: 12.5, lineHeight: 19, paddingHorizontal: 12, color: k === 'hunk' ? t.c.mut : t.c.fg,
-                        backgroundColor: k === 'add' ? t.c.ok + '1F' : k === 'del' ? t.c.bad + '1F' : 'transparent', borderLeftWidth: 2, borderColor: k === 'add' ? t.c.ok : k === 'del' ? t.c.bad : 'transparent' }}>
-                        {ln || ' '}
-                      </Text>
-                    );
-                  })}
-                </View>
-              </ScrollView>
-              )}
-            </Panel>
-          ))
+          files.isLoading ? <Loading rows={3} /> : files.error ? <ErrorNote error={files.error} onRetry={() => files.refetch()} /> : (
+            <>
+              {open ? <T v="monoS" c="dim" style={{ paddingHorizontal: 18, paddingTop: 10 }}>tap a line to comment on it</T> : null}
+              {(files.data ?? []).map((f) => (
+                <DiffFile key={f.filename} file={f} owner={owner} repo={repo} canComment={open}
+                  existing={(review.comments.data ?? []).filter((c) => c.path === f.filename)}
+                  drafts={drafts.filter((d) => d.path === f.filename)}
+                  onDraft={(d) => { setDrafts((x) => [...x, d]); setReviewDone(null); }}
+                  onRemoveDraft={(d) => setDrafts((x) => x.filter((y) => y !== d))} />
+              ))}
+            </>
+          )
         ) : (
           <View style={{ paddingTop: 8 }}>
-            {[{ id: 0, user: it.user, created_at: it.created_at, body: it.body }, ...(comments.data ?? [])].map((c) => (
-              <View key={c.id} style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 18, paddingVertical: 12 }}>
+            {reviewing && p ? (
+              <ReviewPanel ownPr={it.user.login === me.data?.login} drafts={drafts} pending={actions.review.isPending} error={actions.review.error}
+                onCancel={() => setReviewing(false)}
+                onSubmit={(r) => actions.review.mutate({ ...r, comments: drafts }, { onSuccess: () => { setDrafts([]); setReviewing(false); setReviewDone(REVIEW_DONE[r.event]); } })} />
+            ) : null}
+            {reviewDone ? <T v="sub" c="ok" style={{ paddingHorizontal: 18, paddingTop: 10 }}>{reviewDone}</T> : null}
+            {timeline(it, comments.data ?? [], review.reviews.data ?? []).map((c) => c.kind === 'review' ? (
+              <View key={c.key} style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 18, paddingVertical: 10, alignItems: 'flex-start' }}>
+                <View style={{ width: 28, alignItems: 'center', paddingTop: 2 }}><Icon name={REVIEW_LOOK[c.state].icon} size={18} color={t.c[REVIEW_LOOK[c.state].col]} /></View>
+                <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
+                  <T v="sub"><T v="bodyStrong" style={{ fontSize: 14 }}>{c.user.login}</T> <T v="sub" c="mut">{REVIEW_LOOK[c.state].text} · {rel(c.created_at)}</T></T>
+                  {c.body?.trim() ? <Markdown source={c.body} base={{ owner, repo }} /> : null}
+                </View>
+              </View>
+            ) : (
+              <View key={c.key} style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 18, paddingVertical: 12 }}>
                 <Pressable onPress={() => router.push(routes.user(c.user.login))}><Avatar login={c.user.login} size={28} /></Pressable>
                 <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
                   <T v="monoS" c="mut"><T v="bodyStrong" style={{ fontSize: 14 }}>{c.user.login}</T>  {rel(c.created_at)}</T>
@@ -146,20 +155,23 @@ export default function Thread() {
           </View>
         ) : null}
         <View style={{ flexDirection: 'row', gap: 8, width: '100%', maxWidth: 520, paddingHorizontal: 14 }}>
-          <Button kind="quiet" icon="message-square" style={glass(t)} onPress={() => { setSeg('conv'); setComposing(true); }} />
+          <Button kind="quiet" icon="message-square" style={glass(t)} accessibilityLabel="Write a comment" onPress={() => { setSeg('conv'); setComposing(true); }} />
+          {p && open ? (
+            <Button kind="quiet" icon="list-checks" style={[glass(t), canWrite ? {} : { flex: 1 }]} label={`Review${drafts.length ? ` · ${drafts.length}` : ''}`}
+              onPress={() => { setSeg('conv'); setReviewing(true); setReviewDone(null); }} />
+          ) : null}
           {p && open && canWrite ? (
             <Button style={{ flex: 1 }} icon="git-merge" disabled={p.mergeable === false || p.draft || actions.merge.isPending}
               label={actions.merge.isPending ? 'Merging…' : armed ? `Tap again to ${MERGE_VERB[chosen]}` : 'Merge'}
               onPress={() => { if (!armed) { setArmed(true); setTimeout(() => setArmed(false), 6000); return; } setArmed(false); actions.merge.mutate(chosen); }} />
-          ) : p && open && !canWrite ? (
-            <Button style={{ flex: 1 }} kind="quiet" icon="check" label={actions.approve.isSuccess ? 'Approved' : actions.approve.isPending ? 'Approving…' : 'Approve'}
-              disabled={actions.approve.isPending || actions.approve.isSuccess || it.user.login === me.data?.login} onPress={() => actions.approve.mutate()} />
-          ) : canWrite ? (
-            <Button style={{ flex: 1 }} kind="quiet" label={open ? `Close ${isPr ? 'pull request' : 'issue'}` : 'Reopen'} disabled={actions.setState.isPending} onPress={() => actions.setState.mutate(open ? 'closed' : 'open')} />
-          ) : <View style={{ flex: 1 }} />}
-          {p && open && canWrite ? <Button kind="quiet" icon="x" style={glass(t)} onPress={() => actions.setState.mutate('closed')} /> : null}
+          ) : !p && canWrite ? (
+            <Button style={{ flex: 1 }} kind="quiet" label={open ? 'Close issue' : 'Reopen'} disabled={actions.setState.isPending} onPress={() => actions.setState.mutate(open ? 'closed' : 'open')} />
+          ) : p && !open && canWrite && !p.merged ? (
+            <Button style={{ flex: 1 }} kind="quiet" label="Reopen" disabled={actions.setState.isPending} onPress={() => actions.setState.mutate('open')} />
+          ) : !(p && open) ? <View style={{ flex: 1 }} /> : null}
+          {p && open && canWrite ? <Button kind="quiet" icon="x" style={glass(t)} onPress={() => actions.setState.mutate('closed')} accessibilityLabel="Close pull request" /> : null}
         </View>
-        {[actions.merge.error, actions.setState.error, actions.approve.error].filter(Boolean).slice(0, 1).map((e) => <T key="e" v="sub" c="bad" style={{ marginTop: 6 }}>{(e as Error).message}</T>)}
+        {[actions.merge.error, actions.setState.error].filter(Boolean).slice(0, 1).map((e) => <T key="e" v="sub" c="bad" style={{ marginTop: 6 }}>{(e as Error).message}</T>)}
       </View>
     </View>
   );
@@ -174,4 +186,24 @@ function mergeMethods(r?: { allow_merge_commit?: boolean; allow_squash_merge?: b
   if (r?.allow_squash_merge) out.push('squash');
   if (r?.allow_rebase_merge) out.push('rebase');
   return out.length ? out : ['merge'];
+}
+
+const REVIEW_DONE = { APPROVE: 'You approved this pull request.', REQUEST_CHANGES: 'You requested changes.', COMMENT: 'Review sent.' } as const;
+const REVIEW_LOOK: Record<ReviewState, { icon: string; col: 'ok' | 'bad' | 'mut' | 'wait'; text: string }> = {
+  APPROVED: { icon: 'circle-check', col: 'ok', text: 'approved these changes' },
+  CHANGES_REQUESTED: { icon: 'circle-x', col: 'bad', text: 'requested changes' },
+  COMMENTED: { icon: 'message-circle', col: 'mut', text: 'reviewed' },
+  DISMISSED: { icon: 'circle-x', col: 'mut', text: 'review dismissed' },
+  PENDING: { icon: 'clock', col: 'wait', text: 'review pending' },
+};
+type Entry =
+  | { kind: 'comment'; key: string; user: { login: string }; created_at: string; body?: string | null }
+  | { kind: 'review'; key: string; user: { login: string }; created_at: string; body?: string | null; state: ReviewState };
+/** The opening post, comments and reviews in date order. Reviews still pending (yours, unsent) are skipped. */
+function timeline(it: { user: { login: string }; created_at: string; body?: string | null }, comments: { id: number; user: { login: string }; created_at: string; body?: string | null }[], reviews: { id: number; user: { login: string }; submitted_at?: string; body: string | null; state: ReviewState }[]): Entry[] {
+  const out: Entry[] = [
+    ...comments.map((c) => ({ kind: 'comment' as const, key: `c${c.id}`, user: c.user, created_at: c.created_at, body: c.body })),
+    ...reviews.filter((r) => r.state !== 'PENDING' && r.submitted_at).map((r) => ({ kind: 'review' as const, key: `r${r.id}`, user: r.user, created_at: r.submitted_at!, body: r.body, state: r.state })),
+  ].sort((a, b) => a.created_at.localeCompare(b.created_at));
+  return [{ kind: 'comment', key: 'op', user: it.user, created_at: it.created_at, body: it.body }, ...out];
 }

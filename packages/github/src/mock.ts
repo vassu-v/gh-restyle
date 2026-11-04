@@ -1,5 +1,5 @@
 /* Sample data with the same shapes as the GitHub API, so every screen works before sign-in. */
-import type { Comment, FeedEvent, Issue, Notification, PrFile, PullRequest, Repo, User } from './types';
+import type { Comment, DraftComment, FeedEvent, Issue, Notification, PrFile, PullRequest, Repo, Review, ReviewComment, ReviewEvent, User } from './types';
 import type { RequestOptions } from './client';
 
 export const SAMPLE_LOGIN = 'you';
@@ -71,6 +71,18 @@ const FILES: Record<string, PrFile[]> = {
     { filename: 'src/sync/queue.test.ts', status: 'added', additions: 154, deletions: 0, patch: "@@ -0,0 +1,4 @@\n+import { PatchQueue } from './queue';\n+\n+test('local edit wins when newer', () => {\n+});" },
   ],
 };
+
+FILES['lin/tiny-sync#33'] = [
+  { filename: 'src/sync/initial.ts', status: 'modified', additions: 6, deletions: 2, patch: '@@ -10,6 +10,10 @@ export async function initialSync(doc: Doc) {\n   const ops = await fetchOps(doc.id);\n-  for (const op of ops) {\n-    await apply(doc, op);\n+  const BATCH = 500;\n+  for (let i = 0; i < ops.length; i += BATCH) {\n+    const batch = ops.slice(i, i + BATCH);\n+    await applyMany(doc, batch);\n+    await yieldToUi();\n+    report(i + batch.length, ops.length);\n   }\n   return doc;' },
+];
+
+const REVIEWS: Record<string, Review[]> = {
+  'you/trail-notes#45': [{ id: 901, user: u('mira'), state: 'COMMENTED', body: 'Looks close. One question inline.', submitted_at: ago(0.6) }],
+};
+const REVIEW_COMMENTS: Record<string, ReviewComment[]> = {
+  'you/trail-notes#45': [{ id: 951, user: u('mira'), body: 'Should ties keep the local edit? `>=` might be safer.', path: 'src/sync/queue.ts', line: 11, side: 'RIGHT', created_at: ago(0.6) }],
+};
+let rid = 1000;
 
 const NOTIFS: Notification[] = [
   { id: 'n1', unread: true, reason: 'comment', updated_at: ago(0.5), repository: REPOS[0], subject: { type: 'PullRequest', title: p45.title, url: `${API}/repos/you/trail-notes/pulls/45` } },
@@ -204,7 +216,18 @@ function route(path: string, o: RequestOptions): unknown {
     }
     if ((r = rest.match(/^\/pulls\/(\d+)$/))) return asPr(find(full, r[1]));
     if ((r = rest.match(/^\/pulls\/(\d+)\/files$/))) return FILES[`${full}#${r[1]}`] ?? [];
-    if ((r = rest.match(/^\/pulls\/(\d+)\/reviews$/))) { find(full, r[1]); return { id: 1, state: 'APPROVED' }; }
+    if ((r = rest.match(/^\/pulls\/(\d+)\/reviews$/))) {
+      const it = find(full, r[1]); const key = `${full}#${r[1]}`;
+      if (m !== 'POST') return REVIEWS[key] ?? [];
+      const b = o.body as { event: ReviewEvent; body?: string; comments?: DraftComment[] };
+      if (b.event !== 'COMMENT' && it.user.login === 'you') throw Object.assign(new Error(b.event === 'APPROVE' ? "Can't approve your own pull request" : "Can't request changes on your own pull request"), { status: 422 });
+      const state = ({ APPROVE: 'APPROVED', REQUEST_CHANGES: 'CHANGES_REQUESTED', COMMENT: 'COMMENTED' } as const)[b.event];
+      const review: Review = { id: rid++, user: u('you'), state, body: b.body ?? '', submitted_at: new Date().toISOString() };
+      (REVIEWS[key] ??= []).push(review);
+      for (const c of b.comments ?? []) (REVIEW_COMMENTS[key] ??= []).push({ id: rid++, user: u('you'), body: c.body, path: c.path, line: c.line, side: c.side, created_at: review.submitted_at! });
+      return review;
+    }
+    if ((r = rest.match(/^\/pulls\/(\d+)\/comments$/))) { find(full, r[1]); return REVIEW_COMMENTS[`${full}#${r[1]}`] ?? []; }
     if ((r = rest.match(/^\/pulls\/(\d+)\/merge$/))) { const it = find(full, r[1]); it.state = 'closed'; it.closed_at = new Date().toISOString(); if (it._pr) { it._pr.merged = true; it._pr.merged_at = it.closed_at; } if (it.pull_request) it.pull_request.merged_at = it.closed_at; return { merged: true }; }
     if ((r = rest.match(/^\/commits\/[^/]+\/check-runs$/))) return { total_count: 3, check_runs: ['build / node-22', 'test / vitest', 'lint'].map((name) => ({ name, status: 'completed', conclusion: 'success', started_at: ago(1.1), completed_at: ago(1) })) };
   }

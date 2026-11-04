@@ -1,4 +1,4 @@
-import type { MergeMethod } from '@gitling/github';
+import type { DraftComment, MergeMethod, ReviewEvent } from '@gitling/github';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSession } from '@/session/SessionProvider';
 
@@ -141,6 +141,12 @@ export function usePrFiles(owner: string, repo: string, n: number, enabled: bool
   const { api, k } = useApi();
   return useQuery({ queryKey: [k, 'files', owner, repo, n], queryFn: () => api.prFiles(owner, repo, n), enabled });
 }
+export function useReviews(owner: string, repo: string, n: number, enabled: boolean) {
+  const { api, k } = useApi();
+  const reviews = useQuery({ queryKey: [k, 'reviews', owner, repo, n], queryFn: () => api.reviews(owner, repo, n), enabled });
+  const comments = useQuery({ queryKey: [k, 'review-comments', owner, repo, n], queryFn: () => api.reviewComments(owner, repo, n), enabled });
+  return { reviews, comments };
+}
 export function useChecks(owner: string, repo: string, sha: string | undefined) {
   const { api, k } = useApi();
   return useQuery({ queryKey: [k, 'checks', owner, repo, sha], queryFn: () => api.checks(owner, repo, sha!), enabled: !!sha, staleTime: 30e3 });
@@ -155,6 +161,6 @@ export function useThreadActions(owner: string, repo: string, n: number) {
     comment: useMutation({ mutationFn: (body: string) => api.comment(owner, repo, n, body), onSuccess: refresh }),
     setState: useMutation({ mutationFn: (state: 'open' | 'closed') => api.setState(owner, repo, n, state), onSuccess: after }),
     merge: useMutation({ mutationFn: (method: MergeMethod) => api.merge(owner, repo, n, method), onSuccess: after }),
-    approve: useMutation({ mutationFn: () => api.approve(owner, repo, n), onSuccess: refresh }),
+    review: useMutation({ mutationFn: (r: { event: ReviewEvent; body?: string; comments?: DraftComment[] }) => api.submitReview(owner, repo, n, r), onSuccess: refresh }),
   };
 }

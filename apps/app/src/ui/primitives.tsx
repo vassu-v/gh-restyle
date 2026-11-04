@@ -115,12 +115,13 @@ export function Seg<V extends string>({ options, value, onChange, small }: { opt
   );
 }
 
-export function Button({ label, icon, onPress, kind = 'primary', disabled, style }: { label?: string; icon?: string; onPress?: () => void; kind?: 'primary' | 'quiet' | 'danger'; disabled?: boolean; style?: StyleProp<ViewStyle> }) {
+/** Pill button. Icon-only buttons should pass `accessibilityLabel` so screen readers can name them. */
+export function Button({ label, icon, onPress, kind = 'primary', disabled, style, accessibilityLabel }: { label?: string; icon?: string; onPress?: () => void; kind?: 'primary' | 'quiet' | 'danger'; disabled?: boolean; style?: StyleProp<ViewStyle>; accessibilityLabel?: string }) {
   const t = useTokens();
   const bg = kind === 'primary' ? t.c.fg : t.c.el2;
   const fg = kind === 'primary' ? t.c.onFg : kind === 'danger' ? t.c.bad : t.c.fg;
   return (
-    <Pressable onPress={onPress} disabled={disabled} accessibilityRole="button"
+    <Pressable onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? label} accessibilityState={{ disabled: !!disabled }}
       style={({ pressed }) => [{ height: 50, minWidth: 50, paddingHorizontal: label ? 20 : 0, borderRadius: 25, backgroundColor: bg, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, opacity: disabled ? 0.4 : pressed ? 0.8 : 1, borderWidth: kind === 'primary' ? 0 : 1, borderColor: t.c.glassBorder }, style]}>
       {icon ? <Icon name={icon} size={19} color={fg} /> : null}
       {label ? <Text style={{ color: fg, fontFamily: t.font.ui.semibold, fontSize: t.scale(16) }}>{label}</Text> : null}

@@ -1,6 +1,6 @@
 import { nextPage, type GitHubClient, type RequestOptions } from './client';
 import type {
-  Branch, CheckRuns, Comment, ContentFile, ContentItem, FeedEvent, Issue, MergeMethod, Notification, Page,
+  Branch, CheckRuns, Comment, DraftComment, Review, ReviewComment, ReviewEvent, ContentFile, ContentItem, FeedEvent, Issue, MergeMethod, Notification, Page,
   PrFile, PullRequest, Repo, SearchResult, User, WorkflowRuns,
 } from './types';
 
@@ -83,7 +83,11 @@ export function createApi(client: GitHubClient) {
     comment: (owner: string, repo: string, n: number, body: string) => get<Comment>(`${repoPath(owner, repo)}/issues/${n}/comments`, { method: 'POST', body: { body } }),
     setState: (owner: string, repo: string, n: number, state: 'open' | 'closed') => get<Issue>(`${repoPath(owner, repo)}/issues/${n}`, { method: 'PATCH', body: { state } }),
     merge: (owner: string, repo: string, n: number, method: MergeMethod) => get<{ merged: boolean; message?: string }>(`${repoPath(owner, repo)}/pulls/${n}/merge`, { method: 'PUT', body: { merge_method: method } }),
-    approve: (owner: string, repo: string, n: number) => get<unknown>(`${repoPath(owner, repo)}/pulls/${n}/reviews`, { method: 'POST', body: { event: 'APPROVE' } }),
+    reviews: (owner: string, repo: string, n: number) => all<Review>(`${repoPath(owner, repo)}/pulls/${n}/reviews?per_page=100`, 3),
+    reviewComments: (owner: string, repo: string, n: number) => all<ReviewComment>(`${repoPath(owner, repo)}/pulls/${n}/comments?per_page=100`, 5),
+    /** Submits a review in one call: the verdict, an optional summary and any line comments. */
+    submitReview: (owner: string, repo: string, n: number, r: { event: ReviewEvent; body?: string; comments?: DraftComment[] }) =>
+      get<Review>(`${repoPath(owner, repo)}/pulls/${n}/reviews`, { method: 'POST', body: { event: r.event, ...(r.body ? { body: r.body } : {}), ...(r.comments?.length ? { comments: r.comments } : {}) } }),
   };
 }
 

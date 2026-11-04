@@ -43,6 +43,15 @@ export type Comment = { id: number; user: User; created_at: string; body?: strin
 
 export type PrFile = { filename: string; status: string; additions: number; deletions: number; changes?: number; patch?: string; blob_url?: string };
 
+export type ReviewEvent = 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT';
+export type ReviewState = 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED' | 'DISMISSED' | 'PENDING';
+/** GET /pulls/{n}/reviews */
+export type Review = { id: number; user: User; state: ReviewState; body: string | null; submitted_at?: string; html_url?: string };
+/** GET /pulls/{n}/comments — comments on diff lines. `line` is null when the code moved on (outdated). */
+export type ReviewComment = { id: number; user: User; body: string; path: string; line: number | null; side?: 'LEFT' | 'RIGHT'; created_at: string; in_reply_to_id?: number };
+/** A line comment waiting to be sent with a review. */
+export type DraftComment = { path: string; line: number; side: 'LEFT' | 'RIGHT'; body: string };
+
 export type MergeMethod = 'merge' | 'squash' | 'rebase';
 
 export type Notification = {
