@@ -104,6 +104,9 @@ Until 2026-11-04 the PWA's offline support was silently off. `register.ts` waite
 had already fired by the time the lazily loaded app code ran. It now registers immediately when the page is
 already loaded. The install prompt is captured by an inline script in `index.html`, and `npm run smoke` now
 fails if the service worker doesn't register or the app doesn't open offline.
+A second cause showed up live: library icons named `…@2x.png` hit Cloudflare's `@` redirect loop, and one
+failed file aborted the whole service-worker install. `scripts/pwa.mjs` now leaves any path with `@` out of
+the precache. Verified live: the worker activates in about 5 s and the app opens offline.
 
 ## Incident: secret wiped by a deploy
 

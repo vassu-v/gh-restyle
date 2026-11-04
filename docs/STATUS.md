@@ -28,7 +28,7 @@ defers something.
 | PR reviews: line comments, request changes, timeline, own-PR rules | `npm run e2e:review` | 13/13 |
 | Extension on live github.com (Graphite + Paper, signed out) | manual Playwright run with the unpacked extension | header themed, buttons readable, content script 5.9 KB |
 | Read endpoints against the real api.github.com | `LIVE_REPO=vassu-v/gh-restyle LIVE_REPO_ONLY=1 npm run test:live` | pass (repo, readme, tree, file, issues, pulls, thread, files, checks) |
-| Live site, every screen in Chromium | `SMOKE_URL=https://gitling.truckcoding.workers.dev npm run smoke` | 16/16 screens, PWA ok |
+| Live site: every screen, service worker, offline launch, Chrome installability | `SMOKE_URL=https://gitling.truckcoding.workers.dev npm run smoke` + CDP installability check | 16/16, SW active, opens offline, 0 installability errors |
 | Extension | `npm run build:extension` | builds; restyle verified on live github.com during M1 |
 
 ## Not verified yet (be honest about these)
@@ -44,7 +44,8 @@ defers something.
 
 ## Known gaps / next up
 
-- Asset folders starting with `@` (scoped npm packages, e.g. fonts) loop forever on Cloudflare's asset server. `scripts/pwa.mjs` renames them to `_at_…` at build time; keep that step.
+- Any asset path containing `@` loops on Cloudflare's asset server. `@` folders are renamed to `_at_`, and `@` files are kept out of the precache.
+- (old note) Asset folders starting with `@` (scoped npm packages, e.g. fonts) loop forever on Cloudflare's asset server. `scripts/pwa.mjs` renames them to `_at_…` at build time; keep that step.
 
 - Markdown has no emoji shortcodes, math or mermaid. SVG badges show as links on native.
 - Code browser: files over 512 KB open on GitHub; highlighting skips files over 3,000 lines. Diffs aren't syntax-colored.

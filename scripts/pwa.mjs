@@ -44,7 +44,10 @@ html = html.replace(/<meta name="viewport" content="[^"]*"\s*\/?>/, '<meta name=
 writeFileSync(htmlPath, html);
 
 const walk = (dir) => readdirSync(dir).flatMap((f) => { const p = join(dir, f); return statSync(p).isDirectory() ? walk(p) : [p]; });
-const skip = /(^|\/)(sw\.js|_redirects|_headers|metadata\.json|\.DS_Store)$|\.map$/;
+// Files with "@" in the name (library icons like close-icon@2x.png) can't be fetched from Cloudflare's asset
+// server (it redirects %40 <-> @ forever), and one failed file makes the whole service-worker install fail.
+// The app never loads them, so they stay out of the precache.
+const skip = /(^|\/)(sw\.js|_redirects|_headers|metadata\.json|\.DS_Store)$|\.map$|@/;
 const files = walk(dist).map((p) => '/' + relative(dist, p).split('\\').join('/')).filter((p) => !skip.test(p)).sort();
 const hash = createHash('sha256');
 for (const f of files) hash.update(f).update(readFileSync(join(dist, f)));
