@@ -156,9 +156,14 @@ untested, because they need the owner's own browser.
 
 ## Security history and rules
 
-- The owner once pasted a Cloudflare API token and R2 keys into chat. They were told to **roll the token**
-  and **delete the R2 key**. Assume that token is dead. If a deploy fails with an auth error, that's why:
-  ask for the new token through environment secrets.
+- The owner has pasted Cloudflare API tokens and R2 keys into chat twice, the second time on 2026-11-05.
+  They chose to keep using the second one ("I'll rotate when necessary"). Cloud sessions used it, at the
+  owner's request, for the 2026-11-05 deploys (PR #1 and PR #2), passed only on the command line and never
+  written to a file.
+  - It isn't in the environment's secrets, so a new session won't have it.
+  - If a deploy fails with an auth error, the token was rotated: ask the owner to add the new one as
+    `CLOUDFLARE_API_TOKEN` under Network secrets, or to run `npm run deploy` themselves.
+  - Mention rotation at most once; the owner doesn't want to be nagged.
 - **Never ask for secrets in chat.** Use environment secrets, `wrangler secret put` (it prompts), or the
   Cloudflare dashboard.
 - **Never commit:** tokens, `.env.local`, or the client secret. `.gitignore` covers `.env*` except
@@ -206,3 +211,10 @@ untested, because they need the owner's own browser.
 6. **Extension:** optionally slim the popup (zod).
 7. **Phase 2:** design sync through a private gist; native builds with EAS.
 8. **Optional:** GitHub Developer Program application, and a custom domain in place of `workers.dev`.
+9. **Small product gaps the owner was offered (2026-11-05):**
+   - a commits list (the repo's Commits tab still opens github.com)
+   - syntax colors in diffs
+   - the extension on the Chrome Web Store
+10. **Recommended order shown to the owner:** phone check of the live site → push notifications (needs the
+    owner's yes on Cloudflare's $5/month plan and on a server-held encrypted token, decision 0009) → native
+    builds → Studio extras → the small gaps above. The owner hasn't picked yet.

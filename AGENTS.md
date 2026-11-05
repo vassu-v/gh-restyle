@@ -6,6 +6,8 @@ Context for any coding agent (Claude Code, Codex, Cursor, …) or new contributo
 2. `docs/CONTEXT.md`: the owner, their taste, the story so far, live deploy facts, environment quirks, open to-dos
 3. `docs/STATUS.md`: what's done and how it was verified
 4. `docs/ARCHITECTURE.md`: how it fits together; `docs/decisions/` explains why
+5. `docs/WORKFLOW.md`: how work gets done: PRs and CodeRabbit, local and cloud agents on one PR, splitting big
+   features across worker agents, what the environment blocks
 
 Product plan and milestones: `PLAN.md`. Live app: https://gitling.truckcoding.workers.dev
 
@@ -33,7 +35,7 @@ packages/github/     typed GitHub REST: client.ts (transport), api.ts (every end
 packages/design/     Design schema (zod), Signal skin, token resolver, contrast fitting, share codes
 services/edge/       Cloudflare Worker "gitling": serves the web app (static assets) + sign-in routes (phase 2: push)
 scripts/             pwa.mjs (post-build), smoke.mjs (every screen), e2e-signin/studio/review/extension.mjs, deploy.mjs
-docs/                CONTEXT, STATUS, ARCHITECTURE, TESTING (layers + when to run what), SETUP-SIGNIN, DEPLOY, EXTENSION (how to use it), decisions/, plans/ (next features)
+docs/                CONTEXT, STATUS, ARCHITECTURE, WORKFLOW (how we work), TESTING (layers + when to run what), SETUP-SIGNIN, DEPLOY, EXTENSION (how to use it), decisions/, plans/ (next features)
 ```
 
 ## Commands (from the repo root)
