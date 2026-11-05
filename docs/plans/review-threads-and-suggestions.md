@@ -1,6 +1,6 @@
 # Plan: review replies, resolved threads, multi-line comments, suggested changes
 
-Status: **planned, not built** (2026-11-04). Decision record: `docs/decisions/0010-review-threads-and-suggestions.md`.
+Status: **built** (2026-11-05, branch `feat/review-threads`; see `review-threads-contract.md` for the exact interfaces). Decision record: `docs/decisions/0010-review-threads-and-suggestions.md`.
 Builds on what shipped: line comments, Comment/Approve/Request changes, review timeline (`docs/ARCHITECTURE.md` § Code and reviews).
 
 ## What the person gets

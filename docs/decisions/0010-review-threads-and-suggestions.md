@@ -1,5 +1,7 @@
 # 0010 — Review threads via REST + GraphQL; suggestions applied with the Git Data API
 
+Status: **accepted and built** (2026-11-05).
+
 **Context.**
 - REST gives review comments and replies but no thread ids or resolved state.
 - Resolving threads is GraphQL-only.

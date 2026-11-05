@@ -73,6 +73,12 @@ environment's quirks. **No secrets live in this repo.**
 7. **GitHub OAuth App created** by the owner, and the client secret was set on the Worker. `/health` now
    reports `configured:true`. A live click-through reaches GitHub's login page with the correct parameters.
 
+8. **Review threads (2026-11-05):** built by a lead agent plus worker agents (package, app screens, e2e,
+   extension check) against a written contract (`docs/plans/review-threads-contract.md`). The owner asked for a
+   **pull request** for this one, so it lives on `feat/review-threads` instead of being pushed to `main`.
+   Same session: `npm run e2e:extension` added; it found and fixed share links not working in the popup.
+   Note: GitHub redirects `facebook/react` to `react/react`.
+
 ## Live setup (non-secret facts)
 
 | Thing | Value |
@@ -166,7 +172,7 @@ untested, because they need the owner's own browser.
    haven't been exercised with a real account yet.
 2. **Studio follow-ups:** saved custom presets, custom accent picker. Studio polish (M4) shipped: presets, drag reorder, share links.
 3. **Push notifications (phase 2):** the plan is in `PLAN.md` § 7; the owner asked how it would work and was shown that plan.
-4. **Review follow-ups:** replies to review threads, suggested changes.
+4. **Review threads:** built on `feat/review-threads` (replies, resolve, multi-line, suggestions). Owner to try on a real PR.
 5. **Extension:** optionally slim the popup (zod).
 6. **Phase 2:** design sync through a private gist; native builds with EAS.
 7. **Optional:** GitHub Developer Program application, and a custom domain in place of `workers.dev`.
