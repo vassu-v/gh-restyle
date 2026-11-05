@@ -18,8 +18,10 @@ const ext = join(root, 'apps/extension/dist');
 const out = join(root, 'stress-report');
 mkdirSync(join(out, 'shots'), { recursive: true });
 const { chromium } = createRequire(import.meta.url)('playwright');
-// Chrome derives an unpacked extension's id from its path: UTF-8 bytes on macOS/Linux, UTF-16LE on Windows.
-const extId = [...createHash('sha256').update(process.platform === 'win32' ? Buffer.from(ext, 'utf16le') : ext).digest('hex').slice(0, 32)].map((c) => String.fromCharCode(97 + parseInt(c, 16))).join('');
+// Chrome derives an unpacked extension's id from its path: UTF-8 bytes on macOS/Linux, UTF-16LE on Windows,
+// where it first upper-cases the drive letter (a checkout under c:\ would otherwise get the wrong id).
+const idPath = process.platform === 'win32' ? ext.replace(/^[a-z]:/, (d) => d.toUpperCase()) : ext;
+const extId = [...createHash('sha256').update(process.platform === 'win32' ? Buffer.from(idPath, 'utf16le') : idPath).digest('hex').slice(0, 32)].map((c) => String.fromCharCode(97 + parseInt(c, 16))).join('');
 
 const PAGES = [
   ['repo home', '/facebook/react'],
@@ -62,8 +64,8 @@ const audit = () => {
   const path = (el) => { const p = []; for (let e = el; e && p.length < 3; e = e.parentElement) p.unshift(e.tagName.toLowerCase() + (e.classList[0] ? '.' + e.classList[0] : '')); return p.join(' > '); };
   const els = [...document.querySelectorAll('body *')].filter((e) => {
     if (!e.childNodes.length || ![...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) return false;
-    // Emoji are drawn in their own colours, so text-colour contrast says nothing about them.
-    if (e.closest('g-emoji') || /^[\p{Extended_Pictographic}\u{FE0F}\u{200D}\s]+$/u.test(e.textContent.trim())) return false;
+    // Emoji (flags and keycaps too) are drawn in their own colours, so text-colour contrast says nothing about them.
+    if (e.closest('g-emoji') || /^(?:[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{FE0F}\u{200D}\s]|[0-9#*]\u{FE0F}?\u{20E3})+$/u.test(e.textContent.trim())) return false;
     const r = e.getBoundingClientRect(); if (!r.width || !r.height || r.top > 3000) return false;
     const s = getComputedStyle(e); return s.visibility !== 'hidden' && s.display !== 'none' && Number(s.opacity) > 0.3;
   }).slice(0, 800);

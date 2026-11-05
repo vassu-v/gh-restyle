@@ -41,6 +41,9 @@ export default function Thread() {
   // The head commit the pending comments' line numbers refer to: the one the diff on screen was read at (not the
   // PR's current head, which may have moved). Sent as commit_id so GitHub places them on that diff.
   const [draftSha, setDraftSha] = useState<string | undefined>(undefined);
+  // Pending comments belong to one head commit. If the PR moved on since, a new comment would be on a different
+  // diff, and one commit_id can't place both: send or discard the old ones first.
+  const draftsStale = drafts.length > 0 && !!files.data && files.data.sha !== draftSha;
   const [reviewing, setReviewing] = useState(false);
   const [reviewDone, setReviewDone] = useState<string | null>(null);
   const methods = mergeMethods(repoInfo.data);
@@ -131,13 +134,22 @@ export default function Thread() {
                   {actions.applySuggestions.error ? <T v="sub" c="bad">{(actions.applySuggestions.error as Error).message}</T> : null}
                 </Panel>
               ) : null}
+              {draftsStale ? (
+                <Panel style={{ marginHorizontal: 14, marginTop: 12, padding: 12, gap: 10 }} tint={t.c.wait}>
+                  <T v="sub">New commits arrived after your {drafts.length} pending comment{drafts.length === 1 ? '' : 's'}. Send the review (they stay on the lines you picked) or discard them before commenting on the new code.</T>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <Button style={{ flex: 1 }} label="Send review" onPress={() => setReviewing(true)} />
+                    <Button kind="quiet" label="Discard" onPress={() => setDrafts([])} />
+                  </View>
+                </Panel>
+              ) : null}
               {applied ? <T v="sub" c="ok" style={{ paddingHorizontal: 18, paddingTop: 10 }}>{applied}</T> : null}
               {open ? <T v="monoS" c="dim" style={{ paddingHorizontal: 18, paddingTop: 10 }}>tap a line to comment on it, long-press to pick a range</T> : null}
               {(files.data?.files ?? []).map((f) => (
                 <DiffFile key={f.filename} file={f} canComment={open} ctx={ctx}
                   threads={threads.threads.filter((th) => th.path === f.filename)}
                   drafts={drafts.filter((d) => d.path === f.filename)}
-                  onDraft={(d) => { setDraftSha((s) => (drafts.length ? s : files.data?.sha)); setDrafts((x) => [...x, d]); setReviewDone(null); }}
+                  onDraft={(d) => { if (draftsStale) return false; setDraftSha((s) => (drafts.length ? s : files.data?.sha)); setDrafts((x) => [...x, d]); setReviewDone(null); }}
                   onRemoveDraft={(d) => setDrafts((x) => x.filter((y) => y !== d))} />
               ))}
             </>

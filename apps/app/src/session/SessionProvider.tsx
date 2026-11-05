@@ -2,7 +2,7 @@ import { createApi, createClient, GitHubError, missingScopes, type Api, type Git
 import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { oauthConfigured } from '@/config';
-import { completeSignIn, startSignIn } from './oauth';
+import { completeSignIn, forgetSignIn, startSignIn } from './oauth';
 import { tokenStore } from './tokenStore';
 
 /**
@@ -48,6 +48,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [qc]);
 
   const signOut = useCallback(async (msg?: string) => {
+    forgetSignIn();
     await tokenStore.clear();
     qc.clear();
     setToken(null);

@@ -24,3 +24,11 @@ describe('extension storage', () => {
     expect(syncBytes(forSync({ enabled: true, design }))).toBeLessThanOrEqual(8192);
   });
 });
+
+it('a design that is still too big without tiles (many home sections) keeps its theme and fits', () => {
+  const sections = Array.from({ length: 400 }, () => ({ id: 'feed' as const, visible: true }));
+  const design = { ...DEFAULT_DESIGN, theme: { ...DEFAULT_DESIGN.theme, accent: '#123456' }, home: { sections } };
+  const stored = forSync({ enabled: true, design });
+  expect(syncBytes(stored)).toBeLessThanOrEqual(8192);
+  expect(stored.design.theme.accent).toBe('#123456');
+});

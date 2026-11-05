@@ -53,8 +53,8 @@ docs/                CONTEXT, STATUS, ARCHITECTURE, TESTING (layers + when to ru
 | `npm run build:extension` | → `apps/extension/dist` (load unpacked) |
 | `npm run e2e:extension` | after `build:extension`: the extension end to end on live github.com (popup, design codes, off/on, navigation) |
 | `npm run stress:extension` | extension on 26 live github.com page types × 3 backgrounds: contrast, errors, screenshots → `stress-report/` |
-| `npm run verify` | **everything** above in order, keeps going past failures, one summary table (`-- --fast`: types, lint, unit + fuzz only) |
-| `npm run test:fuzz` | property-based fuzz tests (fast-check) in `tests/fuzz`; `FUZZ_SCALE=20` for a deep run |
+| `npm run verify` | the local suite in order: check steps, smoke, every e2e (not `test:live`, `test:coverage`, `stress:extension` or `deploy`); keeps going past failures, one summary table (`-- --fast`: types, lint, unit + fuzz only) |
+| `npm run test:fuzz` | property-based fuzz tests (fast-check) in `tests/fuzz`; `FUZZ_SCALE=20` for a deep run (PowerShell: `$env:FUZZ_SCALE = '20'; npm run test:fuzz`) |
 | `npm run test:coverage` | unit + fuzz with coverage → `coverage/index.html` |
 | `npm run deploy` | build the app with settings from `services/edge/wrangler.toml` and deploy the Worker (needs Cloudflare auth; see docs/DEPLOY.md) |
 
@@ -85,6 +85,7 @@ Playwright-based scripts need Chromium (`npx playwright install chromium` if it 
 ## Done means
 
 `npm run check` passes, and for UI changes `npm run smoke` passes and you looked at the screen.
-After deploying, `SMOKE_URL=https://gitling.truckcoding.workers.dev npm run smoke` passes.
+After deploying, `SMOKE_URL=https://gitling.truckcoding.workers.dev npm run smoke` passes
+(PowerShell: `$env:SMOKE_URL = 'https://gitling.truckcoding.workers.dev'; npm run smoke`).
 Commit as `vassu-v <shoryavardhaans2@gmail.com>` and push to `main`.
 Say plainly what you verified and what you couldn't (e.g. native builds, real OAuth without credentials).

@@ -18,7 +18,7 @@ export default function Ask() {
       // template comes from the URL (/ask?template=…), so only http(s) may be opened.
       const url = template.replace('{query}', encodeURIComponent(q));
       if (!isSafeLink(url)) { setBlocked(true); return; } // stays open and says why
-      Linking.openURL(url); router.back(); return;
+      Linking.openURL(url).catch(() => {}); router.back(); return;
     }
     router.replace({ pathname: '/search', params: { q: template.replace('{query}', q), kind: dest === 'repos' ? 'repos' : 'issues', title: q } });
   }

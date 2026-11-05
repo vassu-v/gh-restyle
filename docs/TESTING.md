@@ -7,8 +7,8 @@ How Gitling is tested, what each layer catches, and which command to run when.
 | When | Run | Time |
 |---|---|---|
 | While coding | `npm run verify -- --fast` (types, lint, unit + fuzz) | ~30 s |
-| Before you say "done" | `npm run verify` (everything, keeps going past failures, prints one table) | ~3 min |
-| Before a release, or after touching parsing/auth code | `FUZZ_SCALE=20 npm run test:fuzz` (deep fuzz, new random seed every run) | ~1 min |
+| Before you say "done" | `npm run verify` (the local suite: check, smoke, every e2e; not live, coverage, stress or deploy; keeps going past failures, prints one table) | ~4–6 min |
+| Before a release, or after touching parsing/auth code | `FUZZ_SCALE=20 npm run test:fuzz` (PowerShell: `$env:FUZZ_SCALE = '20'; npm run test:fuzz`; deep fuzz, new random seed every run) | ~1 min |
 | After changing the extension or its colours | `npm run stress:extension` (26 live github.com page types × 3 backgrounds) | ~5 min |
 | What isn't covered yet | `npm run test:coverage`, then open `coverage/index.html` | ~15 s |
 
@@ -44,6 +44,7 @@ CI runs `check`, smoke and the three app e2e suites on **Ubuntu and Windows**, p
      contrast with and without the extension
    - `test:live` calls the real api.github.com read-only
    - after a deploy, `SMOKE_URL=https://gitling.truckcoding.workers.dev npm run smoke`
+     (PowerShell: `$env:SMOKE_URL = 'https://gitling.truckcoding.workers.dev'; npm run smoke`)
 
 ## Adding tests
 

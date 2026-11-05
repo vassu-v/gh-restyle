@@ -94,6 +94,20 @@ panel that opens now scrolls to the middle of the screen (checked at 390×844 in
 - The Worker also accepts `user` in place of `read:user` (granted earlier); refusing it would revoke every new
   token for that person.
 
+From the CodeRabbit review of PR #2, fixed:
+- A sign-in callback opened again after sign-out could reuse the cached exchange and sign the person back in. The
+  cache is cleared on sign-out and when a new sign-in starts, and only lives 60 s.
+- Pending review comments could mix two head commits (one `commit_id` for both). If new commits arrive while
+  comments are pending, the Files tab asks to send or discard them before adding more.
+- Extension popup said "Applied" when the save failed; a design still too big without tiles (many home sections)
+  failed to save and now keeps just its theme.
+- `salvageDesign` reports tiles cut by the 24-tile limit (so the Studio notice and the backup appear).
+- `/ask` no longer leaves an unhandled rejection when no app opens a link.
+- Windows: extension id hashing upper-cases the drive letter like Chrome; flags and keycaps are skipped in the
+  stress contrast check.
+- A bad `FUZZ_SCALE` now fails instead of running zero cases. Coverage runs in CI after earlier failures. Docs give
+  PowerShell forms for env-var commands and describe what `verify` covers.
+
 ## Known gaps / next up
 
 - Also fixed from the 2026-11-05 review (each has a test; see `docs/TESTING.md`):

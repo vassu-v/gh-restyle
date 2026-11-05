@@ -118,8 +118,10 @@ export function salvageDesign(input: unknown, fallback: Design): { design: Desig
     return fallback[k];
   };
   const tiles = Array.isArray(src.tiles)
-    ? src.tiles.flatMap((t) => { const r = Tile.safeParse(t); if (r.success) return [r.data]; dropped.push(`tile “${(t as { label?: unknown })?.label ?? '?'}”`); return []; }).slice(0, 24)
+    ? src.tiles.flatMap((t) => { const r = Tile.safeParse(t); if (r.success) return [r.data]; dropped.push(`tile “${(t as { label?: unknown })?.label ?? '?'}”`); return []; })
     : (dropped.push('tiles'), fallback.tiles);
+  if (tiles.length > 24) dropped.push(`${tiles.length - 24} tile${tiles.length - 24 === 1 ? '' : 's'} over the 24-tile limit`);
+  tiles.splice(24);
   const out = Design.safeParse({ ...fallback, theme: part('theme'), nav: part('nav'), home: part('home'), tiles });
   return out.success ? { design: out.data, dropped } : null;
 }

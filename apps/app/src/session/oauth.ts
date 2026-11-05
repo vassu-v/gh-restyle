@@ -59,6 +59,7 @@ function returnTarget() {
  * or null if the person closed the sheet.
  */
 export async function startSignIn(): Promise<ExchangeResult | null> {
+  forgetSignIn();
   const { verifier, challenge } = await createPkce(crypto);
   const nonce = base64url(crypto.random(16));
   savePending({ verifier, nonce, at: Date.now() });
@@ -77,15 +78,17 @@ export async function startSignIn(): Promise<ExchangeResult | null> {
 const str = (v: unknown) => (typeof v === 'string' ? v : Array.isArray(v) ? String(v[0] ?? '') : '');
 
 /** Finishes sign-in from the callback's query params. Throws a person-readable Error on failure. */
-let inFlight: { code: string; result: Promise<ExchangeResult> } | null = null;
+let inFlight: { code: string; at: number; result: Promise<ExchangeResult> } | null = null;
+/** Forget the last exchange: after sign-out, or when a new sign-in starts, an old callback must not sign anyone back in. */
+export function forgetSignIn() { inFlight = null; }
 
 export function completeSignIn(p: { code?: string; state?: string; error?: string }): Promise<ExchangeResult> {
   // On native the OS may deliver the same gitling://auth/callback twice (to openAuthSessionAsync and to the
   // /auth/callback route). Codes are single use, so the second caller shares the first exchange instead of
   // failing with "out of date".
-  if (p.code && inFlight?.code === p.code) return inFlight.result;
+  if (p.code && inFlight?.code === p.code && Date.now() - inFlight.at < 60e3) return inFlight.result;
   const result = finish(p);
-  if (p.code) inFlight = { code: p.code, result };
+  if (p.code) inFlight = { code: p.code, at: Date.now(), result };
   return result;
 }
 

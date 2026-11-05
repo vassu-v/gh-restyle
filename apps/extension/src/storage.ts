@@ -29,7 +29,12 @@ export const syncBytes = (s: Settings) => new TextEncoder().encode(KEY + JSON.st
 /** The extension only renders the theme, so a design too big for one sync item (many tiles, long or
  *  non-English labels: 2–4 bytes a character) is stored without its tiles rather than failing to save. */
 export function forSync(s: Settings): Settings {
-  return syncBytes(s) > SYNC_ITEM_BYTES - 256 ? { ...s, design: { ...s.design, tiles: [] } } : s;
+  const limit = SYNC_ITEM_BYTES - 256;
+  if (syncBytes(s) <= limit) return s;
+  const noTiles = { ...s, design: { ...s.design, tiles: [] } };
+  if (syncBytes(noTiles) <= limit) return noTiles;
+  // Still too big (home.sections has no length cap): keep only the theme, which is all the extension renders.
+  return { ...s, design: { ...DEFAULT_DESIGN, theme: s.design.theme, tiles: [] } };
 }
 
 export async function saveSettings(s: Settings) {

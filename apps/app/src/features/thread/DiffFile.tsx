@@ -18,7 +18,8 @@ type Pick = { idx: number; a: Anchor };
 export function DiffFile({ file, threads, drafts, onDraft, onRemoveDraft, canComment, ctx }: {
   file: PrFile;
   threads: ReviewThread[]; drafts: DraftComment[];
-  onDraft: (d: DraftComment) => void; onRemoveDraft: (d: DraftComment) => void;
+  /** Returns false when the draft wasn't taken (the box keeps its text). */
+  onDraft: (d: DraftComment) => boolean | void; onRemoveDraft: (d: DraftComment) => void;
   canComment: boolean;
   ctx: ThreadCtx;
 }) {
@@ -108,7 +109,7 @@ export function DiffFile({ file, threads, drafts, onDraft, onRemoveDraft, canCom
                     <View ref={reveal} style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
                       <Button label="Add to review" disabled={!text.trim()} onPress={() => {
                         const { start, end } = open;
-                        onDraft({ path: file.filename, line: end.a.line, side: end.a.side, ...(isRange ? { start_line: start.a.line, start_side: start.a.side } : {}), body: text.trim() });
+                        if (onDraft({ path: file.filename, line: end.a.line, side: end.a.side, ...(isRange ? { start_line: start.a.line, start_side: start.a.side } : {}), body: text.trim() }) === false) return;
                         setOpen(null); setText('');
                       }} />
                       {canSuggest ? <Button kind="quiet" label="Suggest" accessibilityLabel="Suggest" onPress={suggest} /> : null}

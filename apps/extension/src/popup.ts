@@ -16,9 +16,10 @@ function codeFrom(text: string) {
   try { const c = new URL(raw).searchParams.get('import'); if (c) return c; } catch { /* not a link */ }
   return raw;
 }
-async function save() {
-  try { await saveSettings(s); } catch (e) { msg(`Couldn't save: ${(e as Error).message}`, false); return; }
+async function save(): Promise<boolean> {
+  try { await saveSettings(s); } catch (e) { msg(`Couldn't save: ${(e as Error).message}`, false); return false; }
   render();
+  return true;
 }
 
 (async () => {
@@ -30,7 +31,8 @@ async function save() {
   $('apply').addEventListener('click', async () => {
     const r = decodeDesign(codeFrom($<HTMLTextAreaElement>('code').value));
     if (!r.ok) return msg(r.error, false);
-    s.design = r.design; s.enabled = true; await save();
+    s.design = r.design; s.enabled = true;
+    if (!(await save())) return;
     $<HTMLTextAreaElement>('code').value = '';
     msg('Applied. Open GitHub tabs update right away.', true);
   });

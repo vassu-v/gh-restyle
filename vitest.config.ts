@@ -5,7 +5,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     include: ['packages/*/test/**/*.test.ts', 'services/*/test/**/*.test.ts', 'tests/**/*.test.ts'],
-    coverage: { provider: 'v8', include: ['packages/*/src/**', 'services/*/src/**'], reporter: ['text-summary', 'html'], reportsDirectory: 'coverage' },
+    coverage: { provider: 'v8', include: ['packages/*/src/**', 'services/*/src/**'], reporter: ['text-summary', 'html'], reportsDirectory: 'coverage', reportOnFailure: true },
     exclude: ['**/*.live.test.ts', '**/node_modules/**'],
     environment: 'node',
   },

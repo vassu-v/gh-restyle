@@ -91,3 +91,12 @@ describe('sample tiles', () => {
     expect(isSampleTarget({ type: 'user', login: 'you' })).toBe(true);
   });
 });
+
+describe('salvageDesign tile cap', () => {
+  it('reports tiles cut by the 24-tile limit, even when nothing else is wrong', () => {
+    const tiles = Array.from({ length: 27 }, (_, i) => ({ ...DEFAULT_DESIGN.tiles[0], id: `t${i}` }));
+    const r = salvageDesign({ ...DEFAULT_DESIGN, tiles }, DEFAULT_DESIGN)!;
+    expect(r.design.tiles).toHaveLength(24);
+    expect(r.dropped).toEqual(['3 tiles over the 24-tile limit']);
+  });
+});
