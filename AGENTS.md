@@ -51,6 +51,7 @@ docs/                CONTEXT, STATUS, ARCHITECTURE, SETUP-SIGNIN, DEPLOY, decisi
 | `npm run test:live` | read-only tests against the real api.github.com (`LIVE_REPO=owner/name`, optional `GITHUB_TOKEN`) |
 | `npm run build:web` | `expo export` + `scripts/pwa.mjs` → `apps/app/dist` (what Vercel/Cloudflare serve) |
 | `npm run build:extension` | → `apps/extension/dist` (load unpacked) |
+| `npm run stress:extension` | extension on 26 live github.com page types × 3 backgrounds: contrast, errors, screenshots → `stress-report/` |
 | `npm run deploy` | build the app with settings from `services/edge/wrangler.toml` and deploy the Worker (needs Cloudflare auth; see docs/DEPLOY.md) |
 
 Playwright-based scripts need Chromium (`npx playwright install chromium` if it isn't on the machine).

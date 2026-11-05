@@ -108,6 +108,21 @@ A second cause showed up live: library icons named `…@2x.png` hit Cloudflare's
 failed file aborted the whole service-worker install. `scripts/pwa.mjs` now leaves any path with `@` out of
 the precache. Verified live: the worker activates in about 5 s and the app opens offline.
 
+## Extension stress test (2026-11-05)
+
+`npm run stress:extension` loads the unpacked extension on 26 kinds of github.com pages in all three
+backgrounds. It compares text contrast against the same pages without the extension and saves screenshots.
+
+The first run found two problems:
+- **Unreadable code in dark looks** (180 spots on one file page). Signed-out GitHub is in light mode, so its
+  syntax colors were light-tuned. The content script now sets GitHub's own `data-color-mode` to match the
+  design.
+- **White text on the pastel accent** (skip link, badges). `--bgColor-accent-emphasis` is now deepened to
+  4.5:1.
+
+Gist's classic header was fixed afterwards. The final result is 0 new problems. Signed-in pages are
+untested, because they need the owner's own browser.
+
 ## Incident: secret wiped by a deploy
 
 - The owner added `GITHUB_CLIENT_SECRET` in the Cloudflare dashboard as a plain-text **variable**, not a

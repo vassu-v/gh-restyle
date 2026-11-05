@@ -26,7 +26,7 @@ defers something.
 | Full sign-in flow, GitHub simulated, real worker code | `npm run e2e:signin` | 12/12 |
 | Studio: presets, mouse drag reorder, share link preview/apply | `npm run e2e:studio` | 12/12 |
 | PR reviews: line comments, request changes, timeline, own-PR rules | `npm run e2e:review` | 13/13 |
-| Extension on live github.com (Graphite + Paper, signed out) | manual Playwright run with the unpacked extension | header themed, buttons readable, content script 5.9 KB |
+| Extension stress test on live github.com: 26 page types × 3 backgrounds vs a no-extension baseline, signed out | `npm run stress:extension` (report in `stress-report/`, git-ignored) | 0 new low-contrast text in ~15,000 checks, 0 extension errors, content script 6.3 KB |
 | Read endpoints against the real api.github.com | `LIVE_REPO=vassu-v/gh-restyle LIVE_REPO_ONLY=1 npm run test:live` | pass (repo, readme, tree, file, issues, pulls, thread, files, checks) |
 | Live site: every screen, service worker, offline launch, Chrome installability | `SMOKE_URL=https://gitling.truckcoding.workers.dev npm run smoke` + CDP installability check | 16/16, SW active, opens offline, 0 installability errors |
 | Extension | `npm run build:extension` | builds; restyle verified on live github.com during M1 |
@@ -51,7 +51,7 @@ defers something.
 - Code browser: files over 512 KB open on GitHub; highlighting skips files over 3,000 lines. Diffs aren't syntax-colored.
 - PR review: no replies to existing review threads, no multi-line comments, no suggested changes.
 - No commits list. The repo tile's "commits" tab opens github.com.
-- **Extension:** the popup still bundles zod (about 450 KB, loads only when opened); the content script is 5.9 KB.
+- **Extension (v0.2.0):** not tested signed in, in Firefox/Edge, or with GitHub's dim/high-contrast settings; not in the Chrome Web Store. The popup still bundles zod (about 450 KB, loads only when opened); the content script is 5.9 KB.
 - Studio: drag-to-reorder not yet tried on a real touchscreen (mouse-tested in Chromium). Ideas: user-saved presets, custom accent color picker.
 - `@expo-google-fonts` must be imported per weight. Importing a family's index ships every weight (6 MB) on
   web.

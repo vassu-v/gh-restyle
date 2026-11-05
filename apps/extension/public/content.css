@@ -50,3 +50,9 @@ html.gitling-on .HeaderMktg [class*="Button--subtle"] *,
 html.gitling-on .HeaderMktg .header-search-button,
 html.gitling-on .HeaderMktg .header-search-button * { color: var(--gitling-fg) !important; }
 html.gitling-on .HeaderMktg .header-search-button { background-color: var(--gitling-el) !important; border-color: var(--gitling-line) !important; }
+
+/* Gist (and other older pages) use the classic .Header, whose links are hardcoded white on its background.
+   Our header background follows the design, so the links must follow it too (white on white on Paper otherwise). */
+html.gitling-on .Header { background-color: var(--gitling-bg) !important; border-bottom: 1px solid var(--gitling-line); }
+html.gitling-on .Header .Header-link,
+html.gitling-on .Header .Header-item { color: var(--gitling-fg) !important; }

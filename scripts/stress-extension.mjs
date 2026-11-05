@@ -5,7 +5,7 @@
 //   - text contrast: samples up to 800 visible text elements, computes contrast against the effective
 //     background (first opaque ancestor), and reports elements below 3:1 that GitHub alone doesn't have
 //   - screenshot of the top of the page
-// Run: npm run build:extension && node scripts/stress-extension.mjs [--quick]
+// Run: npm run build:extension && node scripts/stress-extension.mjs [--quick | --only=<page name part>]
 // Output: stress-report/ (report.md, report.json, screenshots), git-ignored.
 import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -48,7 +48,8 @@ const PAGES = [
   ['blame', '/facebook/react/blame/main/packages/react/src/ReactHooks.js'],
 ];
 const quick = process.argv.includes('--quick');
-const pages = quick ? PAGES.slice(0, 6) : PAGES;
+const only = process.argv.find((a) => a.startsWith('--only='))?.slice(7);
+const pages = only ? PAGES.filter(([n]) => n.includes(only)) : quick ? PAGES.slice(0, 6) : PAGES;
 const THEMES = ['graphite', 'black', 'paper'];
 
 const audit = () => {
