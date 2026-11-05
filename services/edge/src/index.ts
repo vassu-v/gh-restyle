@@ -105,8 +105,10 @@ export function isAllowedReturn(target: string, env: Env): boolean {
 
 /* ─── exchange: code + verifier → token ─── */
 
-/** The scopes Gitling requests (packages/github auth.ts OAUTH_SCOPES). */
-const ALLOWED_SCOPES = new Set(['repo', 'notifications', 'read:user']);
+/** The scopes Gitling requests (packages/github auth.ts OAUTH_SCOPES), plus `user`: GitHub reports it instead of
+ *  `read:user` when the person granted the wider one before (auth.ts missingScopes treats them the same way).
+ *  Refusing it would lock that person out: every new token would carry it and be revoked. */
+const ALLOWED_SCOPES = new Set(['repo', 'notifications', 'read:user', 'user']);
 
 async function exchange(req: Request, url: URL, env: Env, f: Fetch, cors: Record<string, string> | null): Promise<Response> {
   if (!env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET) return json({ error: 'Sign-in is not configured on the server yet.' }, 503, cors);

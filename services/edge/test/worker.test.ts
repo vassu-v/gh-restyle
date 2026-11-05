@@ -129,6 +129,11 @@ describe('scope check', () => {
     const res = await handle(new Request(`${W}/auth/exchange`, { method: 'POST', body: JSON.stringify({ code: 'abcdef1234', code_verifier: verifier }) }), env, f);
     expect((await res.json()).access_token).toBe('gho_y');
   });
+  it('`user` in place of `read:user` (granted earlier) passes instead of locking the person out', async () => {
+    const f = (async () => new Response(JSON.stringify({ access_token: 'gho_z', scope: 'notifications,repo,user' }))) as never;
+    const res = await handle(new Request(`${W}/auth/exchange`, { method: 'POST', body: JSON.stringify({ code: 'abcdef1234', code_verifier: verifier }) }), env, f);
+    expect((await res.json()).access_token).toBe('gho_z');
+  });
 });
 
 describe('rate limit', () => {

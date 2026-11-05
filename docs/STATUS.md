@@ -88,8 +88,11 @@ Security pass (signed in, looking for leaks), fixed:
 - Trusted Types in the CSP: only Expo's own chunks and `/sw.js` may be loaded as scripts.
 - CI runs with a read-only token; `.dev.vars*` is ignored; `wrangler` is pinned in deploy.
 
-Small UI issues seen, not fixed: the floating bottom bar covers "Add to review" for a comment box near the
-bottom of the Files tab; the review sheet opens above the visible area.
+Small UI issues seen, fixed afterwards (`src/ui/reveal.ts`): the floating bottom bar covered "Add to review" for
+a comment box near the bottom of the Files tab, and the review sheet opened above the visible area. On web, a
+panel that opens now scrolls to the middle of the screen (checked at 390×844 in Chromium).
+- The Worker also accepts `user` in place of `read:user` (granted earlier); refusing it would revoke every new
+  token for that person.
 
 ## Known gaps / next up
 

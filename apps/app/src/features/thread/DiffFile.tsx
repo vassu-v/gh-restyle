@@ -3,6 +3,7 @@ import { Fragment, useMemo, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { useTokens } from '@/design/DesignProvider';
 import { Button, Panel, T } from '@/ui/primitives';
+import { reveal } from '@/ui/reveal';
 import { Act } from './Suggestion';
 import { ThreadView, type ThreadCtx } from './ThreadView';
 
@@ -104,7 +105,7 @@ export function DiffFile({ file, threads, drafts, onDraft, onRemoveDraft, canCom
                     <TextInput autoFocus value={text} onChangeText={setText} multiline placeholderTextColor={t.c.dim}
                       placeholder={isRange ? `Comment on lines ${open.start.a.line}–${open.end.a.line}` : `Comment on line ${open.end.a.line}`}
                       style={{ minHeight: 70, padding: 10, borderRadius: 10, backgroundColor: t.c.el2, color: t.c.fg, fontFamily: t.font.ui.regular, fontSize: 14, textAlignVertical: 'top' }} />
-                    <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                    <View ref={reveal} style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
                       <Button label="Add to review" disabled={!text.trim()} onPress={() => {
                         const { start, end } = open;
                         onDraft({ path: file.filename, line: end.a.line, side: end.a.side, ...(isRange ? { start_line: start.a.line, start_side: start.a.side } : {}), body: text.trim() });

@@ -12,6 +12,7 @@ import { stateOf } from '@/features/rows';
 import { rel } from '@/lib/format';
 import { routes } from '@/lib/links';
 import { Markdown } from '@/ui/Markdown';
+import { reveal } from '@/ui/reveal';
 import { Icon } from '@/ui/Icon';
 import { Avatar, Button, ErrorNote, glass, Loading, Panel, Screen, Seg, T, Ticks } from '@/ui/primitives';
 
@@ -144,9 +145,9 @@ export default function Thread() {
         ) : (
           <View style={{ paddingTop: 8 }}>
             {reviewing && p ? (
-              <ReviewPanel ownPr={it.user.login === me.data?.login} drafts={drafts} pending={actions.review.isPending} error={actions.review.error}
+              <View ref={reveal}><ReviewPanel ownPr={it.user.login === me.data?.login} drafts={drafts} pending={actions.review.isPending} error={actions.review.error}
                 onCancel={() => setReviewing(false)}
-                onSubmit={(r) => actions.review.mutate({ ...r, comments: drafts, commitId: drafts.length ? draftSha : undefined }, { onSuccess: () => { setDrafts([]); setReviewing(false); setReviewDone(REVIEW_DONE[r.event]); } })} />
+                onSubmit={(r) => actions.review.mutate({ ...r, comments: drafts, commitId: drafts.length ? draftSha : undefined }, { onSuccess: () => { setDrafts([]); setReviewing(false); setReviewDone(REVIEW_DONE[r.event]); } })} /></View>
             ) : null}
             {reviewDone ? <T v="sub" c="ok" style={{ paddingHorizontal: 18, paddingTop: 10 }}>{reviewDone}</T> : null}
             {timeline(it, comments.data ?? [], review.reviews.data ?? []).map((c) => c.kind === 'review' ? (
@@ -170,7 +171,7 @@ export default function Thread() {
               <View style={{ paddingHorizontal: 14, gap: 8 }}>
                 <TextInput autoFocus value={draft} onChangeText={setDraft} multiline placeholder={`Comment as ${me.data?.login ?? 'you'}`} placeholderTextColor={t.c.dim}
                   style={{ minHeight: 96, padding: 12, borderRadius: 14, backgroundColor: t.c.el, borderWidth: 1, borderColor: t.c.line, color: t.c.fg, fontFamily: t.font.ui.regular, fontSize: 15, textAlignVertical: 'top' }} />
-                <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View ref={reveal} style={{ flexDirection: 'row', gap: 8 }}>
                   <Button label={actions.comment.isPending ? 'Posting…' : 'Comment'} disabled={!draft.trim() || actions.comment.isPending} onPress={() => actions.comment.mutate(draft.trim(), { onSuccess: () => { setDraft(''); setComposing(false); } })} />
                   <Button kind="quiet" label="Cancel" onPress={() => setComposing(false)} />
                 </View>
