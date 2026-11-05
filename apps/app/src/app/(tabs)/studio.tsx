@@ -1,9 +1,10 @@
-import { applyPreset, decodeDesign, describeDesign, encodeDesign, PRESETS, presetOf, resolveTokens, ACCENTS, BACKGROUNDS, type Background, type Design, type SectionId, type TabId } from '@gitling/design';
+import { applyPreset, describeDesign, designFileName, designToFile, encodeDesign, PRESETS, presetOf, readDesignText, resolveTokens, ACCENTS, BACKGROUNDS, type Background, type Design, type SectionId, type TabId } from '@gitling/design';
 import * as Clipboard from 'expo-clipboard';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Platform, Pressable, ScrollView, Switch, TextInput, View } from 'react-native';
 import { appUrl } from '@/config';
+import { canOpenFiles, openDesignFile, saveDesignFile } from '@/lib/designFile';
 import { TokensScope, useDesign, useTokens } from '@/design/DesignProvider';
 import { TileView } from '@/features/tiles/TileView';
 import { pad2 } from '@/lib/format';
@@ -59,9 +60,6 @@ function Preview({ design, width = 272, tiles = true }: { design: Design; width?
   );
 }
 
-/** A pasted link with a broken %-escape (e.g. "import=%E0%A4") must show an error, not crash Studio. */
-const safeDecode = (s: string) => { try { return decodeURIComponent(s); } catch { return s; } };
-
 export default function Studio() {
   const { design, tokens: t, update, undo, canUndo, replace, reset, dropped, dismissDropped } = useDesign();
   const params = useLocalSearchParams<{ tab?: string; import?: string }>();
@@ -79,7 +77,8 @@ export default function Studio() {
   }
   const th = design.theme;
   const active = presetOf(design);
-  const incoming = code.trim() ? decodeDesign(code.trim()) : null;
+  // The paste box takes anything readDesignText reads: a design file's text, a code, or a share link.
+  const incoming = code.trim() ? readDesignText(code) : null;
   const flash = (ok: boolean, text: string) => setMsg({ ok, text });
 
   return (
@@ -210,18 +209,30 @@ export default function Studio() {
             <Button label="Copy share link" icon="link" onPress={async () => { await Clipboard.setStringAsync(shareLink(encodeDesign(design))); flash(true, 'Link copied. Anyone with Gitling can preview and apply it.'); }} />
           ) : null}
           <Button kind="quiet" label="Copy design code" icon="copy" onPress={async () => { await Clipboard.setStringAsync(encodeDesign(design)); flash(true, 'Code copied.'); }} />
+          <Button kind="quiet" label={Platform.OS === 'web' ? 'Save as file' : 'Share as file'} icon="download" onPress={async () => {
+            const name = active?.name;
+            try { await saveDesignFile(designToFile(design, { name }), designFileName(name)); flash(true, 'Saved. Open it later here or in Welcome to bring this setup back.'); }
+            catch { flash(false, "Couldn't save the file."); }
+          }} />
 
           <T v="label" c="mut" style={{ marginTop: 14 }}>{"try someone's design"}</T>
-          <TextInput value={code} onChangeText={(v) => { setCode(v); setMsg(null); }} placeholder="Paste a GITLING1.… code or a share link" placeholderTextColor={t.c.dim} autoCapitalize="none" autoCorrect={false} multiline
+          {canOpenFiles ? (
+            <Button kind="quiet" label="Open a design file" icon="folder-open" onPress={async () => {
+              try { const text = await openDesignFile(); if (text != null) { setCode(text); setMsg(null); } }
+              catch (e) { flash(false, (e as Error).message); }
+            }} />
+          ) : null}
+          <TextInput value={code} onChangeText={(v) => { setCode(v); setMsg(null); }} placeholder="Paste a GITLING1.… code, a share link or a design file's text" placeholderTextColor={t.c.dim} autoCapitalize="none" autoCorrect={false} multiline
             style={{ minHeight: 70, padding: 12, borderRadius: 13, backgroundColor: t.c.el2, color: t.c.fg, fontFamily: t.font.mono.regular, fontSize: 13 }} />
           {(() => {
-            const parsed = incoming ?? (code.includes('import=') ? decodeDesign(safeDecode(code.split('import=')[1].split('&')[0])) : null);
+            const parsed = incoming;
             if (!code.trim() || !parsed) return null;
             if (!parsed.ok) return <T v="sub" c="bad">{parsed.error}</T>;
             return (
               <View style={{ gap: 10 }}>
                 <Preview design={parsed.design} />
-                <T v="monoS" c="mut">{describeDesign(parsed.design)}</T>
+                <T v="monoS" c="mut">{parsed.name ? `${parsed.name} · ` : ''}{describeDesign(parsed.design)}</T>
+                {parsed.dropped.length ? <T v="sub" c="wait">{`Left out (not valid in this version): ${parsed.dropped.join(', ')}`}</T> : null}
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   <Button style={{ flex: 1 }} label="Apply this design" onPress={() => { replace(parsed.design); setCode(''); flash(true, 'Design applied. Undo is available.'); if (params.import) router.setParams({ import: '' }); }} />
                   <Button kind="quiet" label="Only the look" onPress={() => { update((d) => { d.theme = { ...parsed.design.theme }; }); setCode(''); flash(true, 'Look applied; your tabs and shortcuts stayed. Undo is available.'); if (params.import) router.setParams({ import: '' }); }} />
