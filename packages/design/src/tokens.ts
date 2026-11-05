@@ -32,8 +32,11 @@ const lum = (h: string) => { const c = hex(h).map((v) => { v /= 255; return v <=
 export const contrast = (a: string, b: string) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
 /** Nudge a user-picked color until it reads on the background. */
 export const fit = (c: string, bg: string, min = 4.5) => {
-  let out = c; let t = 0; const toward = lum(bg) < 0.2 ? '#FFFFFF' : '#000000';
-  while (contrast(out, bg) < min && t < 0.9) { t += 0.08; out = mix(c, toward, t); }
+  // Head for whichever extreme reads better on this background (the white/black crossover is at luminance
+  // ~0.179, not 0.2), and allow going all the way: every background reaches at least ~4.58 against one of them.
+  const toward = contrast('#FFFFFF', bg) >= contrast('#000000', bg) ? '#FFFFFF' : '#000000';
+  let out = c; let t = 0;
+  while (contrast(out, bg) < min && t < 1) { t = Math.min(1, t + 0.04); out = mix(c, toward, t); }
   return out;
 };
 export const inkOn = (c: string) => (contrast(c, '#FFFFFF') >= contrast(c, '#111111') ? '#FFFFFF' : '#111111');

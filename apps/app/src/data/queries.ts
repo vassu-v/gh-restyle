@@ -183,7 +183,7 @@ export function useThreadActions(owner: string, repo: string, n: number) {
     comment: useMutation({ mutationFn: (body: string) => api.comment(owner, repo, n, body), onSuccess: refresh }),
     setState: useMutation({ mutationFn: (state: 'open' | 'closed') => api.setState(owner, repo, n, state), onSuccess: after }),
     merge: useMutation({ mutationFn: (method: MergeMethod) => api.merge(owner, repo, n, method), onSuccess: after }),
-    review: useMutation({ mutationFn: (r: { event: ReviewEvent; body?: string; comments?: DraftComment[] }) => api.submitReview(owner, repo, n, r), onSuccess: refresh }),
+    review: useMutation({ mutationFn: (r: { event: ReviewEvent; body?: string; comments?: DraftComment[]; commitId?: string }) => api.submitReview(owner, repo, n, r), onSuccess: refresh }),
     reply: useMutation({ mutationFn: (r: { rootId: number; body: string }) => api.replyToReviewComment(owner, repo, n, r.rootId, r.body), onSuccess: refresh }),
     resolve: useMutation({ mutationFn: (r: { threadId: string; resolved: boolean }) => (r.resolved ? api.resolveThread(r.threadId) : api.unresolveThread(r.threadId)), onSuccess: refresh }),
     // A new commit on the PR branch: the files, checks and comment positions all change.

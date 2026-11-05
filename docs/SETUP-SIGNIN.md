@@ -29,7 +29,7 @@ Below, `APP_URL` means your deployed address, e.g. `https://gitling.<subdomain>.
 In `services/edge/wrangler.toml`:
 
 ```toml
-ALLOWED_RETURN = "APP_URL,http://localhost:8081,gitling://"
+ALLOWED_RETURN = "APP_URL,gitling://auth/callback"
 GITHUB_CLIENT_ID = "<client id>"
 ```
 
@@ -56,7 +56,7 @@ data.
 ## Local dev with real sign-in
 
 Copy `apps/app/.env.example` to `apps/app/.env.local`, set `EXPO_PUBLIC_GITHUB_CLIENT_ID` and
-`EXPO_PUBLIC_AUTH_URL=APP_URL`, then run `npm run web`. `http://localhost:8081` is already allowed.
+`EXPO_PUBLIC_AUTH_URL=APP_URL`, then run `npm run web`. Production doesn't allow `http://localhost:8081` (a security risk for visitors), so locally either paste a token on Account, or run your own dev Worker whose `ALLOWED_RETURN` includes it.
 
 ## Notes
 

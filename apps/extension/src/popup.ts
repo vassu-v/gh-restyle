@@ -16,7 +16,10 @@ function codeFrom(text: string) {
   try { const c = new URL(raw).searchParams.get('import'); if (c) return c; } catch { /* not a link */ }
   return raw;
 }
-async function save() { await saveSettings(s); render(); }
+async function save() {
+  try { await saveSettings(s); } catch (e) { msg(`Couldn't save: ${(e as Error).message}`, false); return; }
+  render();
+}
 
 (async () => {
   s = await loadSettings();

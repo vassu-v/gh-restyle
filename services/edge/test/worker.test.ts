@@ -21,6 +21,13 @@ describe('return target allowlist', () => {
     expect(isAllowedReturn('javascript:alert(1)', env)).toBe(false);
     expect(isAllowedReturn('exp://192.168.1.2:8081/--/auth/callback', env)).toBe(false);
   });
+  it('a custom-scheme rule with a path matches only that place', () => {
+    const pinned = { ...env, ALLOWED_RETURN: 'https://gitling.vercel.app,gitling://auth/callback' };
+    expect(isAllowedReturn('gitling://auth/callback', pinned)).toBe(true);
+    expect(isAllowedReturn('GITLING://auth/callback?x=1', pinned)).toBe(true);
+    for (const bad of ['gitling://evil', 'gitling:x', 'gitling://auth/callback/../../x', 'gitling://auth/callbackx', 'gitling://evil/auth/callback'])
+      expect(isAllowedReturn(bad, pinned), bad).toBe(false);
+  });
 });
 
 describe('GET /auth/callback', () => {
@@ -89,6 +96,24 @@ describe('POST /auth/exchange', () => {
     expect(ok.status).toBe(204);
     const no = await handle(new Request(`${W}/auth/exchange`, { method: 'OPTIONS', headers: { Origin: 'https://evil.com' } }), env);
     expect(no.status).toBe(403);
+  });
+});
+
+describe('exchange input', () => {
+  it('a JSON body of null is a 400, not a crash (found by fuzzing)', async () => {
+    const res = await handle(new Request(`${W}/auth/exchange`, { method: 'POST', body: 'null' }), env, vi.fn() as never);
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('rate limit', () => {
+  it('refuses exchanges over the limit with 429 and never calls GitHub', async () => {
+    const f = vi.fn();
+    const EXCHANGE_LIMIT = { limit: vi.fn(async () => ({ success: false })) };
+    const res = await handle(new Request(`${W}/auth/exchange`, { method: 'POST', headers: { 'CF-Connecting-IP': '1.2.3.4' }, body: JSON.stringify({ code: 'abcdef1234', code_verifier: verifier }) }), { ...env, EXCHANGE_LIMIT }, f as never);
+    expect(res.status).toBe(429);
+    expect(EXCHANGE_LIMIT.limit).toHaveBeenCalledWith({ key: '1.2.3.4' });
+    expect(f).not.toHaveBeenCalled();
   });
 });
 

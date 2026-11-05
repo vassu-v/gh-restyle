@@ -65,7 +65,19 @@ export async function startSignIn(): Promise<ExchangeResult | null> {
 const str = (v: unknown) => (typeof v === 'string' ? v : Array.isArray(v) ? String(v[0] ?? '') : '');
 
 /** Finishes sign-in from the callback's query params. Throws a person-readable Error on failure. */
-export async function completeSignIn(p: { code?: string; state?: string; error?: string }): Promise<ExchangeResult> {
+let inFlight: { code: string; result: Promise<ExchangeResult> } | null = null;
+
+export function completeSignIn(p: { code?: string; state?: string; error?: string }): Promise<ExchangeResult> {
+  // On native the OS may deliver the same gitling://auth/callback twice (to openAuthSessionAsync and to the
+  // /auth/callback route). Codes are single use, so the second caller shares the first exchange instead of
+  // failing with "out of date".
+  if (p.code && inFlight?.code === p.code) return inFlight.result;
+  const result = finish(p);
+  if (p.code) inFlight = { code: p.code, result };
+  return result;
+}
+
+async function finish(p: { code?: string; state?: string; error?: string }): Promise<ExchangeResult> {
   const pending = takePending();
   if (p.error) throw new Error(p.error === 'access_denied' ? 'You cancelled the sign-in on GitHub.' : `GitHub said: ${p.error}`);
   const st = decodeState(p.state ?? '');

@@ -8,3 +8,5 @@ web-build/
 apps/extension/dist/
 apps/app/.expo/
 stress-report/
+coverage/
+stress-report/

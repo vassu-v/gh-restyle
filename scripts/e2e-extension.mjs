@@ -16,7 +16,8 @@ const root = fileURLToPath(new URL('..', import.meta.url));
 const ext = join(root, 'apps/extension/dist');
 if (!existsSync(join(ext, 'manifest.json'))) { console.error('Build the extension first: npm run build:extension'); process.exit(1); }
 const { chromium } = createRequire(import.meta.url)('playwright');
-const extId = [...createHash('sha256').update(ext).digest('hex').slice(0, 32)].map((c) => String.fromCharCode(97 + parseInt(c, 16))).join('');
+// Chrome derives an unpacked extension's id from its path: UTF-8 bytes on macOS/Linux, UTF-16LE on Windows.
+const extId = [...createHash('sha256').update(process.platform === 'win32' ? Buffer.from(ext, 'utf16le') : ext).digest('hex').slice(0, 32)].map((c) => String.fromCharCode(97 + parseInt(c, 16))).join('');
 const EXT_ORIGIN = `chrome-extension://${extId}`;
 
 // The same code the app's Studio and the extension use: share-code encoder and the Primer variable mapping.
@@ -275,7 +276,7 @@ try {
   check('test ran to the end', false, e.message.split('\n')[0]);
   exitCode = 1;
 } finally {
-  rmSync(work, { recursive: true, force: true });
+  rmSync(work, { recursive: true, force: true, maxRetries: 5, retryDelay: 300 });
 }
 
 const failed = results.filter((r) => !r.ok).length;

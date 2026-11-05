@@ -61,3 +61,23 @@ describe('api against sample data', () => {
     expect(await api.readme('acme', 'rocket')).toBeNull(); // no README is not an error
   });
 });
+
+describe('request shapes (fake fetch)', () => {
+  it('sends commit_id with a review and reads file bytes for fileSource', async () => {
+    const calls: { url: string; body?: string; accept?: string }[] = [];
+    const f = (async (url: string, init: RequestInit) => {
+      calls.push({ url, body: init.body as string | undefined, accept: (init.headers as Record<string, string>).Accept });
+      return url.includes('/contents/') ? new Response(new Uint8Array([0xef, 0xbb, 0xbf, 0x78])) : new Response('{}');
+    }) as unknown as typeof fetch;
+    const live = createApi(createClient({ kind: 'token', token: 't' }, { fetch: f }));
+    await live.submitReview('o', 'r', 1, { event: 'COMMENT', commitId: 'abc', comments: [{ path: 'a', line: 1, side: 'RIGHT', body: 'x' }] });
+    expect(JSON.parse(calls[0].body!)).toMatchObject({ event: 'COMMENT', commit_id: 'abc' });
+    await live.submitReview('o', 'r', 1, { event: 'COMMENT' });
+    expect(JSON.parse(calls[1].body!)).not.toHaveProperty('commit_id');
+    expect(await live.fileSource('o', 'r', 'dir/a b.txt', 'feat/x#1')).toEqual({ text: 'x', bom: true });
+    expect(calls[2].url).toBe('https://api.github.com/repos/o/r/contents/dir/a%20b.txt?ref=feat%2Fx%231');
+  });
+  it('fileSource works on sample data', async () => {
+    expect((await api.fileSource('you', 'trail-notes', 'src/sync/queue.ts', 'a91f3c2e')).text).toMatch(/^import/);
+  });
+});

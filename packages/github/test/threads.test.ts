@@ -34,3 +34,8 @@ describe('groupThreads', () => {
     expect(t[2]).toMatchObject({ outdated: true, canResolve: false, threadId: 'RT_5' });
   });
 });
+
+it('keeps a thread whose first comment was deleted together, rooted at its oldest reply', () => {
+  const t = groupThreads([c(7, 7, { in_reply_to_id: 1 }), c(6, 6, { in_reply_to_id: 1 }), c(8, 8, { in_reply_to_id: 2 })], [st(6, { isResolved: true })]);
+  expect(t.map((x) => [x.root.id, x.replies.map((r) => r.id), x.threadId, x.resolved])).toEqual([[6, [7], 'RT_6', true], [8, [], null, false]]);
+});

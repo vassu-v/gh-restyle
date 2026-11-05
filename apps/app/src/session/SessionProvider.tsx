@@ -57,10 +57,17 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // If GitHub rejects the token (revoked, expired), drop back to sample data and say why.
   useEffect(() => {
     if (!token) return;
-    return qc.getQueryCache().subscribe((ev) => {
-      const err = ev.type === 'updated' && ev.action.type === 'error' ? ev.action.error : null;
-      if (err instanceof GitHubError && err.status === 401) void signOut('GitHub signed you out. Sign in again to see your data.');
+    const expired = (err: unknown) => err instanceof GitHubError && err.status === 401;
+    const out = () => void signOut('GitHub signed you out. Sign in again to see your data.');
+    // Only queries still in the cache count: qc.clear() on sign-in removes the old session's queries, but a
+    // request already in flight with the old token still reports its 401 here and must not sign out the new one.
+    const offQueries = qc.getQueryCache().subscribe((ev) => {
+      if (ev.type === 'updated' && ev.action.type === 'error' && expired(ev.action.error) && qc.getQueryCache().get(ev.query.queryHash) === ev.query) out();
     });
+    const offMutations = qc.getMutationCache().subscribe((ev) => {
+      if (ev.type === 'updated' && ev.action.type === 'error' && expired(ev.action.error) && ev.mutation && qc.getMutationCache().getAll().includes(ev.mutation)) out();
+    });
+    return () => { offQueries(); offMutations(); };
   }, [qc, token, signOut]);
 
   const signInWithGitHub = useCallback(async () => {

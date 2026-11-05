@@ -33,7 +33,7 @@ packages/github/     typed GitHub REST: client.ts (transport), api.ts (every end
 packages/design/     Design schema (zod), Signal skin, token resolver, contrast fitting, share codes
 services/edge/       Cloudflare Worker "gitling": serves the web app (static assets) + sign-in routes (phase 2: push)
 scripts/             pwa.mjs (post-build), smoke.mjs (every screen), e2e-signin/studio/review/extension.mjs, deploy.mjs
-docs/                CONTEXT, STATUS, ARCHITECTURE, SETUP-SIGNIN, DEPLOY, EXTENSION (how to use it), decisions/, plans/ (next features)
+docs/                CONTEXT, STATUS, ARCHITECTURE, TESTING (layers + when to run what), SETUP-SIGNIN, DEPLOY, EXTENSION (how to use it), decisions/, plans/ (next features)
 ```
 
 ## Commands (from the repo root)
@@ -53,6 +53,9 @@ docs/                CONTEXT, STATUS, ARCHITECTURE, SETUP-SIGNIN, DEPLOY, EXTENS
 | `npm run build:extension` | → `apps/extension/dist` (load unpacked) |
 | `npm run e2e:extension` | after `build:extension`: the extension end to end on live github.com (popup, design codes, off/on, navigation) |
 | `npm run stress:extension` | extension on 26 live github.com page types × 3 backgrounds: contrast, errors, screenshots → `stress-report/` |
+| `npm run verify` | **everything** above in order, keeps going past failures, one summary table (`-- --fast`: types, lint, unit + fuzz only) |
+| `npm run test:fuzz` | property-based fuzz tests (fast-check) in `tests/fuzz`; `FUZZ_SCALE=20` for a deep run |
+| `npm run test:coverage` | unit + fuzz with coverage → `coverage/index.html` |
 | `npm run deploy` | build the app with settings from `services/edge/wrangler.toml` and deploy the Worker (needs Cloudflare auth; see docs/DEPLOY.md) |
 
 Playwright-based scripts need Chromium (`npx playwright install chromium` if it isn't on the machine).

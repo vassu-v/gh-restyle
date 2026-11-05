@@ -6,8 +6,14 @@ on:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Windows too: path bugs (URL.pathname → "D:\D:\…", "/" vs "\" in pwa.mjs) once broke every script and
+    # shipped a blank app from Windows builds, and only Linux was tested.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,3 +27,12 @@ jobs:
       - run: npm run e2e:signin
       - run: npm run e2e:studio
       - run: npm run e2e:review
+      - name: Coverage (unit + fuzz)
+        if: matrix.os == 'ubuntu-latest'
+        run: npm run test:coverage
+      - uses: actions/upload-artifact@v4
+        if: matrix.os == 'ubuntu-latest' && always()
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: ignore

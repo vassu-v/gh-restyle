@@ -1,4 +1,4 @@
-import { applySuggestions } from './apply';
+import { applySuggestions, decodeSource } from './apply';
 import { nextPage, type GitHubClient, type RequestOptions } from './client';
 import type {
   ApplyResult, Branch, CheckRuns, Comment, DraftComment, GitCommit, GitTree, NewTreeEntry, Review, ReviewComment, ReviewEvent, ContentFile, ContentItem, FeedEvent,
@@ -79,6 +79,9 @@ export function createApi(client: GitHubClient) {
     fileInfo: (owner: string, repo: string, path: string, ref?: string) => get<ContentFile>(`${repoPath(owner, repo)}${contentsPath(path, ref)}`),
     /** File text. Callers check size first (fileInfo) — GitHub serves raw files up to 100 MB. */
     fileText: (owner: string, repo: string, path: string, ref?: string) => get<string>(`${repoPath(owner, repo)}${contentsPath(path, ref)}`, { accept: RAW, text: true }),
+    /** File text for rewriting it byte-exact (strict UTF-8, BOM kept apart); 422 for other encodings. fileText is for showing. */
+    fileSource: async (owner: string, repo: string, path: string, ref?: string) =>
+      decodeSource(await get<ArrayBuffer>(`${repoPath(owner, repo)}${contentsPath(path, ref)}`, { accept: RAW, bytes: true })),
     /** Up to 300 branches, for the branch picker. */
     branches: (owner: string, repo: string) => all<Branch>(`${repoPath(owner, repo)}/branches?per_page=100`, 3),
     runs: (full: string) => get<WorkflowRuns>(`/repos/${full}/actions/runs?per_page=24`),
@@ -101,8 +104,9 @@ export function createApi(client: GitHubClient) {
     reviews: (owner: string, repo: string, n: number) => all<Review>(`${repoPath(owner, repo)}/pulls/${n}/reviews?per_page=100`, 3),
     reviewComments: (owner: string, repo: string, n: number) => all<ReviewComment>(`${repoPath(owner, repo)}/pulls/${n}/comments?per_page=100`, 5),
     /** Submits a review in one call: the verdict, an optional summary and any line comments. */
-    submitReview: (owner: string, repo: string, n: number, r: { event: ReviewEvent; body?: string; comments?: DraftComment[] }) =>
-      get<Review>(`${repoPath(owner, repo)}/pulls/${n}/reviews`, { method: 'POST', body: { event: r.event, ...(r.body ? { body: r.body } : {}), ...(r.comments?.length ? { comments: r.comments } : {}) } }),
+    /** `commitId`: the head sha the comments' line numbers were read from (GitHub defaults to the current head). */
+    submitReview: (owner: string, repo: string, n: number, r: { event: ReviewEvent; body?: string; comments?: DraftComment[]; commitId?: string }) =>
+      get<Review>(`${repoPath(owner, repo)}/pulls/${n}/reviews`, { method: 'POST', body: { event: r.event, ...(r.commitId ? { commit_id: r.commitId } : {}), ...(r.body ? { body: r.body } : {}), ...(r.comments?.length ? { comments: r.comments } : {}) } }),
     /** GitHub only takes replies to a thread's root comment, so pass the root's id. */
     replyToReviewComment: (owner: string, repo: string, n: number, rootId: number, body: string) =>
       get<ReviewComment>(`${repoPath(owner, repo)}/pulls/${n}/comments/${rootId}/replies`, { method: 'POST', body: { body } }),

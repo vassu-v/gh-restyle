@@ -24,6 +24,7 @@ const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 function apply(s: State, next: Design): State {
   const ok = Design.safeParse(next);
   if (!ok.success) return s;
+  if (JSON.stringify(ok.data) === JSON.stringify(s.design)) return s; // no-op edits don't add undo steps
   return { ...s, design: ok.data, history: [...s.history.slice(-(MAX_UNDO - 1)), s.design] };
 }
 
@@ -32,8 +33,12 @@ export function DesignProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     AsyncStorage.getItem(KEY)
-      .then((raw) => {
-        const parsed = raw ? Design.safeParse(JSON.parse(raw)) : null;
+      .then(async (raw) => {
+        let parsed: ReturnType<typeof Design.safeParse> | null = null;
+        try { parsed = raw ? Design.safeParse(JSON.parse(raw)) : null; } catch { /* corrupt JSON: handled below */ }
+        // A stored design that no longer validates (corrupt, or a future schema change) is about to be replaced by
+        // the default. Keep a copy first so it can be recovered or migrated instead of being lost.
+        if (raw && !parsed?.success) await AsyncStorage.setItem(`${KEY}.unreadable`, raw).catch(() => {});
         setS((x) => ({ ...x, design: parsed?.success ? parsed.data : x.design, loaded: true }));
       })
       .catch(() => setS((x) => ({ ...x, loaded: true })));

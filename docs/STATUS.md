@@ -58,8 +58,27 @@ defers something.
 
 ## Known gaps / next up
 
-- **Open from the 2026-11-05 review (not fixed yet):** CRLF/BOM files break or corrupt suggestion apply; replies to an orphaned review thread 422; `gitling://` allowlist matches any gitling: URL and `http://localhost:8081` is allowed in prod; no CSP header; pending review drafts survive a suggestion commit (no `commit_id`); late 401 from an old token can sign out a new session; invalid stored Design is overwritten without backup.
-- `npm run e2e:extension` fails on Windows here: Chromium blocks the popup (`ERR_BLOCKED_BY_CLIENT`). `smoke` passes but Node exits 127 on Windows after finishing (libuv assertion).
+- Also fixed from the 2026-11-05 review (each has a test; see `docs/TESTING.md`):
+  - **Suggestions:** CRLF files apply; BOM kept; non-UTF-8 files refused instead of corrupted; file mode only defaults on 404; batch apply re-checks comments against the new head; indented fences; line-ending fallback.
+  - **Review threads:** orphaned replies stay one thread. Pending review comments are sent with the commit they were written on (`commit_id`).
+  - **Sign-in:**
+    - `gitling://` pinned to `gitling://auth/callback`; `localhost:8081` removed from prod (local dev: paste a token); `blob:` URLs refused.
+    - `/auth/exchange` rate-limited (10/min per IP) and refuses a `null` body.
+    - Native sign-in no longer fails when the same callback arrives twice.
+  - **Web:**
+    - Content-Security-Policy (script hash, no inline JS), enforced in `smoke`.
+    - The service worker serves unhashed files only from the current build.
+    - Images from non-GitHub hosts wait for a tap (privacy).
+  - **App:**
+    - A late 401 from an old token can't sign out a new session.
+    - An unreadable stored design is backed up (`gitling.design.v1.unreadable`) before the default replaces it; no-op edits add no undo step.
+    - The merge button's timer is cleared.
+    - More reserved github.com paths.
+  - **Extension:**
+    - Safe background check; a design too large for sync storage saves without tiles; save errors show in the popup.
+    - `e2e:extension` and `stress:extension` compute the extension id correctly on Windows.
+  - **Windows:** `smoke` exits cleanly (no libuv assertion); CI now also runs on Windows.
+- Not verifiable here: the CSP, rate limit and sign-in loop fix on real Cloudflare (check after the next deploy); the native double-callback (no device build).
 
 - Any asset path containing `@` loops on Cloudflare's asset server. `@` folders are renamed to `_at_`, and `@` files are kept out of the precache.
 - (old note) Asset folders starting with `@` (scoped npm packages, e.g. fonts) loop forever on Cloudflare's asset server. `scripts/pwa.mjs` renames them to `_at_…` at build time; keep that step.

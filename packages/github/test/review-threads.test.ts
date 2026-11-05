@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { createApi } from '../src/api';
-import { applySuggestions, type ApplyDeps } from '../src/apply';
+import { applySuggestions, decodeSource, type ApplyDeps } from '../src/apply';
 import { createClient } from '../src/client';
 import { originalLines } from '../src/suggest';
+import type { NewTreeEntry } from '../src/types';
 import { groupThreads } from '../src/threads';
 
 // Runs in order against one sample session: each step sees what the previous one changed.
@@ -117,8 +118,9 @@ describe('review threads against sample data', () => {
   });
 
   it('refuses closed PRs and PRs you cannot write to', async () => {
-    const [c] = await api.reviewComments('lin', 'tiny-sync', 33);
-    const withSuggestion = { ...c, body: '```suggestion\n  const BATCH = 1000;\n```', start_line: null, original_start_line: null, line: 11, original_line: 11, diff_hunk: '@@ -10,6 +10,10 @@\n   const ops = await fetchOps(doc.id);\n+  const BATCH = 500;' };
+    // A real sample comment, so it passes the "GitHub's copy matches" check and fails on write access.
+    await api.submitReview('lin', 'tiny-sync', 33, { event: 'COMMENT', comments: [{ path: 'src/sync/initial.ts', line: 11, side: 'RIGHT', body: '```suggestion\n  const BATCH = 1000;\n```' }] });
+    const withSuggestion = (await api.reviewComments('lin', 'tiny-sync', 33)).at(-1)!;
     await expect(api.applySuggestions('lin', 'tiny-sync', 33, [withSuggestion])).rejects.toThrow(/didn't let Gitling write|Not in the sample/);
   });
 });
@@ -127,7 +129,8 @@ describe('applySuggestions guards (fake GitHub)', () => {
   const comment = { id: 7, user: { login: 'mira', id: 101, avatar_url: '' }, body: '```suggestion\nB\n```', path: 'f.txt', line: 2, side: 'RIGHT' as const, original_line: 2, diff_hunk: '@@ -1,2 +1,2 @@\n a\n+b', created_at: '' };
   const fake = (o: Partial<ApplyDeps> & { pr?: object } = {}): ApplyDeps => ({
     pull: async () => ({ state: 'open', head: { ref: 'f', sha: 'h1', repo: { full_name: 'me/r', owner: { login: 'me' } } }, ...o.pr }) as never,
-    fileText: async () => 'a\nb\n',
+    reviewComments: async () => [comment],
+    fileSource: async () => ({ text: 'a\nb\n', bom: false }),
     gitCommit: async () => ({ sha: 'h1', tree: { sha: 't1' } }),
     gitTree: async () => ({ sha: 't1', tree: [{ path: 'f.txt', mode: '100755', type: 'blob', sha: 'b' }] }),
     createTree: async () => ({ sha: 't2' }),
@@ -160,6 +163,35 @@ describe('applySuggestions guards (fake GitHub)', () => {
     ]);
   });
   it('rejects overlapping suggestions in a batch', async () => {
-    await expect(applySuggestions(fake(), 'me', 'r', 1, [comment, { ...comment, id: 8 }])).rejects.toThrow('Two suggestions change the same lines.');
+    await expect(applySuggestions(fake({ reviewComments: async () => [comment, { ...comment, id: 8 }] }), 'me', 'r', 1, [comment, { ...comment, id: 8 }])).rejects.toThrow('Two suggestions change the same lines.');
+  });
+  it("refuses when GitHub's copy of a comment moved on (a push since the comments loaded)", async () => {
+    await expect(applySuggestions(fake({ reviewComments: async () => [{ ...comment, line: 5 }] }), 'me', 'r', 1, [comment])).rejects.toThrow("It's outdated.");
+    await expect(applySuggestions(fake({ reviewComments: async () => [] }), 'me', 'r', 1, [comment])).rejects.toThrow("It's outdated.");
+  });
+  const written = () => {
+    const trees: NewTreeEntry[][] = [];
+    return { trees, createTree: async (_o: string, _r: string, t: { tree: NewTreeEntry[] }) => { trees.push(t.tree); return { sha: 't2' }; } };
+  };
+  it('keeps a BOM and refuses files that are not UTF-8', async () => {
+    expect(decodeSource(new Uint8Array([0xef, 0xbb, 0xbf, 0x61, 0x0a]))).toEqual({ text: 'a\n', bom: true });
+    expect(() => decodeSource(new Uint8Array([0xe9, 0x0a]))).toThrow("isn't saved as UTF-8");
+    const first = { ...comment, line: 1, original_line: 1, diff_hunk: '@@ -0,0 +1,2 @@\n+﻿a\n+b' };
+    const w = written();
+    await applySuggestions(fake({ reviewComments: async () => [first], fileSource: async () => ({ text: 'a\nb\n', bom: true }), createTree: w.createTree }), 'me', 'r', 1, [first]);
+    expect(w.trees[0][0].content).toBe('﻿B\nb\n');
+  });
+  it('applies to CRLF files, whose hunks carry "\\r"', async () => {
+    const crlf = { ...comment, diff_hunk: '@@ -1,2 +1,2 @@\r\n a\r\n+b\r' };
+    const w = written();
+    await applySuggestions(fake({ reviewComments: async () => [crlf], fileSource: async () => ({ text: 'a\r\nb\r\n', bom: false }), createTree: w.createTree }), 'me', 'r', 1, [crlf]);
+    expect(w.trees[0][0].content).toBe('a\r\nB\r\n');
+  });
+  it('defaults the mode only when the tree is really missing, and stops on other errors', async () => {
+    const w = written();
+    const fail = (status: number) => async () => { throw Object.assign(new Error(`HTTP ${status}`), { status }); };
+    await applySuggestions(fake({ gitTree: fail(404), createTree: w.createTree }), 'me', 'r', 1, [comment]);
+    expect(w.trees[0][0].mode).toBe('100644');
+    await expect(applySuggestions(fake({ gitTree: fail(502) }), 'me', 'r', 1, [comment])).rejects.toThrow('HTTP 502');
   });
 });

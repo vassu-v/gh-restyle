@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Linking, Pressable, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTokens } from '@/design/DesignProvider';
@@ -28,12 +28,18 @@ export default function Thread() {
   const me = useMe();
   const [draft, setDraft] = useState(''); const [composing, setComposing] = useState(false);
   const [armed, setArmed] = useState(false);
+  // One disarm timer at a time: an older timer must not disarm a button re-armed (or a method picked) since.
+  const disarm = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(disarm.current), []);
   const review = useReviews(owner, repo, n, isPr);
   const threads = useReviewThreads(owner, repo, n, isPr && seg === 'files');
   // Suggestions collected for one commit, and the note after a commit (kept here: applied threads re-mount as outdated).
   const [batch, setBatch] = useState<ReviewComment[]>([]);
   const [applied, setApplied] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<DraftComment[]>([]);
+  // The head commit the pending comments' line numbers refer to. Sent as commit_id, so GitHub places them on the
+  // diff they were written against even if the PR moved on (e.g. after applying a suggestion) before submitting.
+  const [draftSha, setDraftSha] = useState<string | undefined>(undefined);
   const [reviewing, setReviewing] = useState(false);
   const [reviewDone, setReviewDone] = useState<string | null>(null);
   const methods = mergeMethods(repoInfo.data);
@@ -130,7 +136,7 @@ export default function Thread() {
                 <DiffFile key={f.filename} file={f} canComment={open} ctx={ctx}
                   threads={threads.threads.filter((th) => th.path === f.filename)}
                   drafts={drafts.filter((d) => d.path === f.filename)}
-                  onDraft={(d) => { setDrafts((x) => [...x, d]); setReviewDone(null); }}
+                  onDraft={(d) => { setDraftSha((s) => (drafts.length ? s : pr.data?.head.sha)); setDrafts((x) => [...x, d]); setReviewDone(null); }}
                   onRemoveDraft={(d) => setDrafts((x) => x.filter((y) => y !== d))} />
               ))}
             </>
@@ -140,7 +146,7 @@ export default function Thread() {
             {reviewing && p ? (
               <ReviewPanel ownPr={it.user.login === me.data?.login} drafts={drafts} pending={actions.review.isPending} error={actions.review.error}
                 onCancel={() => setReviewing(false)}
-                onSubmit={(r) => actions.review.mutate({ ...r, comments: drafts }, { onSuccess: () => { setDrafts([]); setReviewing(false); setReviewDone(REVIEW_DONE[r.event]); } })} />
+                onSubmit={(r) => actions.review.mutate({ ...r, comments: drafts, commitId: drafts.length ? draftSha : undefined }, { onSuccess: () => { setDrafts([]); setReviewing(false); setReviewDone(REVIEW_DONE[r.event]); } })} />
             ) : null}
             {reviewDone ? <T v="sub" c="ok" style={{ paddingHorizontal: 18, paddingTop: 10 }}>{reviewDone}</T> : null}
             {timeline(it, comments.data ?? [], review.reviews.data ?? []).map((c) => c.kind === 'review' ? (
@@ -192,7 +198,7 @@ export default function Thread() {
           {p && open && canWrite ? (
             <Button style={{ flex: 1 }} icon="git-merge" disabled={p.mergeable === false || p.draft || actions.merge.isPending}
               label={actions.merge.isPending ? 'Merging…' : armed ? `Tap again to ${MERGE_VERB[chosen]}` : 'Merge'}
-              onPress={() => { if (!armed) { setArmed(true); setTimeout(() => setArmed(false), 6000); return; } setArmed(false); actions.merge.mutate(chosen); }} />
+              onPress={() => { clearTimeout(disarm.current); if (!armed) { setArmed(true); disarm.current = setTimeout(() => setArmed(false), 6000); return; } setArmed(false); actions.merge.mutate(chosen); }} />
           ) : !p && canWrite ? (
             <Button style={{ flex: 1 }} kind="quiet" label={open ? 'Close issue' : 'Reopen'} disabled={actions.setState.isPending} onPress={() => actions.setState.mutate(open ? 'closed' : 'open')} />
           ) : p && !open && canWrite && !p.merged ? (

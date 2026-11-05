@@ -12,7 +12,8 @@ import type { ApplyResult, GitCommit, GitTree, NewTreeEntry, PullRequest, Review
 /** The api members this needs (a structural type, so api.ts can wire it in without a type cycle). */
 export type ApplyDeps = {
   pull(owner: string, repo: string, n: number): Promise<PullRequest>;
-  fileText(owner: string, repo: string, path: string, ref?: string): Promise<string>;
+  reviewComments(owner: string, repo: string, n: number): Promise<ReviewComment[]>;
+  fileSource(owner: string, repo: string, path: string, ref?: string): Promise<FileSource>;
   gitCommit(owner: string, repo: string, sha: string): Promise<GitCommit>;
   gitTree(owner: string, repo: string, treeSha: string): Promise<GitTree>;
   createTree(owner: string, repo: string, t: { base_tree: string; tree: NewTreeEntry[] }): Promise<{ sha: string }>;
@@ -26,7 +27,21 @@ export const APPLY_ERRORS = {
   raced: 'The branch changed while you were applying. Refresh and try again.',
   denied: "GitHub didn't let Gitling write to this branch.",
   none: 'Pick at least one suggestion to apply.',
+  encoding: "This file isn't saved as UTF-8 text, so Gitling can't change it safely. Apply the suggestion on GitHub.",
 } as const;
+
+/** A file's text for rewriting it: decoded as strict UTF-8, with a byte-order mark kept apart so it goes back on. */
+export type FileSource = { text: string; bom: boolean };
+
+/**
+ * Decodes raw file bytes. Plain `Response.text()` would drop a BOM and turn other encodings into U+FFFD, and
+ * writing that back would change bytes nobody suggested changing — so anything that isn't UTF-8 is refused.
+ */
+export function decodeSource(bytes: ArrayBuffer | Uint8Array): FileSource {
+  let text: string;
+  try { text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes); } catch { return refuse(APPLY_ERRORS.encoding); }
+  return text.startsWith('﻿') ? { text: text.slice(1), bom: true } : { text, bom: false };
+}
 
 const refuse = (msg: string): never => { throw new GitHubError(msg, 422); };
 const statusOf = (err: unknown) => (err as { status?: number })?.status;
@@ -48,20 +63,30 @@ export async function applySuggestions(
   // 2. Same rules the card shows. Write permission is GitHub's call when we push.
   const suggestions = comments.map((c) => { const r = checkSuggestion(c, { prOpen: true, canWrite: true }); return r.ok ? { c, s: r.suggestion } : refuse(r.reason); });
 
+  // 2b. The comments the person saw may predate a push: their line numbers would then point at the wrong lines
+  // of head.sha (and repeated lines like "}" can still match). GitHub's current copy must say the same thing.
+  const live = new Map((await api.reviewComments(owner, repo, n)).map((c) => [c.id, c]));
+  for (const { c } of suggestions) {
+    const now = live.get(c.id);
+    if (!now || now.body !== c.body || now.line !== c.line || (now.start_line ?? null) !== (c.start_line ?? null) || now.diff_hunk !== c.diff_hunk) refuse(REASONS.outdated);
+  }
+
   // 3. New text per file, refusing anything whose lines moved on since the comment.
   const byPath = new Map<string, typeof suggestions>();
   for (const x of suggestions) byPath.set(x.s.path, [...(byPath.get(x.s.path) ?? []), x]);
   const files: { path: string; content: string }[] = [];
   for (const [path, list] of byPath) {
-    const text = await api.fileText(headOwner, headRepo, path, pr.head.sha);
+    const { text, bom } = await api.fileSource(headOwner, headRepo, path, pr.head.sha);
     const current = text.split(/\r?\n/);
+    // The hunk shows line 1 with its BOM, the decoded text without it.
+    const same = (want: string, have: string | undefined, line: number) => (line === 1 ? want.replace(/^﻿/, '') : want) === have;
     for (const { c, s } of list) {
       const want = originalLines(c);
       const have = current.slice(s.startLine - 1, s.endLine);
-      if (!want || want.length !== have.length || want.some((l, i) => l !== have[i])) refuse(REASONS.outdated);
+      if (!want || want.length !== have.length || want.some((l, i) => !same(l, have[i], s.startLine + i))) refuse(REASONS.outdated);
     }
     const edits: Edit[] = list.map(({ s }) => ({ startLine: s.startLine, endLine: s.endLine, lines: s.lines }));
-    try { files.push({ path, content: applyEdits(text, edits) }); } catch (err) { refuse((err as Error).message); }
+    try { files.push({ path, content: (bom ? '﻿' : '') + applyEdits(text, edits) }); } catch (err) { refuse((err as Error).message); }
   }
 
   // 4. Keep each file's mode (an executable script stays executable).
@@ -90,7 +115,8 @@ async function modeOf(api: ApplyDeps, owner: string, repo: string, rootTree: str
   const parts = path.split('/');
   let sha = rootTree;
   for (let i = 0; i < parts.length; i++) {
-    const t = await api.gitTree(owner, repo, sha).catch(() => null);
+    // Only "not there" means "a new file, default mode"; any other failure must not silently drop an executable bit.
+    const t = await api.gitTree(owner, repo, sha).catch((err) => (statusOf(err) === 404 ? null : denied(err)));
     const entry = t?.tree.find((x) => x.path === parts[i]);
     if (!entry) return '100644';
     if (i === parts.length - 1) return entry.type === 'blob' ? entry.mode : '100644';

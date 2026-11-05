@@ -182,7 +182,27 @@ function InlineImage({ tk, base }: { tk: Token; base?: MarkdownBase }) {
   return <RemoteImage uri={uri} alt={alt} onPress={link ? () => openUrl(link!) : undefined} />;
 }
 
+/**
+ * Gitling renders markdown source, so images skip GitHub's image proxy (camo): any other host would learn the
+ * reader's IP and when they read. Images from GitHub's own hosts and common badge services load; others wait
+ * for a tap.
+ */
+const TRUSTED_IMAGE_HOST = /(^|\.)(github\.com|githubusercontent\.com|githubassets\.com|shields\.io|badgen\.net|badge\.fury\.io|codecov\.io|coveralls\.io)$/i;
+export function imageLoadsWithoutAsking(uri: string): boolean {
+  try { const u = new URL(uri); return u.protocol === 'https:' && TRUSTED_IMAGE_HOST.test(u.hostname); } catch { return false; }
+}
+
 function RemoteImage({ uri, alt, onPress }: { uri: string; alt: string; onPress?: () => void }) {
+  const t = useTokens();
+  const [allowed, setAllowed] = useState(() => imageLoadsWithoutAsking(uri));
+  if (!allowed) {
+    let host = ''; try { host = new URL(uri).hostname; } catch { /* shown without a host */ }
+    return <Text style={{ color: t.c.acc, fontFamily: t.font.ui.regular, fontSize: 13 }} onPress={() => setAllowed(true)} accessibilityRole="button">[{alt || 'image'} · load from {host || 'link'}]</Text>;
+  }
+  return <LoadedImage uri={uri} alt={alt} onPress={onPress} />;
+}
+
+function LoadedImage({ uri, alt, onPress }: { uri: string; alt: string; onPress?: () => void }) {
   const t = useTokens();
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [failed, setFailed] = useState(false);
