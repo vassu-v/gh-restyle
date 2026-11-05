@@ -64,6 +64,19 @@ Dependency direction is one way: screens → hooks → `api` → `client` → ne
   - Line comments collect as drafts in the thread screen, then go out in one `submitReview` call with the
     verdict. GitHub doesn't allow approving or requesting changes on your own PR, so the UI only offers
     Comment there.
+- **Review threads** (`docs/decisions/0010`, contract in `docs/plans/review-threads-contract.md`):
+  - `threads.ts` `groupThreads()` turns REST review comments (`in_reply_to_id`) into threads and merges the
+    GraphQL `reviewThreads` state (resolved, outdated, permissions) by the root comment's `databaseId`.
+    If GraphQL fails, threads still show, just without resolved state.
+  - Replies go to the thread root (`replyToReviewComment`); Resolve/Unresolve are GraphQL mutations through
+    `client.graphql()`.
+  - Multi-line comments: long-press a diff line, tap the last line (same hunk). Drafts carry `start_line`/`start_side`.
+  - Suggestions: `suggest.ts` parses ```` ```suggestion ```` blocks, checks them (`checkSuggestion`, plain reasons)
+    and applies line edits (`applyEdits`, keeps CRLF and the final newline).
+  - Applying (`apply.ts`, `api.applySuggestions`): GitHub has no API for it, so Gitling commits itself with
+    the Git Data API on the PR's head repo: read each file at `head.sha`, verify the original lines still
+    match the comment's `diff_hunk`, build a tree (keeping each file's mode), commit with `Co-authored-by`
+    lines, then move the branch with `force:false` (a moved branch is refused, never overwritten).
 
 ## Routes (`apps/app/src/app`)
 

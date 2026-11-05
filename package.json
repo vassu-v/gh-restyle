@@ -20,7 +20,8 @@
     "deploy": "node scripts/deploy.mjs",
     "e2e:studio": "node scripts/e2e-studio.mjs",
     "e2e:review": "node scripts/e2e-review.mjs",
-    "stress:extension": "npm run build:extension && node scripts/stress-extension.mjs"
+    "stress:extension": "npm run build:extension && node scripts/stress-extension.mjs",
+    "e2e:extension": "node scripts/e2e-extension.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.28.2",

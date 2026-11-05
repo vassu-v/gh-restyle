@@ -1,6 +1,8 @@
 /** The subset of GitHub REST shapes Gitling reads. Keep fields optional when GitHub omits them in some responses. */
 
 export type User = {
+  /** Numeric id; used for co-author lines (`{id}+{login}@users.noreply.github.com`). */
+  id?: number;
   login: string; avatar_url: string; name?: string | null; bio?: string | null;
   followers?: number; following?: number; public_repos?: number; location?: string | null;
   html_url?: string; type?: 'User' | 'Organization' | 'Bot' | string; blog?: string | null; company?: string | null;
@@ -34,8 +36,11 @@ export type PullRequest = Issue & {
   /** null while GitHub is still computing it — poll again shortly. */
   mergeable: boolean | null;
   mergeable_state?: string;
-  head: { ref: string; sha: string; repo?: { full_name: string } | null };
+  /** head.repo is where the branch lives — a fork for outside PRs; null when that fork was deleted. */
+  head: { ref: string; sha: string; repo?: { full_name: string; owner?: { login: string } } | null };
   base: { ref: string; sha?: string };
+  /** Fork PRs only: whether the author lets maintainers push to the branch. */
+  maintainer_can_modify?: boolean;
   additions: number; deletions: number; changed_files: number; commits: number;
 };
 
@@ -47,10 +52,49 @@ export type ReviewEvent = 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT';
 export type ReviewState = 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED' | 'DISMISSED' | 'PENDING';
 /** GET /pulls/{n}/reviews */
 export type Review = { id: number; user: User; state: ReviewState; body: string | null; submitted_at?: string; html_url?: string };
-/** GET /pulls/{n}/comments — comments on diff lines. `line` is null when the code moved on (outdated). */
-export type ReviewComment = { id: number; user: User; body: string; path: string; line: number | null; side?: 'LEFT' | 'RIGHT'; created_at: string; in_reply_to_id?: number };
+/**
+ * GET /pulls/{n}/comments — comments on diff lines. `line` is null when the code moved on (outdated).
+ * Multi-line comments cover `start_line..line`. `original_*` and `diff_hunk` describe the lines as they were at
+ * `commit_id`, which is what a suggestion was written against.
+ */
+export type ReviewComment = {
+  id: number; user: User; body: string; path: string;
+  line: number | null;
+  side?: 'LEFT' | 'RIGHT';
+  start_line?: number | null;
+  start_side?: 'LEFT' | 'RIGHT' | null;
+  original_line?: number | null; original_start_line?: number | null;
+  /** The diff hunk ending at the commented line, at commit_id. */
+  diff_hunk?: string;
+  commit_id?: string;
+  created_at: string; in_reply_to_id?: number; html_url?: string;
+};
 /** A line comment waiting to be sent with a review. */
-export type DraftComment = { path: string; line: number; side: 'LEFT' | 'RIGHT'; body: string };
+export type DraftComment = { path: string; line: number; side: 'LEFT' | 'RIGHT'; start_line?: number; start_side?: 'LEFT' | 'RIGHT'; body: string };
+
+/** From GraphQL reviewThreads. rootId = databaseId of the thread's first comment (= REST id). */
+export type ThreadState = { id: string; rootId: number; isResolved: boolean; isOutdated: boolean; viewerCanResolve: boolean; viewerCanUnresolve: boolean; viewerCanReply: boolean };
+
+/** A review thread as the app shows it (made by groupThreads). */
+export type ReviewThread = {
+  root: ReviewComment; replies: ReviewComment[];
+  path: string; line: number | null; side: 'LEFT' | 'RIGHT'; startLine: number | null;
+  outdated: boolean; resolved: boolean;
+  /** null when GraphQL state is unavailable (then it can't be resolved from here). */
+  threadId: string | null;
+  canResolve: boolean; canUnresolve: boolean; canReply: boolean;
+};
+
+/** A ```suggestion block in a review comment: replace lines startLine..endLine of `path` with `lines`. */
+export type Suggestion = { commentId: number; path: string; startLine: number; endLine: number; lines: string[]; author: User };
+export type SuggestionCheck = { ok: true; suggestion: Suggestion } | { ok: false; reason: string };
+export type ApplyResult = { sha: string; applied: number };
+
+/** Git Data API shapes (only the fields Gitling reads). */
+export type GitCommit = { sha: string; tree: { sha: string }; message?: string; parents?: { sha: string }[] };
+export type GitTreeEntry = { path: string; mode: string; type: 'blob' | 'tree' | 'commit'; sha: string };
+export type GitTree = { sha: string; tree: GitTreeEntry[] };
+export type NewTreeEntry = { path: string; mode: string; type: 'blob'; content: string };
 
 export type MergeMethod = 'merge' | 'squash' | 'rebase';
 

@@ -1,5 +1,6 @@
-import type { DraftComment, MergeMethod, ReviewEvent } from '@gitling/github';
+import { groupThreads, type DraftComment, type MergeMethod, type ReviewComment, type ReviewEvent } from '@gitling/github';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { useSession } from '@/session/SessionProvider';
 
 /**
@@ -147,12 +148,33 @@ export function useReviews(owner: string, repo: string, n: number, enabled: bool
   const comments = useQuery({ queryKey: [k, 'review-comments', owner, repo, n], queryFn: () => api.reviewComments(owner, repo, n), enabled });
   return { reviews, comments };
 }
+/**
+ * Review comments grouped into threads. REST gives the comments; GraphQL adds resolved state, thread ids and
+ * what you may do. If GraphQL fails (scopes, rate limit), threads still show, just without Resolve.
+ */
+export function useReviewThreads(owner: string, repo: string, n: number, enabled: boolean) {
+  const { api, k } = useApi();
+  const comments = useQuery({ queryKey: [k, 'review-comments', owner, repo, n], queryFn: () => api.reviewComments(owner, repo, n), enabled });
+  const states = useQuery({
+    queryKey: [k, 'review-threads', owner, repo, n],
+    queryFn: () => api.reviewThreads(owner, repo, n).catch(() => null),
+    enabled, retry: false,
+  });
+  const threads = useMemo(() => groupThreads(comments.data ?? [], states.data ?? null), [comments.data, states.data]);
+  return {
+    threads,
+    isLoading: comments.isLoading || states.isLoading,
+    error: comments.error,
+    refetch: () => Promise.all([comments.refetch(), states.refetch()]),
+  };
+}
 export function useChecks(owner: string, repo: string, sha: string | undefined) {
   const { api, k } = useApi();
   return useQuery({ queryKey: [k, 'checks', owner, repo, sha], queryFn: () => api.checks(owner, repo, sha!), enabled: !!sha, staleTime: 30e3 });
 }
 export function useThreadActions(owner: string, repo: string, n: number) {
   const { api, k } = useApi();
+  const me = useMe();
   const qc = useQueryClient();
   const refresh = () => qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === k && q.queryKey.includes(owner) && q.queryKey.includes(repo) });
   const refreshLists = () => qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === k && (q.queryKey[1] === 'search' || q.queryKey[1] === 'notifications') });
@@ -162,5 +184,12 @@ export function useThreadActions(owner: string, repo: string, n: number) {
     setState: useMutation({ mutationFn: (state: 'open' | 'closed') => api.setState(owner, repo, n, state), onSuccess: after }),
     merge: useMutation({ mutationFn: (method: MergeMethod) => api.merge(owner, repo, n, method), onSuccess: after }),
     review: useMutation({ mutationFn: (r: { event: ReviewEvent; body?: string; comments?: DraftComment[] }) => api.submitReview(owner, repo, n, r), onSuccess: refresh }),
+    reply: useMutation({ mutationFn: (r: { rootId: number; body: string }) => api.replyToReviewComment(owner, repo, n, r.rootId, r.body), onSuccess: refresh }),
+    resolve: useMutation({ mutationFn: (r: { threadId: string; resolved: boolean }) => (r.resolved ? api.resolveThread(r.threadId) : api.unresolveThread(r.threadId)), onSuccess: refresh }),
+    // A new commit on the PR branch: the files, checks and comment positions all change.
+    applySuggestions: useMutation({
+      mutationFn: (r: { comments: ReviewComment[]; message?: string }) => api.applySuggestions(owner, repo, n, r.comments, { message: r.message, viewer: me.data?.login }),
+      onSuccess: refresh,
+    }),
   };
 }

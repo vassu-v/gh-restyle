@@ -32,8 +32,8 @@ apps/extension/      Manifest V3 extension; restyles github.com via Primer CSS v
 packages/github/     typed GitHub REST: client.ts (transport), api.ts (every endpoint), auth.ts (OAuth/PKCE), diff.ts (patch → line numbers), mock.ts (sample data)
 packages/design/     Design schema (zod), Signal skin, token resolver, contrast fitting, share codes
 services/edge/       Cloudflare Worker "gitling": serves the web app (static assets) + sign-in routes (phase 2: push)
-scripts/             pwa.mjs (post-build), smoke.mjs (every screen), e2e-signin/studio/review.mjs, deploy.mjs
-docs/                CONTEXT, STATUS, ARCHITECTURE, SETUP-SIGNIN, DEPLOY, decisions/, plans/ (next features)
+scripts/             pwa.mjs (post-build), smoke.mjs (every screen), e2e-signin/studio/review/extension.mjs, deploy.mjs
+docs/                CONTEXT, STATUS, ARCHITECTURE, SETUP-SIGNIN, DEPLOY, EXTENSION (how to use it), decisions/, plans/ (next features)
 ```
 
 ## Commands (from the repo root)
@@ -47,10 +47,11 @@ docs/                CONTEXT, STATUS, ARCHITECTURE, SETUP-SIGNIN, DEPLOY, decisi
 | `npm run smoke` | after `build:web`: opens every screen in Chromium at phone size, fails on errors |
 | `npm run e2e:signin` | full "Sign in with GitHub" flow in a browser with GitHub simulated (real worker code) |
 | `npm run e2e:studio` | after `build:web`: Studio presets, drag-to-reorder, share links in a browser |
-| `npm run e2e:review` | after `build:web`: PR review flow (line comments, request changes, timeline) in a browser |
+| `npm run e2e:review` | after `build:web`: PR reviews in a browser: line comments, verdicts, replies, resolve, multi-line, suggestions (apply + batch) |
 | `npm run test:live` | read-only tests against the real api.github.com (`LIVE_REPO=owner/name`, optional `GITHUB_TOKEN`) |
 | `npm run build:web` | `expo export` + `scripts/pwa.mjs` → `apps/app/dist` (what Vercel/Cloudflare serve) |
 | `npm run build:extension` | → `apps/extension/dist` (load unpacked) |
+| `npm run e2e:extension` | after `build:extension`: the extension end to end on live github.com (popup, design codes, off/on, navigation) |
 | `npm run stress:extension` | extension on 26 live github.com page types × 3 backgrounds: contrast, errors, screenshots → `stress-report/` |
 | `npm run deploy` | build the app with settings from `services/edge/wrangler.toml` and deploy the Worker (needs Cloudflare auth; see docs/DEPLOY.md) |
 

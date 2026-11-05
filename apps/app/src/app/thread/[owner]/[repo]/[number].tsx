@@ -3,9 +3,10 @@ import { useState } from 'react';
 import { Linking, Pressable, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTokens } from '@/design/DesignProvider';
-import type { DraftComment, MergeMethod, ReviewState } from '@gitling/github';
-import { useChecks, useMe, usePrFiles, useRepo, useReviews, useThread, useThreadActions } from '@/data/queries';
+import type { DraftComment, MergeMethod, ReviewComment, ReviewState } from '@gitling/github';
+import { useChecks, useMe, usePrFiles, useRepo, useReviews, useReviewThreads, useThread, useThreadActions } from '@/data/queries';
 import { DiffFile } from '@/features/thread/DiffFile';
+import type { ThreadCtx } from '@/features/thread/ThreadView';
 import { ReviewPanel } from '@/features/thread/ReviewPanel';
 import { stateOf } from '@/features/rows';
 import { rel } from '@/lib/format';
@@ -28,6 +29,10 @@ export default function Thread() {
   const [draft, setDraft] = useState(''); const [composing, setComposing] = useState(false);
   const [armed, setArmed] = useState(false);
   const review = useReviews(owner, repo, n, isPr);
+  const threads = useReviewThreads(owner, repo, n, isPr && seg === 'files');
+  // Suggestions collected for one commit, and the note after a commit (kept here: applied threads re-mount as outdated).
+  const [batch, setBatch] = useState<ReviewComment[]>([]);
+  const [applied, setApplied] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<DraftComment[]>([]);
   const [reviewing, setReviewing] = useState(false);
   const [reviewDone, setReviewDone] = useState<string | null>(null);
@@ -54,6 +59,19 @@ export default function Thread() {
   const failed = runs.filter((r) => r.conclusion && !['success', 'skipped', 'neutral'].includes(r.conclusion)).length;
   const diffTicks = p ? (() => { const total = Math.max(1, p.additions + p.deletions); const g = Math.round((p.additions / total) * 18); const r = Math.max(p.deletions ? 1 : 0, Math.round((p.deletions / total) * 18)); return [...Array(g).fill('ok'), ...Array(r).fill('bad'), ...Array(Math.max(0, 20 - g - r)).fill('none')] as ('ok' | 'bad' | 'none')[]; })() : [];
   const open = it.state === 'open';
+  const ctx: ThreadCtx = {
+    owner, repo, prOpen: open && !!p,
+    // GitHub lets people with push access, and the PR's author, commit to its branch.
+    canApply: open && (canWrite || (!!me.data?.login && it.user.login === me.data.login)),
+    batch,
+    onToggleBatch: (c) => { setApplied(null); setBatch((b) => (b.some((x) => x.id === c.id) ? b.filter((x) => x.id !== c.id) : [...b, c])); },
+    onApply: (c, message) => actions.applySuggestions.mutateAsync({ comments: [c], message }).then(() => {
+      setBatch((b) => b.filter((x) => x.id !== c.id)); setApplied('Suggestion applied.');
+    }),
+    onReply: (rootId, body) => actions.reply.mutateAsync({ rootId, body }),
+    onResolve: (threadId, resolved) => actions.resolve.mutateAsync({ threadId, resolved }),
+  };
+  const commitBatch = () => actions.applySuggestions.mutate({ comments: batch }, { onSuccess: () => { setBatch([]); setApplied('Suggestions applied.'); } });
 
   return (
     <View style={{ flex: 1, backgroundColor: t.c.bg }}>
@@ -94,12 +112,23 @@ export default function Thread() {
         {p ? <View style={{ marginHorizontal: 14, marginTop: 14 }}><Seg value={seg} onChange={setSeg} options={[{ value: 'conv', label: 'Conversation', n: (comments.data?.length ?? 0) + 1 }, { value: 'files', label: 'Files', n: p.changed_files }]} /></View> : null}
 
         {seg === 'files' && p ? (
-          files.isLoading ? <Loading rows={3} /> : files.error ? <ErrorNote error={files.error} onRetry={() => files.refetch()} /> : (
+          files.isLoading || threads.isLoading ? <Loading rows={3} /> : files.error || threads.error ? <ErrorNote error={files.error ?? threads.error} onRetry={() => { files.refetch(); threads.refetch(); }} /> : (
             <>
-              {open ? <T v="monoS" c="dim" style={{ paddingHorizontal: 18, paddingTop: 10 }}>tap a line to comment on it</T> : null}
+              {batch.length ? (
+                <Panel style={{ marginHorizontal: 14, marginTop: 12, padding: 12, gap: 10 }} tint={t.c.acc}>
+                  <T v="bodyStrong">{batch.length} suggestion{batch.length === 1 ? '' : 's'} in batch</T>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <Button style={{ flex: 1 }} label={actions.applySuggestions.isPending ? 'Committing…' : 'Commit batch'} accessibilityLabel="Commit batch" disabled={actions.applySuggestions.isPending} onPress={commitBatch} />
+                    <Button kind="quiet" label="Clear" onPress={() => setBatch([])} />
+                  </View>
+                  {actions.applySuggestions.error ? <T v="sub" c="bad">{(actions.applySuggestions.error as Error).message}</T> : null}
+                </Panel>
+              ) : null}
+              {applied ? <T v="sub" c="ok" style={{ paddingHorizontal: 18, paddingTop: 10 }}>{applied}</T> : null}
+              {open ? <T v="monoS" c="dim" style={{ paddingHorizontal: 18, paddingTop: 10 }}>tap a line to comment on it, long-press to pick a range</T> : null}
               {(files.data ?? []).map((f) => (
-                <DiffFile key={f.filename} file={f} owner={owner} repo={repo} canComment={open}
-                  existing={(review.comments.data ?? []).filter((c) => c.path === f.filename)}
+                <DiffFile key={f.filename} file={f} canComment={open} ctx={ctx}
+                  threads={threads.threads.filter((th) => th.path === f.filename)}
                   drafts={drafts.filter((d) => d.path === f.filename)}
                   onDraft={(d) => { setDrafts((x) => [...x, d]); setReviewDone(null); }}
                   onRemoveDraft={(d) => setDrafts((x) => x.filter((y) => y !== d))} />
