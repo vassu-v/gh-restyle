@@ -83,8 +83,10 @@ await btn('Show resolved thread').click();
 log(await visible(page.getByText('fail offline', { exact: false })), 'expanding the resolved thread shows its comment');
 log(await visible(btn('Unresolve')), 'an expanded resolved thread offers Unresolve');
 await btn('Unresolve').click();
-log(await visible(btn('Resolve')), 'after Unresolve the thread offers Resolve');
-await btn('Resolve').click();
+// Threads A and B offer Resolve too; take the first one after thread C's comment.
+const resolveC = page.getByText('fail offline', { exact: false }).locator('visible=true').first().locator('xpath=following::*[@role="button"][@aria-label="Resolve"][1]');
+log(await visible(resolveC), 'after Unresolve the thread offers Resolve');
+await resolveC.click();
 log(await visible(page.getByText('Resolved · 1 comment')), 'Resolve collapses the thread again');
 log(await hidden(page.getByText('fail offline', { exact: false })), "the re-resolved thread hides Devansh's comment again");
 
@@ -104,7 +106,8 @@ log((await page.getByText("The code changed since this suggestion. It's outdated
 log((await btn('Apply').count()) === 0, 'no Apply button is left on the applied suggestions');
 // The code browser sees the new commit on the head branch (same page load, in-app navigation).
 await navigate('/repo/you/trail-notes/blob?path=src%2Fsync%2Fqueue.ts&ref=fix%2Foffline-merge');
-await page.getByText('queue.ts', { exact: true }).first().waitFor({ timeout: 5000 }).catch(() => {});
+log(page.url().includes('/blob?') && await visible(page.getByText('queue.ts', { exact: true })), 'in-app navigation opens the code browser on the head branch');
+log(!(await visible(page.getByText('Suggested change', { exact: true }))), 'the code browser shows the file, not the PR');
 await page.waitForTimeout(800);
 const code = await bodyText();
 await shot('blob-after-batch');
@@ -127,12 +130,13 @@ log(await visible(page.getByText('Suggestion applied.')), 'committing one sugges
 // Multi-line suggestion on someone else's PR (no push access).
 await page.goto(`${base}/thread/lin/tiny-sync/33`, { waitUntil: 'networkidle' });
 await page.getByText('Files', { exact: true }).click();
-const l11 = page.getByLabel('Comment on line 11', { exact: true }).first();
+// The hunk deletes old lines 11–12, so "line 11" names two rows; the new (RIGHT-side) one comes last.
+const l11 = page.getByLabel('Comment on line 11', { exact: true }).last();
 await l11.scrollIntoViewIfNeeded();
 const bb = await l11.boundingBox();
 await page.mouse.move(bb.x + 60, bb.y + 5); await page.mouse.down(); await page.waitForTimeout(800); await page.mouse.up();
 log(await visible(page.getByText('Tap the last line of the range')), 'long-pressing a line starts a range');
-await page.getByLabel('Comment on line 13', { exact: true }).first().click();
+await page.getByLabel('Comment on line 13', { exact: true }).last().click();
 const box = page.getByPlaceholder('Comment on lines 11–13');
 log(await visible(box), 'tapping a later line opens the composer for "lines 11–13"');
 await btn('Suggest').click();
@@ -141,6 +145,7 @@ await box.fill((await box.inputValue()).replace('```suggestion\n', 'Fold these i
 await page.getByText('Add to review', { exact: true }).click();
 log(await visible(page.getByText('pending · lines 11–13')), 'the range comment shows as "pending · lines 11–13"');
 await page.getByText('Review · 1').click();
+await page.getByText('Comment', { exact: true }).click(); // the panel starts on Approve for someone else's PR
 await page.getByPlaceholder('Summary').fill('One idea inline.');
 await btn('Send review').click();
 await page.waitForTimeout(600);
