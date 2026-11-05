@@ -43,7 +43,23 @@ defers something.
   with `gitling://auth/callback`, which isn't exercised on a device.
 - **On a real phone:** install and offline behaviour. Chrome's installability check reports no errors on the live site, and offline launch passes in Chromium.
 
+## Fixed 2026-11-05 (review pass)
+
+- **One-tap sign-in looped forever on the live site.** The app and Worker share an origin, so the Worker
+  redirected `/auth/callback` to itself (`run_worker_first`). It now serves the app page instead. Unit-tested;
+  needs a real sign-in on the live site after the next deploy to confirm.
+- **`javascript:` links:** `/ask?template=…`, link tiles and ask tiles from shared designs could hand
+  `javascript:` URLs to `window.open`. Only http(s)/mailto open now (`isSafeLink` in packages/design, also
+  enforced by the schema).
+- Crashes: markdown `&#9999999;` (bad code point), Studio paste with a broken `%` escape, github.com links with a
+  broken `%` escape.
+- **Windows:** scripts used `URL.pathname` (gave `D:\D:\…`), and `pwa.mjs` didn't rename `@` font folders on
+  Windows, which left every screen blank. All scripts now use `fileURLToPath` / `basename`.
+
 ## Known gaps / next up
+
+- **Open from the 2026-11-05 review (not fixed yet):** CRLF/BOM files break or corrupt suggestion apply; replies to an orphaned review thread 422; `gitling://` allowlist matches any gitling: URL and `http://localhost:8081` is allowed in prod; no CSP header; pending review drafts survive a suggestion commit (no `commit_id`); late 401 from an old token can sign out a new session; invalid stored Design is overwritten without backup.
+- `npm run e2e:extension` fails on Windows here: Chromium blocks the popup (`ERR_BLOCKED_BY_CLIENT`). `smoke` passes but Node exits 127 on Windows after finishing (libuv assertion).
 
 - Any asset path containing `@` loops on Cloudflare's asset server. `@` folders are renamed to `_at_`, and `@` files are kept out of the precache.
 - (old note) Asset folders starting with `@` (scoped npm packages, e.g. fonts) loop forever on Cloudflare's asset server. `scripts/pwa.mjs` renames them to `_at_…` at build time; keep that step.

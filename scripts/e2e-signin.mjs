@@ -2,6 +2,7 @@
 //   real: the app build, the auth worker code (services/edge), PKCE, state, redirects, callback route, token vault
 //   fake: github.com/login/oauth/* and api.github.com (intercepted in the browser / in the worker's fetch)
 // Run: npm run e2e:signin   (builds the app with test sign-in config into a temp dir; leaves apps/app/dist alone)
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
 import { execSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -11,7 +12,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { extname, join } from 'node:path';
 
-const root = new URL('..', import.meta.url).pathname;
+const root = fileURLToPath(new URL('..', import.meta.url));
 const APP_PORT = 8099, WORKER_PORT = 8787;
 const APP = `http://127.0.0.1:${APP_PORT}`, WORKER = `http://127.0.0.1:${WORKER_PORT}`;
 const out = mkdtempSync(join(tmpdir(), 'gitling-e2e-'));
@@ -26,7 +27,7 @@ execSync(`npx expo export --platform web --output-dir ${out}/app`, {
 
 // 2. Run the real worker code in Node, with GitHub's token endpoint faked.
 await build({ entryPoints: [join(root, 'services/edge/src/index.ts')], bundle: true, format: 'esm', platform: 'neutral', outfile: `${out}/worker.mjs`, logLevel: 'silent' });
-const { handle } = await import(`${out}/worker.mjs`);
+const { handle } = await import(pathToFileURL(join(out, 'worker.mjs')).href);
 const issued = new Map(); // code → code_challenge, recorded when the fake GitHub authorize page "approves"
 const exchanges = [];
 const fakeGitHubFetch = async (url, init) => {

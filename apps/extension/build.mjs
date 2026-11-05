@@ -1,8 +1,9 @@
 // Bundles the extension into dist/ (load it unpacked from there).
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
 import { cpSync, mkdirSync, rmSync } from 'node:fs';
 
-const here = new URL('.', import.meta.url).pathname;
+const here = fileURLToPath(new URL('.', import.meta.url));
 rmSync(here + 'dist', { recursive: true, force: true });
 mkdirSync(here + 'dist', { recursive: true });
 cpSync(here + 'public', here + 'dist', { recursive: true });

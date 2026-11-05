@@ -11,6 +11,15 @@ export type SectionId = z.infer<typeof SectionId>;
 export const InboxFilter = z.enum(['all', 'review_requested', 'mention', 'assign', 'author', 'comment', 'ci_activity']);
 export type InboxFilter = z.infer<typeof InboxFilter>;
 
+/**
+ * Links Gitling may open: http(s) and mailto only. Blocks javascript:, data:, vbscript: and friends, which a
+ * shared design or a crafted /ask link could otherwise hand to window.open on web (script on Gitling's origin
+ * could then read the token vault). Parsed with URL so tricks like "java	script:" or leading spaces normalize.
+ */
+export function isSafeLink(url: string): boolean {
+  try { return ['http:', 'https:', 'mailto:'].includes(new URL(url.trim().replace(/\{query\}/g, 'q')).protocol); } catch { return false; }
+}
+
 export const TileTarget = z.discriminatedUnion('type', [
   z.object({ type: z.literal('search'), q: z.string().min(1) }),
   z.object({
@@ -21,13 +30,13 @@ export const TileTarget = z.discriminatedUnion('type', [
   z.object({ type: z.literal('user'), login: z.string().min(1) }),
   z.object({ type: z.literal('file'), repo: z.string().regex(/^[\w.-]+\/[\w.-]+$/), path: z.string() }),
   z.object({ type: z.literal('inbox'), filter: InboxFilter }),
-  z.object({ type: z.literal('link'), url: z.string().url() }),
+  z.object({ type: z.literal('link'), url: z.string().url().refine(isSafeLink, 'Only http(s) links') }),
   z.object({
     type: z.literal('ask'),
     prompt: z.string().min(1),
     template: z.string().includes('{query}'),
     dest: z.enum(['issues', 'repos', 'link']),
-  }),
+  }).refine((a) => a.dest !== 'link' || isSafeLink(a.template), { message: 'Only http(s) links', path: ['template'] }),
 ]);
 export type TileTarget = z.infer<typeof TileTarget>;
 export type TileTargetType = TileTarget['type'];

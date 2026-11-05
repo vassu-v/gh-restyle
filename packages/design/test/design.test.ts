@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { contrast, decodeDesign, DEFAULT_DESIGN, encodeDesign, fit, resolveTokens } from '../src';
+import { contrast, decodeDesign, DEFAULT_DESIGN, encodeDesign, fit, isSafeLink, resolveTokens, type Design } from '../src';
 
 describe('design', () => {
   it('share codes round-trip', () => {
@@ -47,5 +47,16 @@ describe('presets', () => {
   it('the default design is the Signal preset', () => {
     expect(presetOf(DEFAULT_DESIGN)?.id).toBe('signal');
     expect(describeDesign(DEFAULT_DESIGN)).toMatch(/^Signal · 5 tabs/);
+  });
+  it('only http(s)/mailto links are safe to open', () => {
+    for (const ok of ['https://github.com/x', 'http://a.b/?q={query}', 'mailto:a@b.c']) expect(isSafeLink(ok)).toBe(true);
+    for (const bad of ['javascript:alert(1)', ' JavaScript:alert(1)', 'java	script:alert(1)', 'data:text/html,<b>', 'vbscript:x', 'gitling://x', 'not a url', 'javascript:alert({query})'])
+      expect(isSafeLink(bad), bad).toBe(false);
+  });
+  it('share codes carrying javascript: link or ask tiles are rejected', () => {
+    const tile = (target: unknown) => ({ ...DEFAULT_DESIGN, tiles: [{ ...DEFAULT_DESIGN.tiles[0], id: 'x', target }] }) as unknown as Design;
+    expect(decodeDesign(encodeDesign(tile({ type: 'link', url: 'javascript:alert(1)' }))).ok).toBe(false);
+    expect(decodeDesign(encodeDesign(tile({ type: 'ask', prompt: 'p', template: 'javascript:x({query})', dest: 'link' }))).ok).toBe(false);
+    expect(decodeDesign(encodeDesign(tile({ type: 'link', url: 'https://github.com' }))).ok).toBe(true);
   });
 });

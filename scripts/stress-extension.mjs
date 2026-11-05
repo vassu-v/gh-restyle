@@ -7,12 +7,13 @@
 //   - screenshot of the top of the page
 // Run: npm run build:extension && node scripts/stress-extension.mjs [--quick | --only=<page name part>]
 // Output: stress-report/ (report.md, report.json, screenshots), git-ignored.
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 
-const root = new URL('..', import.meta.url).pathname;
+const root = fileURLToPath(new URL('..', import.meta.url));
 const ext = join(root, 'apps/extension/dist');
 const out = join(root, 'stress-report');
 mkdirSync(join(out, 'shots'), { recursive: true });

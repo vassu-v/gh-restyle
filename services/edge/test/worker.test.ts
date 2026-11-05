@@ -99,6 +99,20 @@ describe('static assets', () => {
     expect(await res.text()).toBe('<html>app</html>');
     expect(ASSETS.fetch).toHaveBeenCalledOnce();
   });
+  it('serves the app at /auth/callback when the app and the worker share an origin (no redirect loop)', async () => {
+    const ASSETS = { fetch: vi.fn(async () => new Response('<html>app</html>')) };
+    const same = { ...env, ASSETS, ALLOWED_RETURN: `${W},gitling://` };
+    const state = encodeState('n0nce', `${W}/auth/callback`);
+    const res = await handle(new Request(`${W}/auth/callback?code=abc123&state=${state}`), same);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe('<html>app</html>');
+    // a different path on the same origin still redirects; an evil target is still refused without touching assets
+    const other = await handle(new Request(`${W}/auth/callback?code=abc123&state=${encodeState('n', `${W}/done`)}`), same);
+    expect(other.status).toBe(302);
+    const evil = await handle(new Request(`${W}/auth/callback?code=abc123&state=${encodeState('n', 'https://evil.com/auth/callback')}`), same);
+    expect(evil.status).toBe(400);
+    expect(ASSETS.fetch).toHaveBeenCalledOnce();
+  });
   it('still answers /health itself', async () => {
     const ASSETS = { fetch: vi.fn() };
     const res = await handle(new Request(`${W}/health`), { ...env, ASSETS });

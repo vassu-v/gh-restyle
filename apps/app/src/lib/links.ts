@@ -1,5 +1,6 @@
 import { router, type Href } from 'expo-router';
 import { Linking } from 'react-native';
+import { isSafeLink } from '@gitling/design';
 
 /**
  * In-app routes, built in one place so screens don't hand-assemble paths.
@@ -22,7 +23,8 @@ export function routeForUrl(url: string): Href | null {
   let u: URL;
   try { u = new URL(url); } catch { return null; }
   if (!/^(www\.)?github\.com$/.test(u.hostname)) return null;
-  const p = u.pathname.split('/').filter(Boolean).map(decodeURIComponent);
+  let p: string[];
+  try { p = u.pathname.split('/').filter(Boolean).map(decodeURIComponent); } catch { return null; }
   if (!p.length || RESERVED.has(p[0].toLowerCase())) return null;
   const [owner, name, kind, ...rest] = p;
   if (!name) return routes.user(owner);
@@ -41,5 +43,5 @@ export function routeForUrl(url: string): Href | null {
 export function openUrl(url: string) {
   const r = routeForUrl(url);
   if (r) router.push(r);
-  else Linking.openURL(url).catch(() => {});
+  else if (isSafeLink(url)) Linking.openURL(url).catch(() => {});
 }

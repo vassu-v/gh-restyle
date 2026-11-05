@@ -1,12 +1,13 @@
 // Browser test of PR reviews on the built web app (sample mode): line comments, verdicts, timeline,
 // review threads (reply, resolve), suggestions (apply, batch) and multi-line comments.
 // Run after `npm run build:web`:  npm run e2e:review
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { extname, join } from 'node:path';
 
-const dist = new URL('../apps/app/dist/', import.meta.url).pathname;
+const dist = fileURLToPath(new URL('../apps/app/dist/', import.meta.url));
 if (!existsSync(join(dist, 'index.html'))) { console.error('Build first: npm run build:web'); process.exit(1); }
 const TYPES = { '.js': 'text/javascript', '.html': 'text/html', '.json': 'application/json', '.png': 'image/png', '.ttf': 'font/ttf', '.ico': 'image/x-icon' };
 const server = createServer((req, res) => {

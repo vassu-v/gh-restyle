@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Linking, Pressable, TextInput, View } from 'react-native';
+import { isSafeLink } from '@gitling/design';
 import { useTokens } from '@/design/DesignProvider';
 import { Button, T } from '@/ui/primitives';
 
@@ -11,7 +12,12 @@ export default function Ask() {
   const [v, setV] = useState('');
   function go() {
     const q = v.trim(); if (!q) return;
-    if (dest === 'link') { Linking.openURL(template.replace('{query}', encodeURIComponent(q))); router.back(); return; }
+    if (dest === 'link') {
+      // template comes from the URL (/ask?template=…), so only http(s) may be opened.
+      const url = template.replace('{query}', encodeURIComponent(q));
+      if (isSafeLink(url)) Linking.openURL(url);
+      router.back(); return;
+    }
     router.replace({ pathname: '/search', params: { q: template.replace('{query}', q), kind: dest === 'repos' ? 'repos' : 'issues', title: q } });
   }
   return (

@@ -4,16 +4,17 @@
 //   0. renames asset folders that start with "@" (scoped packages, e.g. @expo-google-fonts): Cloudflare's asset
 //      server redirects %40 ↔ @ forever (ERR_TOO_MANY_REDIRECTS), so fonts never loaded in production
 // Idempotent: running it twice gives the same result.
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { basename, join, relative } from 'node:path';
 
-const dist = new URL('../apps/app/dist/', import.meta.url).pathname;
+const dist = fileURLToPath(new URL('../apps/app/dist/', import.meta.url));
 const walkAll = (dir) => readdirSync(dir).flatMap((f) => { const p = join(dir, f); return statSync(p).isDirectory() ? [p, ...walkAll(p)] : [p]; });
 
 // 0. "@" in asset paths → "_at_", in folder names and in every "/assets/…" string in the JS/HTML.
-for (const d of walkAll(join(dist, 'assets')).filter((p) => statSync(p).isDirectory() && p.split('/').pop().startsWith('@')).sort((a, b) => b.length - a.length)) {
-  renameSync(d, join(d, '..', '_at_' + d.split('/').pop().slice(1)));
+for (const d of walkAll(join(dist, 'assets')).filter((p) => statSync(p).isDirectory() && basename(p).startsWith('@')).sort((a, b) => b.length - a.length)) {
+  renameSync(d, join(d, '..', '_at_' + basename(d).slice(1)));
 }
 for (const f of walkAll(dist).filter((p) => /\.(js|html)$/.test(p))) {
   const src = readFileSync(f, 'utf8');

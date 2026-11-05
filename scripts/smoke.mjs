@@ -2,12 +2,13 @@
 // Opens every screen at phone size and fails on a blank screen, an error state or a console error.
 // Needs Playwright with Chromium (`npx playwright install chromium` if missing).
 // SMOKE_URL=https://… checks a deployed site instead of the local build.
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { existsSync, readFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
 
-const dist = new URL('../apps/app/dist/', import.meta.url).pathname;
+const dist = fileURLToPath(new URL('../apps/app/dist/', import.meta.url));
 if (!existsSync(join(dist, 'index.html'))) { console.error('Build first: npm run build:web'); process.exit(1); }
 let chromium;
 // createRequire also honours NODE_PATH (global installs), which ESM import() ignores.

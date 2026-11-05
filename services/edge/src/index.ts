@@ -33,7 +33,7 @@ export async function handle(req: Request, env: Env, f: Fetch = fetch): Promise<
   try {
     if (req.method === 'OPTIONS') return new Response(null, { status: cors ? 204 : 403, headers: cors ?? {} });
     if (url.pathname === '/health') return json({ ok: true, configured: !!(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET) }, 200, cors);
-    if (url.pathname === '/auth/callback' && req.method === 'GET') return callback(url, env);
+    if (url.pathname === '/auth/callback' && req.method === 'GET') return callback(req, url, env);
     if (url.pathname === '/auth/exchange' && req.method === 'POST') {
       if (req.headers.get('Origin') && !cors) return json({ error: 'This website is not allowed to sign in here.' }, 403);
       return exchange(req, url, env, f, cors);
@@ -47,11 +47,14 @@ export async function handle(req: Request, env: Env, f: Fetch = fetch): Promise<
 
 /* ─── callback: bounce GitHub's redirect back into the app ─── */
 
-function callback(url: URL, env: Env): Response {
+function callback(req: Request, url: URL, env: Env): Response | Promise<Response> {
   const state = url.searchParams.get('state') ?? '';
   const target = returnTarget(state);
   if (!target || !isAllowedReturn(target, env)) return page(400, 'This sign-in link is not valid. Go back to Gitling and try again.');
   const out = new URL(target);
+  // When the app is served by this same Worker, its return address IS this URL. Redirecting would loop
+  // forever (run_worker_first sends /auth/* back here), so serve the app's page and let it read code+state.
+  if (out.origin === url.origin && out.pathname === url.pathname && env.ASSETS) return env.ASSETS.fetch(req);
   for (const k of ['code', 'state', 'error', 'error_description']) {
     const v = url.searchParams.get(k);
     if (v) out.searchParams.set(k, v);

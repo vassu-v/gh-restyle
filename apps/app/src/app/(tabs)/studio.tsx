@@ -59,6 +59,9 @@ function Preview({ design, width = 272, tiles = true }: { design: Design; width?
   );
 }
 
+/** A pasted link with a broken %-escape (e.g. "import=%E0%A4") must show an error, not crash Studio. */
+const safeDecode = (s: string) => { try { return decodeURIComponent(s); } catch { return s; } };
+
 export default function Studio() {
   const { design, tokens: t, update, undo, canUndo, replace, reset } = useDesign();
   const params = useLocalSearchParams<{ tab?: string; import?: string }>();
@@ -205,7 +208,7 @@ export default function Studio() {
           <TextInput value={code} onChangeText={(v) => { setCode(v); setMsg(null); }} placeholder="Paste a GITLING1.… code or a share link" placeholderTextColor={t.c.dim} autoCapitalize="none" autoCorrect={false} multiline
             style={{ minHeight: 70, padding: 12, borderRadius: 13, backgroundColor: t.c.el2, color: t.c.fg, fontFamily: t.font.mono.regular, fontSize: 13 }} />
           {(() => {
-            const parsed = incoming ?? (code.includes('import=') ? decodeDesign(decodeURIComponent(code.split('import=')[1].split('&')[0])) : null);
+            const parsed = incoming ?? (code.includes('import=') ? decodeDesign(safeDecode(code.split('import=')[1].split('&')[0])) : null);
             if (!code.trim() || !parsed) return null;
             if (!parsed.ok) return <T v="sub" c="bad">{parsed.error}</T>;
             return (
