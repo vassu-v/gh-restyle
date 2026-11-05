@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Linking, Pressable, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTokens } from '@/design/DesignProvider';
@@ -12,6 +12,7 @@ import { stateOf } from '@/features/rows';
 import { rel } from '@/lib/format';
 import { routes } from '@/lib/links';
 import { Markdown } from '@/ui/Markdown';
+import { reveal } from '@/ui/reveal';
 import { Icon } from '@/ui/Icon';
 import { Avatar, Button, ErrorNote, glass, Loading, Panel, Screen, Seg, T, Ticks } from '@/ui/primitives';
 
@@ -28,12 +29,21 @@ export default function Thread() {
   const me = useMe();
   const [draft, setDraft] = useState(''); const [composing, setComposing] = useState(false);
   const [armed, setArmed] = useState(false);
+  // One disarm timer at a time: an older timer must not disarm a button re-armed (or a method picked) since.
+  const disarm = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(disarm.current), []);
   const review = useReviews(owner, repo, n, isPr);
   const threads = useReviewThreads(owner, repo, n, isPr && seg === 'files');
   // Suggestions collected for one commit, and the note after a commit (kept here: applied threads re-mount as outdated).
   const [batch, setBatch] = useState<ReviewComment[]>([]);
   const [applied, setApplied] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<DraftComment[]>([]);
+  // The head commit the pending comments' line numbers refer to: the one the diff on screen was read at (not the
+  // PR's current head, which may have moved). Sent as commit_id so GitHub places them on that diff.
+  const [draftSha, setDraftSha] = useState<string | undefined>(undefined);
+  // Pending comments belong to one head commit. If the PR moved on since, a new comment would be on a different
+  // diff, and one commit_id can't place both: send or discard the old ones first.
+  const draftsStale = drafts.length > 0 && !!files.data && files.data.sha !== draftSha;
   const [reviewing, setReviewing] = useState(false);
   const [reviewDone, setReviewDone] = useState<string | null>(null);
   const methods = mergeMethods(repoInfo.data);
@@ -124,13 +134,22 @@ export default function Thread() {
                   {actions.applySuggestions.error ? <T v="sub" c="bad">{(actions.applySuggestions.error as Error).message}</T> : null}
                 </Panel>
               ) : null}
+              {draftsStale ? (
+                <Panel style={{ marginHorizontal: 14, marginTop: 12, padding: 12, gap: 10 }} tint={t.c.wait}>
+                  <T v="sub">New commits arrived after your {drafts.length} pending comment{drafts.length === 1 ? '' : 's'}. Send the review (they stay on the lines you picked) or discard them before commenting on the new code.</T>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <Button style={{ flex: 1 }} label="Send review" onPress={() => setReviewing(true)} />
+                    <Button kind="quiet" label="Discard" onPress={() => setDrafts([])} />
+                  </View>
+                </Panel>
+              ) : null}
               {applied ? <T v="sub" c="ok" style={{ paddingHorizontal: 18, paddingTop: 10 }}>{applied}</T> : null}
               {open ? <T v="monoS" c="dim" style={{ paddingHorizontal: 18, paddingTop: 10 }}>tap a line to comment on it, long-press to pick a range</T> : null}
-              {(files.data ?? []).map((f) => (
+              {(files.data?.files ?? []).map((f) => (
                 <DiffFile key={f.filename} file={f} canComment={open} ctx={ctx}
                   threads={threads.threads.filter((th) => th.path === f.filename)}
                   drafts={drafts.filter((d) => d.path === f.filename)}
-                  onDraft={(d) => { setDrafts((x) => [...x, d]); setReviewDone(null); }}
+                  onDraft={(d) => { if (draftsStale) return false; setDraftSha((s) => (drafts.length ? s : files.data?.sha)); setDrafts((x) => [...x, d]); setReviewDone(null); }}
                   onRemoveDraft={(d) => setDrafts((x) => x.filter((y) => y !== d))} />
               ))}
             </>
@@ -138,9 +157,9 @@ export default function Thread() {
         ) : (
           <View style={{ paddingTop: 8 }}>
             {reviewing && p ? (
-              <ReviewPanel ownPr={it.user.login === me.data?.login} drafts={drafts} pending={actions.review.isPending} error={actions.review.error}
+              <View ref={reveal}><ReviewPanel ownPr={it.user.login === me.data?.login} drafts={drafts} pending={actions.review.isPending} error={actions.review.error}
                 onCancel={() => setReviewing(false)}
-                onSubmit={(r) => actions.review.mutate({ ...r, comments: drafts }, { onSuccess: () => { setDrafts([]); setReviewing(false); setReviewDone(REVIEW_DONE[r.event]); } })} />
+                onSubmit={(r) => actions.review.mutate({ ...r, comments: drafts, commitId: drafts.length ? draftSha : undefined }, { onSuccess: () => { setDrafts([]); setReviewing(false); setReviewDone(REVIEW_DONE[r.event]); } })} /></View>
             ) : null}
             {reviewDone ? <T v="sub" c="ok" style={{ paddingHorizontal: 18, paddingTop: 10 }}>{reviewDone}</T> : null}
             {timeline(it, comments.data ?? [], review.reviews.data ?? []).map((c) => c.kind === 'review' ? (
@@ -164,7 +183,7 @@ export default function Thread() {
               <View style={{ paddingHorizontal: 14, gap: 8 }}>
                 <TextInput autoFocus value={draft} onChangeText={setDraft} multiline placeholder={`Comment as ${me.data?.login ?? 'you'}`} placeholderTextColor={t.c.dim}
                   style={{ minHeight: 96, padding: 12, borderRadius: 14, backgroundColor: t.c.el, borderWidth: 1, borderColor: t.c.line, color: t.c.fg, fontFamily: t.font.ui.regular, fontSize: 15, textAlignVertical: 'top' }} />
-                <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View ref={reveal} style={{ flexDirection: 'row', gap: 8 }}>
                   <Button label={actions.comment.isPending ? 'Posting…' : 'Comment'} disabled={!draft.trim() || actions.comment.isPending} onPress={() => actions.comment.mutate(draft.trim(), { onSuccess: () => { setDraft(''); setComposing(false); } })} />
                   <Button kind="quiet" label="Cancel" onPress={() => setComposing(false)} />
                 </View>
@@ -179,7 +198,7 @@ export default function Thread() {
         {p && open && canWrite && armed && methods.length > 1 ? (
           <View style={{ width: '100%', maxWidth: 520, paddingHorizontal: 14, marginBottom: 8 }}>
             <View style={[{ borderRadius: 14, padding: 4 }, glass(t)]}>
-              <Seg small value={chosen} onChange={(m) => { setMethod(m); setArmed(true); }} options={methods.map((m) => ({ value: m, label: MERGE_LABEL[m] }))} />
+              <Seg small value={chosen} onChange={(m) => { setMethod(m); setArmed(true); clearTimeout(disarm.current); disarm.current = setTimeout(() => setArmed(false), 6000); }} options={methods.map((m) => ({ value: m, label: MERGE_LABEL[m] }))} />
             </View>
           </View>
         ) : null}
@@ -192,7 +211,7 @@ export default function Thread() {
           {p && open && canWrite ? (
             <Button style={{ flex: 1 }} icon="git-merge" disabled={p.mergeable === false || p.draft || actions.merge.isPending}
               label={actions.merge.isPending ? 'Merging…' : armed ? `Tap again to ${MERGE_VERB[chosen]}` : 'Merge'}
-              onPress={() => { if (!armed) { setArmed(true); setTimeout(() => setArmed(false), 6000); return; } setArmed(false); actions.merge.mutate(chosen); }} />
+              onPress={() => { clearTimeout(disarm.current); if (!armed) { setArmed(true); disarm.current = setTimeout(() => setArmed(false), 6000); return; } setArmed(false); actions.merge.mutate(chosen); }} />
           ) : !p && canWrite ? (
             <Button style={{ flex: 1 }} kind="quiet" label={open ? 'Close issue' : 'Reopen'} disabled={actions.setState.isPending} onPress={() => actions.setState.mutate(open ? 'closed' : 'open')} />
           ) : p && !open && canWrite && !p.merged ? (

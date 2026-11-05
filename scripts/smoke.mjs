@@ -2,23 +2,27 @@
 // Opens every screen at phone size and fails on a blank screen, an error state or a console error.
 // Needs Playwright with Chromium (`npx playwright install chromium` if missing).
 // SMOKE_URL=https://… checks a deployed site instead of the local build.
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { existsSync, readFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
 
-const dist = new URL('../apps/app/dist/', import.meta.url).pathname;
+const dist = fileURLToPath(new URL('../apps/app/dist/', import.meta.url));
 if (!existsSync(join(dist, 'index.html'))) { console.error('Build first: npm run build:web'); process.exit(1); }
 let chromium;
 // createRequire also honours NODE_PATH (global installs), which ESM import() ignores.
 try { ({ chromium } = createRequire(import.meta.url)('playwright')); } catch { console.error('Playwright not installed: npm i -D playwright && npx playwright install chromium'); process.exit(1); }
 
 const TYPES = { '.js': 'text/javascript', '.html': 'text/html', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.ttf': 'font/ttf', '.webmanifest': 'application/manifest+json', '.ico': 'image/x-icon' };
+// Serve the same Content-Security-Policy Cloudflare will (pwa.mjs writes it into dist/_headers), so a policy that
+// breaks the app fails here instead of in production.
+const CSP = (() => { try { return /Content-Security-Policy: (.+)/.exec(readFileSync(join(dist, '_headers'), 'utf8'))?.[1]; } catch { return undefined; } })();
 const server = createServer((req, res) => {
   const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
   const file = join(dist, path);
   const target = path !== '/' && existsSync(file) && !file.endsWith('/') ? file : join(dist, 'index.html'); // SPA fallback, like vercel.json
-  res.writeHead(200, { 'Content-Type': TYPES[extname(target)] ?? 'application/octet-stream' });
+  res.writeHead(200, { 'Content-Type': TYPES[extname(target)] ?? 'application/octet-stream', ...(CSP && extname(target) === '.html' ? { 'Content-Security-Policy': CSP } : {}) });
   res.end(readFileSync(target));
 }).listen(0);
 const base = (process.env.SMOKE_URL ?? '').replace(/\/+$/, '') || `http://127.0.0.1:${server.address().port}`;
@@ -70,6 +74,9 @@ const head = await (await fetch(base + '/')).text();
 const pwaOk = manifest.icons?.length >= 4 && sw.includes('PRECACHE') && head.includes('rel="manifest"');
 console.log(`${pwaOk ? '✓' : '✗'} PWA manifest, service worker and head tags`);
 if (!pwaOk) failed++;
-await browser.close(); server.close();
+await browser.close();
+// Close keep-alive sockets and wait, then let Node exit by itself: process.exit() while sockets are still
+// closing trips a libuv assertion on Windows (exit code 127 after "all screens ok").
+server.closeAllConnections(); await new Promise((r) => server.close(r));
 console.log(failed ? `\n${failed} failed` : '\nall screens ok');
-process.exit(failed ? 1 : 0);
+process.exitCode = failed ? 1 : 0;

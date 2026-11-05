@@ -11,7 +11,11 @@ export function parsePatch(patch: string | undefined): DiffLine[] {
   if (!patch) return [];
   const out: DiffLine[] = [];
   let o = 0, n = 0;
-  for (const raw of patch.split('\n')) {
+  const rows = patch.split('\n');
+  if (rows[rows.length - 1] === '') rows.pop(); // a final "\n" ends the last line; it isn't an empty context line
+  for (const row of rows) {
+    // CRLF files: GitHub's patch keeps each line's "\r". Line text is compared with file lines split on /\r?\n/.
+    const raw = row.endsWith('\r') ? row.slice(0, -1) : row;
     const h = raw.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
     if (h) { o = Number(h[1]); n = Number(h[2]); out.push({ kind: 'hunk', text: raw }); continue; }
     if (raw.startsWith('\\')) continue; // "\ No newline at end of file"

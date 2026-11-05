@@ -1,11 +1,13 @@
 // Builds the web app with the sign-in settings from services/edge/wrangler.toml, then deploys the
 // Worker (app + sign-in) to Cloudflare. One source of truth: wrangler.toml [vars].
-//   needs: CLOUDFLARE_API_TOKEN (+ CLOUDFLARE_ACCOUNT_ID if the token sees several accounts), or `npx wrangler@4 login`
+//   needs: CLOUDFLARE_API_TOKEN (+ CLOUDFLARE_ACCOUNT_ID if the token sees several accounts), or `npx wrangler@4.158.0 login`
 //   flags: --dry-run  build and bundle, don't upload
+// Pinned: wrangler runs with CLOUDFLARE_API_TOKEN, so an exact version, not a floating major (bump on purpose).
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
-const root = new URL('..', import.meta.url).pathname;
+const root = fileURLToPath(new URL('..', import.meta.url));
 const toml = readFileSync(`${root}services/edge/wrangler.toml`, 'utf8');
 const v = (k) => toml.match(new RegExp(`^${k}\\s*=\\s*"([^"]*)"`, 'm'))?.[1] ?? '';
 const clientId = v('GITHUB_CLIENT_ID');
@@ -19,7 +21,7 @@ const env = { ...process.env, EXPO_PUBLIC_AUTH_URL: clientId && origin ? origin 
 const run = (cmd, cwd = root) => execSync(cmd, { cwd, env, stdio: 'inherit' });
 
 run('npm run build:web');
-run(`npx --yes wrangler@4 deploy${process.argv.includes('--dry-run') ? ' --dry-run' : ''}`, `${root}services/edge`);
+run(`npx --yes wrangler@4.158.0 deploy${process.argv.includes('--dry-run') ? ' --dry-run' : ''}`, `${root}services/edge`);
 if (origin && !process.argv.includes('--dry-run')) {
   console.log(`\nLive: ${origin}  ·  check: ${origin}/health`);
   // Sign-in needs GITHUB_CLIENT_SECRET on the Worker; say so loudly if it's missing after a deploy.

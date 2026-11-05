@@ -19,6 +19,8 @@ export interface Env {
   GITHUB_CLIENT_SECRET: string;
   /** Comma list: exact http(s) origins and/or custom schemes ("gitling://"). */
   ALLOWED_RETURN: string;
+  /** Optional rate limiter for /auth/exchange (wrangler.toml [[ratelimits]]). */
+  EXCHANGE_LIMIT?: { limit: (o: { key: string }) => Promise<{ success: boolean }> };
 }
 
 type Fetch = typeof fetch;
@@ -33,9 +35,13 @@ export async function handle(req: Request, env: Env, f: Fetch = fetch): Promise<
   try {
     if (req.method === 'OPTIONS') return new Response(null, { status: cors ? 204 : 403, headers: cors ?? {} });
     if (url.pathname === '/health') return json({ ok: true, configured: !!(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET) }, 200, cors);
-    if (url.pathname === '/auth/callback' && req.method === 'GET') return callback(url, env);
+    if (url.pathname === '/auth/callback' && req.method === 'GET') return callback(req, url, env);
     if (url.pathname === '/auth/exchange' && req.method === 'POST') {
       if (req.headers.get('Origin') && !cors) return json({ error: 'This website is not allowed to sign in here.' }, 403);
+      if (env.EXCHANGE_LIMIT) {
+        const { success } = await env.EXCHANGE_LIMIT.limit({ key: req.headers.get('CF-Connecting-IP') ?? 'unknown' });
+        if (!success) return json({ error: 'Too many sign-in attempts. Wait a minute and try again.' }, 429, cors);
+      }
       return exchange(req, url, env, f, cors);
     }
     if (env.ASSETS) return env.ASSETS.fetch(req);
@@ -47,11 +53,21 @@ export async function handle(req: Request, env: Env, f: Fetch = fetch): Promise<
 
 /* ─── callback: bounce GitHub's redirect back into the app ─── */
 
-function callback(url: URL, env: Env): Response {
+async function callback(req: Request, url: URL, env: Env): Promise<Response> {
   const state = url.searchParams.get('state') ?? '';
   const target = returnTarget(state);
   if (!target || !isAllowedReturn(target, env)) return page(400, 'This sign-in link is not valid. Go back to Gitling and try again.');
   const out = new URL(target);
+  // When the app is served by this same Worker, its return address IS this URL. Redirecting would loop
+  // forever (run_worker_first sends /auth/* back here), so serve the app's page and let it read code+state.
+  if (out.origin === url.origin && out.pathname === url.pathname && env.ASSETS) {
+    // The address holds a one-time code: never cache this page, never send it on as a Referer.
+    const page = await env.ASSETS.fetch(req);
+    const res = new Response(page.body, page);
+    res.headers.set('Cache-Control', 'no-store');
+    res.headers.set('Referrer-Policy', 'no-referrer');
+    return res;
+  }
   for (const k of ['code', 'state', 'error', 'error_description']) {
     const v = url.searchParams.get(k);
     if (v) out.searchParams.set(k, v);
@@ -76,18 +92,29 @@ export function isAllowedReturn(target: string, env: Env): boolean {
   let t: URL;
   try { t = new URL(target); } catch { return false; }
   return allowList(env).some((rule) => {
-    if (/^https?:\/\//.test(rule)) { try { return t.origin === new URL(rule).origin; } catch { return false; } }
-    const scheme = rule.replace(/:\/*$/, '') + ':';
-    return t.protocol === scheme;
+    // Protocol too: blob:https://site has origin https://site but isn't a page the site serves.
+    if (/^https?:\/\//.test(rule)) { try { const r = new URL(rule); return t.protocol === r.protocol && t.origin === r.origin; } catch { return false; } }
+    // "gitling://auth/callback" matches only that place (query aside). A bare "gitling://" would accept any
+    // gitling: URL, which any app on an Android phone could register to catch the code.
+    const m = /^([a-z][\w+.-]*):\/*(.*)$/i.exec(rule);
+    if (!m || t.protocol !== m[1].toLowerCase() + ':') return false;
+    if (!m[2]) return true;
+    return (t.host + t.pathname).replace(/^\/+|\/+$/g, '') === m[2].replace(/\/+$/, '');
   });
 }
 
 /* ─── exchange: code + verifier → token ─── */
 
+/** The scopes Gitling requests (packages/github auth.ts OAUTH_SCOPES), plus `user`: GitHub reports it instead of
+ *  `read:user` when the person granted the wider one before (auth.ts missingScopes treats them the same way).
+ *  Refusing it would lock that person out: every new token would carry it and be revoked. */
+const ALLOWED_SCOPES = new Set(['repo', 'notifications', 'read:user', 'user']);
+
 async function exchange(req: Request, url: URL, env: Env, f: Fetch, cors: Record<string, string> | null): Promise<Response> {
   if (!env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET) return json({ error: 'Sign-in is not configured on the server yet.' }, 503, cors);
   let body: { code?: unknown; code_verifier?: unknown };
   try { body = await req.json(); } catch { return json({ error: 'Bad request.' }, 400, cors); }
+  if (!body || typeof body !== 'object') return json({ error: 'Bad request.' }, 400, cors); // e.g. a JSON body of null
   const code = typeof body.code === 'string' ? body.code : '';
   const verifier = typeof body.code_verifier === 'string' ? body.code_verifier : '';
   if (!/^[\w-]{8,100}$/.test(code) || !/^[A-Za-z0-9._~-]{43,128}$/.test(verifier)) return json({ error: 'Bad request.' }, 400, cors);
@@ -103,10 +130,21 @@ async function exchange(req: Request, url: URL, env: Env, f: Fetch, cors: Record
       redirect_uri: `${url.origin}/auth/callback`,
     }),
   });
-  const data = (await gh.json().catch(() => ({}))) as { access_token?: string; scope?: string; token_type?: string; error?: string; error_description?: string };
+  const data = ((await gh.json().catch(() => null)) ?? {}) as { access_token?: string; scope?: string; token_type?: string; error?: string; error_description?: string };
   if (!gh.ok || !data.access_token) {
     const expired = data.error === 'bad_verification_code';
     return json({ error: expired ? 'That sign-in expired. Try again.' : (data.error_description ?? 'GitHub refused the sign-in.') }, 400, cors);
+  }
+  // Anyone can start an authorize request with Gitling's client id and any scope list. Hand out only tokens with
+  // the scopes Gitling asks for; revoke anything broader instead of returning it.
+  const extra = (data.scope ?? '').split(/[,\s]+/).filter((s) => s && !ALLOWED_SCOPES.has(s));
+  if (extra.length) {
+    await f(`https://api.github.com/applications/${encodeURIComponent(env.GITHUB_CLIENT_ID)}/token`, {
+      method: 'DELETE',
+      headers: { Authorization: `Basic ${btoa(`${env.GITHUB_CLIENT_ID}:${env.GITHUB_CLIENT_SECRET}`)}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json', 'User-Agent': 'gitling-auth' },
+      body: JSON.stringify({ access_token: data.access_token }),
+    }).catch(() => {});
+    return json({ error: 'That sign-in asked for more access than Gitling uses, so it was cancelled. Start again from Gitling.' }, 400, cors);
   }
   return json({ access_token: data.access_token, scope: data.scope ?? '', token_type: data.token_type ?? 'bearer' }, 200, cors);
 }

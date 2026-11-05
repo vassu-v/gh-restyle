@@ -10,7 +10,7 @@ import type { ReviewComment, SuggestionCheck, User } from './types';
 type Segment = { kind: 'md'; text: string } | { kind: 'suggestion'; lines: string[] };
 
 // CommonMark fences: 3+ backticks or tildes, up to 3 spaces of indent. A backtick fence's info can't hold backticks.
-const OPEN = /^ {0,3}(`{3,}|~{3,})(.*)$/;
+const OPEN = /^( {0,3})(`{3,}|~{3,})(.*)$/;
 
 /** Splits a comment body into markdown text and suggestion blocks, in order (for rendering the card in place). */
 export function splitSuggestionBody(body: string): Segment[] {
@@ -20,15 +20,17 @@ export function splitSuggestionBody(body: string): Segment[] {
   const flushMd = () => { const text = md.join('\n').replace(/^\n+|\n+$/g, ''); if (text.trim()) out.push({ kind: 'md', text }); md = []; };
   for (let i = 0; i < lines.length; i++) {
     const m = lines[i].match(OPEN);
-    if (!m || (m[1][0] === '`' && m[2].includes('`'))) { md.push(lines[i]); continue; }
-    const fence = m[1], info = m[2].trim().split(/\s+/)[0];
+    if (!m || (m[2][0] === '`' && m[3].includes('`'))) { md.push(lines[i]); continue; }
+    const indent = m[1].length, fence = m[2], info = m[3].trim().split(/\s+/)[0];
     // Find the closing fence: same character, at least as long, nothing else on the line.
     const close = new RegExp(`^ {0,3}${fence[0] === '`' ? '`' : '~'}{${fence.length},}\\s*$`);
     let j = i + 1;
     while (j < lines.length && !close.test(lines[j])) j++;
     if (info === 'suggestion') {
       flushMd();
-      out.push({ kind: 'suggestion', lines: lines.slice(i + 1, j) });
+      // CommonMark: content lines lose up to the opening fence's indent (a fence inside a list item, say).
+      const dedent = new RegExp(`^ {0,${indent}}`);
+      out.push({ kind: 'suggestion', lines: lines.slice(i + 1, j).map((l) => l.replace(dedent, '')) });
     } else {
       // Any other code block (even one that shows a ```suggestion example inside it) stays markdown.
       md.push(...lines.slice(i, Math.min(j + 1, lines.length)));
@@ -100,8 +102,11 @@ export function applyEdits(text: string, edits: Edit[]): string {
   }
   // Bottom-up, so earlier ranges keep their line numbers. New lines take the replaced lines' endings: the first
   // replaced line's inside the block, the last one's at its end (empty at the end of a file without a final newline).
+  // The file's last line may have no ending; new lines placed before it take the file's usual one.
+  const crlf = (text.match(/\r\n/g) ?? []).length, lf = (text.match(/\n/g) ?? []).length - crlf;
+  const usual = crlf > lf ? '\r\n' : '\n';
   for (const e of sorted.reverse()) {
-    const inner = lines[e.startLine - 1].eol || '\n';
+    const inner = lines[e.startLine - 1].eol || usual;
     const last = lines[e.endLine - 1].eol;
     const repl = e.lines.map((content, i) => ({ content, eol: i === e.lines.length - 1 ? last : inner }));
     lines.splice(e.startLine - 1, e.endLine - e.startLine + 1, ...repl);

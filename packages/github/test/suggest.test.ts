@@ -106,3 +106,17 @@ describe('applyEdits with mixed line endings', () => {
     expect(applyEdits('a\nb\nc', [{ startLine: 2, endLine: 3, lines: [] }])).toBe('a');
   });
 });
+
+describe('review fixes', () => {
+  it('strips the fence indent from suggestion lines (CommonMark)', () => {
+    expect(parseSuggestions('- note\n  ```suggestion\n  foo\n    bar\n baz\n  ```')).toEqual([['foo', '  bar', 'baz']]);
+  });
+  it('gives new lines before a final line without an ending the file\'s usual ending', () => {
+    expect(applyEdits('a\r\nb', [{ startLine: 2, endLine: 2, lines: ['x', 'y'] }])).toBe('a\r\nx\r\ny');
+    expect(applyEdits('b', [{ startLine: 1, endLine: 1, lines: ['x', 'y'] }])).toBe('x\ny');
+  });
+  it('reads original lines from CRLF hunks', () => {
+    const c = { id: 1, user: { login: 'u', avatar_url: '' }, body: '', path: 'p', line: 2, original_line: 2, diff_hunk: '@@ -1,2 +1,2 @@\r\n a\r\n-b\r\n+c\r', created_at: '' };
+    expect(originalLines(c)).toEqual(['c']);
+  });
+});

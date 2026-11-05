@@ -19,7 +19,7 @@ const DEFAULT_TARGET: Record<TileTarget['type'], TileTarget> = {
 
 export default function TileEditor() {
   const { design, tokens: t, update } = useDesign();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, setup } = useLocalSearchParams<{ id: string; setup?: string }>();
   const existing = design.tiles.find((x) => x.id === id);
   const [d, setD] = useState<Tile>(() => existing ?? { id: `t-${Date.now().toString(36)}`, label: 'New shortcut', icon: 'eye', tint: '#F2C25B', count: true, size: 'half', target: DEFAULT_TARGET.search });
   const [armed, setArmed] = useState(false);
@@ -53,6 +53,7 @@ export default function TileEditor() {
       <View style={{ marginHorizontal: 14, height: 190, borderRadius: 24, backgroundColor: t.mode === 'dark' ? '#15161A' : '#E7E7E3', borderWidth: 1, borderColor: t.c.line, alignItems: 'center', justifyContent: 'center' }}>
         <View style={{ width: d.size === 'full' ? 330 : 176 }}><TileView tile={{ ...d, count: false }} preview /></View>
       </View>
+      {setup ? <T v="sub" c="mut" style={{ paddingHorizontal: 18, paddingTop: 10 }}>This shortcut points at the sample account. Choose one of your repos for it to open.</T> : null}
       {!check.success ? <T v="sub" c="bad" style={{ paddingHorizontal: 18, paddingTop: 8 }}>{check.error.issues[0]?.message === 'Invalid input' ? 'Fill in where it opens.' : check.error.issues[0]?.message}</T> : null}
 
       <T v="label" c="mut" style={{ paddingHorizontal: 18, paddingTop: 18, paddingBottom: 8 }}>what it opens</T>

@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { useSession } from '@/session/SessionProvider';
 import { Button, Screen, T } from '@/ui/primitives';
 
@@ -18,6 +18,8 @@ export default function AuthCallback() {
   useEffect(() => {
     if (started.current) return;
     started.current = true;
+    // The address holds a one-time code: take it out of the address bar and history right away.
+    if (Platform.OS === 'web') window.history.replaceState(null, '', '/auth/callback');
     if (!code && !error && !isSample) { router.replace('/'); return; }
     finishGitHubSignIn({ code, state, error })
       .then(() => router.replace('/'))

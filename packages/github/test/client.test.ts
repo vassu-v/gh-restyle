@@ -51,3 +51,20 @@ it('parses Link headers', () => {
   expect(nextPage('<https://api.github.com/x?per_page=30&page=1>; rel="prev"')).toBeNull();
   expect(nextPage(null)).toBeNull();
 });
+
+it('never lets the browser HTTP cache answer (raw and JSON share a URL and an ETag on GitHub)', async () => {
+  const inits: RequestInit[] = [];
+    const f = (async (_u: string, init: RequestInit) => { inits.push(init); return new Response('"x"', { headers: { ETag: '"e"' } }); }) as unknown as typeof fetch;
+    const c = createClient({ kind: 'token', token: 't' }, { fetch: f });
+    await c.request('/a'); await c.request('/a', { accept: 'application/vnd.github.raw+json', text: true });
+    expect(inits.every((i) => i.cache === 'no-store')).toBe(true);
+});
+
+it('sends the token only to the GitHub API origin, even for a full URL elsewhere', async () => {
+  const seen: { url: string; auth?: string }[] = [];
+  const f = (async (u: string, init: RequestInit) => { seen.push({ url: u, auth: (init.headers as Record<string, string>).Authorization }); return new Response('{}'); }) as unknown as typeof fetch;
+  const c = createClient({ kind: 'token', token: 't0k' }, { fetch: f });
+  await c.request('/user'); await c.request('https://evil.example/steal'); await c.request('https://api.github.com.evil.example/x');
+  expect(seen.map((x) => !!x.auth)).toEqual([true, false, false]);
+});
+

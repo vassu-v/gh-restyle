@@ -1,9 +1,13 @@
-import { lexer, type Token, type Tokens } from 'marked';
-import { memo, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { lexer, type Links, type Token, type Tokens } from 'marked';
+import { createContext, memo, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Image, Platform, ScrollView, Text, View, type TextStyle } from 'react-native';
 import { useTokens } from '@/design/DesignProvider';
 import { openUrl, routes } from '@/lib/links';
 import { CodeLines, languageForFence } from './Code';
+import { ALERT_LABEL, alertOf, lexAlertBody } from './alerts';
+
+/** The document's reference-link definitions, for blocks lexed on their own (alert bodies). */
+const DocLinks = createContext<Links | undefined>(undefined);
 import { router } from 'expo-router';
 
 /**
@@ -23,7 +27,7 @@ export const Markdown = memo(function Markdown({ source, base }: { source: strin
   const t = useTokens();
   if (!source?.trim()) return null;
   if (!tokens) return <Text style={{ color: t.c.fg, fontFamily: t.font.ui.regular }}>{source}</Text>;
-  return <View style={{ gap: 10 }}><Blocks tokens={tokens} base={base} /></View>;
+  return <DocLinks.Provider value={tokens.links}><View style={{ gap: 10 }}><Blocks tokens={tokens} base={base} /></View></DocLinks.Provider>;
 });
 
 function Blocks({ tokens, base }: { tokens: Token[]; base?: MarkdownBase }) {
@@ -32,6 +36,7 @@ function Blocks({ tokens, base }: { tokens: Token[]; base?: MarkdownBase }) {
 
 function Block({ tk, base }: { tk: Token; base?: MarkdownBase }) {
   const t = useTokens(); const s = t.scale;
+  const links = useContext(DocLinks);
   const body: TextStyle = { fontFamily: t.font.ui.regular, fontSize: s(15), lineHeight: s(22), color: t.c.fg };
   switch (tk.type) {
     case 'space': return null;
@@ -69,6 +74,18 @@ function Block({ tk, base }: { tk: Token; base?: MarkdownBase }) {
     }
     case 'blockquote': {
       const q = tk as Tokens.Blockquote;
+      const alert = alertOf(q.text);
+      if (alert) {
+        const col = { NOTE: t.c.acc, TIP: t.c.ok, IMPORTANT: t.c.merged, WARNING: t.c.wait, CAUTION: t.c.bad }[alert.kind];
+        let rest: Token[] = [];
+        try { rest = lexAlertBody(alert.rest, links); } catch { /* label only */ }
+        return (
+          <View style={{ borderLeftWidth: 3, borderColor: col, paddingLeft: 12, gap: 6 }}>
+            <Text style={{ ...body, fontFamily: t.font.ui.semibold, color: col }}>{ALERT_LABEL[alert.kind]}</Text>
+            <Blocks tokens={rest} base={base} />
+          </View>
+        );
+      }
       return <View style={{ borderLeftWidth: 3, borderColor: t.c.line, paddingLeft: 12, gap: 8, opacity: 0.85 }}><Blocks tokens={q.tokens} base={base} /></View>;
     }
     case 'list': {
@@ -182,7 +199,30 @@ function InlineImage({ tk, base }: { tk: Token; base?: MarkdownBase }) {
   return <RemoteImage uri={uri} alt={alt} onPress={link ? () => openUrl(link!) : undefined} />;
 }
 
+/**
+ * Gitling renders markdown source, so images skip GitHub's image proxy (camo): any other host would learn the
+ * reader's IP and when they read. Images from GitHub's own hosts and common badge services load; others wait
+ * for a tap.
+ */
+const TRUSTED_IMAGE_HOST = /(^|\.)(github\.com|githubusercontent\.com|githubassets\.com|shields\.io|badgen\.net|badge\.fury\.io|codecov\.io|coveralls\.io)$/i;
+export function imageLoadsWithoutAsking(uri: string): boolean {
+  try { const u = new URL(uri); return u.protocol === 'https:' && TRUSTED_IMAGE_HOST.test(u.hostname); } catch { return false; }
+}
+
 function RemoteImage({ uri, alt, onPress }: { uri: string; alt: string; onPress?: () => void }) {
+  const t = useTokens();
+  // The tap approves this exact address. If the comment is edited and the image changes, React reuses this
+  // component, so a boolean would carry the approval over to a new (possibly tracking) address.
+  const [approved, setApproved] = useState<string | null>(null);
+  const allowed = imageLoadsWithoutAsking(uri) || approved === uri;
+  if (!allowed) {
+    let host = ''; try { host = new URL(uri).hostname; } catch { /* shown without a host */ }
+    return <Text style={{ color: t.c.acc, fontFamily: t.font.ui.regular, fontSize: 13 }} onPress={() => setApproved(uri)} accessibilityRole="button">[{alt || 'image'} · load from {host || 'link'}]</Text>;
+  }
+  return <LoadedImage uri={uri} alt={alt} onPress={onPress} />;
+}
+
+function LoadedImage({ uri, alt, onPress }: { uri: string; alt: string; onPress?: () => void }) {
   const t = useTokens();
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [failed, setFailed] = useState(false);
@@ -221,6 +261,8 @@ function normalize(path: string) {
   return out.join('/');
 }
 
+/** String.fromCodePoint throws above 0x10FFFF; a comment containing `&#9999999;` must not crash the screen. */
+const codePoint = (n: number, raw: string) => (Number.isInteger(n) && n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : raw);
 const ENT: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', '#39': "'", apos: "'", nbsp: ' ' };
-const decode = (s: string) => s.replace(/&(#\d+|#x[0-9a-f]+|\w+);/gi, (m, e: string) => ENT[e] ?? (e[0] === '#' ? String.fromCodePoint(e[1] === 'x' ? parseInt(e.slice(2), 16) : Number(e.slice(1))) : m));
+const decode = (s: string) => s.replace(/&(#\d+|#x[0-9a-f]+|\w+);/gi, (m, e: string) => ENT[e] ?? (e[0] === '#' ? codePoint(e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : Number(e.slice(1)), m) : m));
 const htmlText = (h: string) => decode(h.replace(/<!--[\s\S]*?-->/g, '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|summary|h\d|li)>/gi, '\n').replace(/<[^>]+>/g, '')).replace(/\n{3,}/g, '\n\n').trim();

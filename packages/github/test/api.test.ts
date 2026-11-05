@@ -61,3 +61,50 @@ describe('api against sample data', () => {
     expect(await api.readme('acme', 'rocket')).toBeNull(); // no README is not an error
   });
 });
+
+describe('request shapes (fake fetch)', () => {
+  it('sends commit_id with a review; fileSource decodes the base64 JSON form, BOM kept apart', async () => {
+    const calls: { url: string; body?: string; accept?: string }[] = [];
+    const f = (async (url: string, init: RequestInit) => {
+      calls.push({ url, body: init.body as string | undefined, accept: (init.headers as Record<string, string>).Accept });
+      if (url.includes('/contents/')) return new Response(JSON.stringify({ encoding: 'base64', content: '77u/\neA==' }));
+      if (url.includes('/pulls/comments/404')) return new Response('{"message":"Not Found"}', { status: 404 });
+      return new Response('{}');
+    }) as unknown as typeof fetch;
+    const live = createApi(createClient({ kind: 'token', token: 't' }, { fetch: f }));
+    await live.submitReview('o', 'r', 1, { event: 'COMMENT', commitId: 'abc', comments: [{ path: 'a', line: 1, side: 'RIGHT', body: 'x' }] });
+    expect(JSON.parse(calls[0].body!)).toMatchObject({ event: 'COMMENT', commit_id: 'abc' });
+    await live.submitReview('o', 'r', 1, { event: 'COMMENT' });
+    expect(JSON.parse(calls[1].body!)).not.toHaveProperty('commit_id');
+    expect(await live.fileSource('o', 'r', 'dir/a b.txt', 'feat/x#1')).toEqual({ text: 'x', bom: true });
+    expect(calls[2].url).toBe('https://api.github.com/repos/o/r/contents/dir/a%20b.txt?ref=feat%2Fx%231');
+    expect(calls[2].accept).not.toMatch(/raw/);
+    expect(await live.reviewComment('o', 'r', 404)).toBeNull(); // a deleted comment is "gone", not an error
+  });
+  it('a file GitHub doesn’t inline (over 1 MB) is refused with a clear message', async () => {
+    const f = (async () => new Response(JSON.stringify({ encoding: 'none', content: '' }))) as unknown as typeof fetch;
+    const live = createApi(createClient({ kind: 'token', token: 't' }, { fetch: f }));
+    await expect(live.fileSource('o', 'r', 'big.bin')).rejects.toThrow(/too big/);
+  });
+  it('fileSource and reviewComment work on sample data', async () => {
+    expect((await api.fileSource('you', 'trail-notes', 'src/sync/queue.ts', 'a91f3c2e')).text).toMatch(/^import/);
+    const [c] = await api.reviewComments('you', 'trail-notes', 45);
+    expect((await api.reviewComment('you', 'trail-notes', c.id))?.body).toBe(c.body);
+  });
+});
+
+describe('path segments', () => {
+  it('"." and ".." are refused before any request (no climbing out of the intended API path)', async () => {
+    const urls: string[] = [];
+    const f = (async (u: string) => { urls.push(u); return new Response('{}'); }) as unknown as typeof fetch;
+    const live = createApi(createClient({ kind: 'token', token: 't' }, { fetch: f }));
+    await expect(live.isStarred('x/..')).rejects.toMatchObject({ status: 404 });
+    await expect(live.setStar('../../../repos/v/s/collaborators/a', true)).rejects.toMatchObject({ status: 404 });
+    await expect(live.repo('..', 'x')).rejects.toMatchObject({ status: 404 });
+    await expect(live.fileText('o', 'r', 'a/../../../../user')).rejects.toMatchObject({ status: 404 });
+    expect(urls).toEqual([]);
+    await live.isStarred('o/r');
+    expect(urls).toEqual(['https://api.github.com/user/starred/o/r']);
+  });
+});
+

@@ -8,3 +8,7 @@ web-build/
 apps/extension/dist/
 apps/app/.expo/
 stress-report/
+coverage/
+stress-report/
+# wrangler dev's local secrets (GITHUB_CLIENT_SECRET)
+.dev.vars*

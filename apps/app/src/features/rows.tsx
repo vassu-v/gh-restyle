@@ -121,8 +121,11 @@ export function FeedItem({ g, compact }: { g: FeedGroup; compact?: boolean }) {
       );
       break;
     case 'PushEvent': {
+      // Since 2025 GitHub's events API leaves commits and size out of push events: say where, not "0 commits".
       const commits = e.payload.commits ?? []; const n = e.payload.size ?? commits.length;
-      head = <><B>{g.actor}</B> pushed {n} commit{n === 1 ? '' : 's'} to <B>{e.repo.name.split('/')[1]}</B></>;
+      const branch = e.payload.ref?.replace(/^refs\/heads\//, '');
+      const where = <><B>{e.repo.name.split('/')[1]}</B>{branch ? <> · {branch}</> : null}</>;
+      head = n > 0 ? <><B>{g.actor}</B> pushed {n} commit{n === 1 ? '' : 's'} to {where}</> : <><B>{g.actor}</B> pushed to {where}</>;
       if (!compact) body = (
         <View style={{ marginTop: 9, borderLeftWidth: 2, borderColor: t.c.line2, paddingLeft: 11, gap: 6 }}>
           {commits.slice(0, 2).map((c) => <T key={c.sha} v="sub" lines={1}><T v="monoS" c="ok">{c.sha.slice(0, 7)}  </T>{c.message.split('\n')[0]}</T>)}
@@ -132,7 +135,9 @@ export function FeedItem({ g, compact }: { g: FeedGroup; compact?: boolean }) {
       break;
     }
     case 'CreateEvent':
-      head = <><B>{g.actor}</B> created {e.payload.ref_type === 'repository' ? 'a repository' : `${e.payload.ref_type} in ${e.repo.name}`}</>;
+      head = e.payload.ref_type === 'repository'
+        ? <><B>{g.actor}</B> created a repository</>
+        : <><B>{g.actor}</B> created {e.payload.ref_type ?? 'branch'} {e.payload.ref ? <B>{e.payload.ref}</B> : null} in <B>{e.repo.name}</B></>;
       if (!compact && e.payload.ref_type === 'repository') body = (
         <Panel style={{ marginTop: 9, padding: 12, gap: 4 }}>
           <T v="bodyStrong">{e.repo.name.split('/')[1]}</T>
@@ -147,7 +152,8 @@ export function FeedItem({ g, compact }: { g: FeedGroup; compact?: boolean }) {
       if (!compact && e.payload.pull_request) body = <T v="sub" style={{ marginTop: 6 }}>{e.payload.pull_request.title}</T>; break;
     case 'IssuesEvent': head = <><B>{g.actor}</B> {e.payload.action} an issue in <B>{e.repo.name}</B></>;
       if (!compact && e.payload.issue) body = <T v="sub" style={{ marginTop: 6 }}>{e.payload.issue.title}</T>; break;
-    default: head = <><B>{g.actor}</B> {g.type.replace(/Event$/, '').toLowerCase()} in <B>{e.repo.name}</B></>;
+    case 'DeleteEvent': head = <><B>{g.actor}</B> deleted {e.payload.ref_type === 'tag' ? 'tag' : 'branch'} {e.payload.ref ? <B>{e.payload.ref}</B> : null} in <B>{e.repo.name}</B></>; break;
+    default: head = <><B>{g.actor}</B> {g.type.replace(/Event$/, '').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase()} in <B>{e.repo.name}</B></>;
   }
   return (
     <Pressable onPress={() => openFeedEvent(e)}

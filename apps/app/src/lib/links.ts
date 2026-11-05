@@ -1,5 +1,6 @@
 import { router, type Href } from 'expo-router';
-import { Linking } from 'react-native';
+import { Alert, Linking, Platform } from 'react-native';
+import { isSafeLink } from '@gitling/design';
 
 /**
  * In-app routes, built in one place so screens don't hand-assemble paths.
@@ -15,14 +16,15 @@ export const routes = {
   user: (login: string) => `/user/${seg(login)}` as Href,
 };
 
-const RESERVED = new Set(['settings', 'notifications', 'login', 'logout', 'orgs', 'organizations', 'marketplace', 'explore', 'topics', 'trending', 'features', 'pricing', 'about', 'sponsors', 'apps', 'search', 'new', 'pulls', 'issues', 'codespaces', 'collections', 'events', 'site', 'security', 'enterprise', 'team', 'customer-stories', 'readme', 'join']);
+const RESERVED = new Set(['settings', 'notifications', 'login', 'logout', 'orgs', 'organizations', 'marketplace', 'explore', 'topics', 'trending', 'features', 'pricing', 'about', 'sponsors', 'apps', 'search', 'new', 'pulls', 'issues', 'codespaces', 'collections', 'events', 'site', 'security', 'enterprise', 'team', 'customer-stories', 'readme', 'join', 'users', 'stars', 'dashboard', 'account', 'copilot', 'watching', 'discussions', 'gist', 'github-copilot', 'contact', 'blog', 'models', 'mobile', 'signup', 'sessions', 'password_reset']);
 
 /** Maps a github.com URL to an in-app route, or null if Gitling has no screen for it. */
 export function routeForUrl(url: string): Href | null {
   let u: URL;
   try { u = new URL(url); } catch { return null; }
   if (!/^(www\.)?github\.com$/.test(u.hostname)) return null;
-  const p = u.pathname.split('/').filter(Boolean).map(decodeURIComponent);
+  let p: string[];
+  try { p = u.pathname.split('/').filter(Boolean).map(decodeURIComponent); } catch { return null; }
   if (!p.length || RESERVED.has(p[0].toLowerCase())) return null;
   const [owner, name, kind, ...rest] = p;
   if (!name) return routes.user(owner);
@@ -41,5 +43,16 @@ export function routeForUrl(url: string): Href | null {
 export function openUrl(url: string) {
   const r = routeForUrl(url);
   if (r) router.push(r);
-  else Linking.openURL(url).catch(() => {});
+  else if (isSafeLink(url)) Linking.openURL(url).catch(() => {});
+  else blockedLink(url);
+}
+
+export const BLOCKED_LINK_MESSAGE = 'Gitling didn’t open this link because links like it can run code inside the app.';
+
+/** Says why nothing happened. react-native-web's Alert.alert does nothing, so web uses window.alert. */
+export function blockedLink(url: string) {
+  const scheme = /^\s*([a-z][\w+.-]*):/i.exec(url)?.[1];
+  const msg = scheme ? `${BLOCKED_LINK_MESSAGE} (${scheme.toLowerCase()}: link)` : BLOCKED_LINK_MESSAGE;
+  if (Platform.OS === 'web') globalThis.alert?.(msg);
+  else Alert.alert('Link blocked', msg);
 }

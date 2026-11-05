@@ -42,11 +42,14 @@ export type ClientDeps = { fetch?: typeof fetch; baseUrl?: string; etagCacheSize
 export const API = 'https://api.github.com';
 const NO_HEADERS = { get: () => null };
 
+const sameOrigin = (url: string, base: string) => { try { return new URL(url).origin === new URL(base).origin; } catch { return false; } };
+
 export function createClient(session: Session, deps: ClientDeps = {}): GitHubClient {
   if (session.kind === 'sample') {
     const raw = async <T,>(path: string, opts?: RequestOptions) => {
       const r = await mockRequest(path, opts);
-      return { data: r.data as T, status: 200, headers: { get: (n: string) => (n.toLowerCase() === 'link' ? r.link ?? null : null) } };
+      const data = r.data;
+      return { data: data as T, status: 200, headers: { get: (n: string) => (n.toLowerCase() === 'link' ? r.link ?? null : null) } };
     };
     return {
       session,
@@ -74,8 +77,13 @@ export function createClient(session: Session, deps: ClientDeps = {}): GitHubCli
     try {
       res = await doFetch(path.startsWith('http') ? path : base + path, {
         method,
+        // Skip the browser's HTTP cache: GitHub serves the raw and JSON forms of a file from the same URL with the
+        // same ETag, and Chrome answered a raw request with the cached JSON body (the file viewer showed JSON).
+        // Our own ETag cache above already makes repeat requests free.
+        cache: 'no-store',
         headers: {
-          ...(session.kind === 'token' && session.token ? { Authorization: `Bearer ${session.token}` } : {}),
+          // The token goes to the GitHub API only, even if a caller passes a full URL to somewhere else.
+          ...(session.kind === 'token' && session.token && sameOrigin(path.startsWith('http') ? path : base + path, base) ? { Authorization: `Bearer ${session.token}` } : {}),
           Accept: opts.accept ?? 'application/vnd.github+json',
           'X-GitHub-Api-Version': '2022-11-28',
           ...(opts.body !== undefined ? { 'Content-Type': 'application/json' } : {}),

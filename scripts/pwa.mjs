@@ -4,16 +4,17 @@
 //   0. renames asset folders that start with "@" (scoped packages, e.g. @expo-google-fonts): Cloudflare's asset
 //      server redirects %40 ↔ @ forever (ERR_TOO_MANY_REDIRECTS), so fonts never loaded in production
 // Idempotent: running it twice gives the same result.
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { existsSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import { basename, join, relative } from 'node:path';
 
-const dist = new URL('../apps/app/dist/', import.meta.url).pathname;
+const dist = fileURLToPath(new URL('../apps/app/dist/', import.meta.url));
 const walkAll = (dir) => readdirSync(dir).flatMap((f) => { const p = join(dir, f); return statSync(p).isDirectory() ? [p, ...walkAll(p)] : [p]; });
 
 // 0. "@" in asset paths → "_at_", in folder names and in every "/assets/…" string in the JS/HTML.
-for (const d of walkAll(join(dist, 'assets')).filter((p) => statSync(p).isDirectory() && p.split('/').pop().startsWith('@')).sort((a, b) => b.length - a.length)) {
-  renameSync(d, join(d, '..', '_at_' + d.split('/').pop().slice(1)));
+for (const d of walkAll(join(dist, 'assets')).filter((p) => statSync(p).isDirectory() && basename(p).startsWith('@')).sort((a, b) => b.length - a.length)) {
+  renameSync(d, join(d, '..', '_at_' + basename(d).slice(1)));
 }
 for (const f of walkAll(dist).filter((p) => /\.(js|html)$/.test(p))) {
   const src = readFileSync(f, 'utf8');
@@ -36,6 +37,13 @@ const HEAD = `
     <style>html, body { background: #0E0F11; }</style>
     <script>/* Catch the install prompt before the app bundle loads; src/pwa/register.ts picks it up. */
       addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); window.__gitlingInstall = e; });</script>
+    <script>/* Trusted Types (CSP require-trusted-types-for): the app's only script sinks are Expo loading its own code
+       chunks and the service worker. Allow exactly those; everything else (HTML strings, other script URLs) is refused. */
+      if (window.trustedTypes) trustedTypes.createPolicy('default', {
+        createScriptURL: function (u) { var x = new URL(u, location.href); if (x.origin === location.origin && (x.pathname.indexOf('/_expo/static/') === 0 || x.pathname === '/sw.js')) return x.href; throw new TypeError('Blocked script URL'); },
+        createHTML: function () { throw new TypeError('Blocked HTML'); },
+        createScript: function () { throw new TypeError('Blocked script'); }
+      });</script>
     <!-- /gitling:pwa -->`;
 html = html.replace(/\n\s*<!-- gitling:pwa -->[\s\S]*?<!-- \/gitling:pwa -->/, '');
 html = html.replace('</head>', `${HEAD}\n</head>`);
@@ -76,11 +84,30 @@ self.addEventListener('fetch', (e) => {
     e.respondWith(fetch(req).catch(() => caches.match('/', { cacheName: CACHE }).then((r) => r || caches.match('/'))));
     return;
   }
-  e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((res) => {
-    if (res.ok && url.pathname.startsWith('/_expo/static/')) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
+  // This build's cache first. Older caches only for hashed chunks (an old open tab may still ask for them);
+  // unhashed files (manifest, icons) from an older build would be stale.
+  const hashed = url.pathname.startsWith('/_expo/static/');
+  e.respondWith(caches.match(req, { cacheName: CACHE }).then((hit) => hit || (hashed ? caches.match(req) : undefined)).then((hit) => hit || fetch(req).then((res) => {
+    if (res.ok && hashed) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
     return res;
   })));
 });
 `;
 writeFileSync(join(dist, 'sw.js'), sw);
+
+// Content-Security-Policy for Cloudflare (dist/_headers). The inline install-prompt script is allowed by hash,
+// so no 'unsafe-inline' for scripts: javascript: URLs and injected <script> can't run. react-native-web injects
+// <style> tags, hence 'unsafe-inline' for styles. Markdown images may come from any https host.
+const shell = readFileSync(join(dist, 'index.html'), 'utf8');
+const hashes = [...shell.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => `'sha256-${createHash('sha256').update(m[1]).digest('base64')}'`);
+const authOrigin = (() => { try { return new URL(process.env.EXPO_PUBLIC_AUTH_URL ?? '').origin; } catch { return ''; } })();
+const csp = [
+  "default-src 'self'", `script-src 'self' ${hashes.join(' ')}`.trim(), "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:", "font-src 'self' data:", `connect-src 'self' https://api.github.com https://raw.githubusercontent.com ${authOrigin}`.trim(),
+  "worker-src 'self'", "manifest-src 'self'", "object-src 'none'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'none'",
+  // No HTML string may reach a script or markup sink (innerHTML, eval…): a second wall behind the hash-only scripts.
+  "require-trusted-types-for 'script'", "trusted-types default",
+].join('; ');
+const headersFile = join(dist, '_headers');
+if (existsSync(headersFile)) writeFileSync(headersFile, readFileSync(headersFile, 'utf8').replace(/^\/\*\r?\n/m, (m) => `${m}  Content-Security-Policy: ${csp}\n`));
 console.log(`pwa: ${precache.length} files precached as ${version}`);

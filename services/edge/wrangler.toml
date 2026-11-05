@@ -19,8 +19,23 @@ run_worker_first = ["/auth/*", "/health"]
 # Comma-separated places the worker may send people back to after GitHub approves.
 # http(s) entries match by exact origin; scheme entries (gitling://, exp://) match by scheme.
 # The deployed origin (https://gitling.<subdomain>.workers.dev) must be listed here.
-ALLOWED_RETURN = "https://gitling.truckcoding.workers.dev,http://localhost:8081,gitling://"
+# No localhost here: any program listening on a visitor's localhost:8081 could otherwise receive their sign-in
+# code (and get CORS on /auth/exchange). Local dev signs in with a pasted token, or add localhost to a dev
+# Worker of your own.
+# No gitling:// either, until the native app ships: any app can claim a custom scheme and catch the code (and
+# /auth/exchange has to accept native requests without an Origin). Native should use claimed https links
+# (Android App Links / iOS Universal Links) on this origin instead.
+ALLOWED_RETURN = "https://gitling.truckcoding.workers.dev"
 # The GitHub OAuth App's client ID (public).
 GITHUB_CLIENT_ID = "Ov23likikLApWz5YvJtj"
 
 # Secret, never in this file:  npx wrangler@4 secret put GITHUB_CLIENT_SECRET -c services/edge/wrangler.toml
+
+# Caps code exchanges per visitor IP (Cloudflare Workers rate limiting binding). The Worker skips the check
+# when the binding is missing (tests, older deploys).
+[[ratelimits]]
+name = "EXCHANGE_LIMIT"
+namespace_id = "1001"
+  [ratelimits.simple]
+  limit = 10
+  period = 60

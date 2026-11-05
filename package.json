@@ -21,10 +21,15 @@
     "e2e:studio": "node scripts/e2e-studio.mjs",
     "e2e:review": "node scripts/e2e-review.mjs",
     "stress:extension": "npm run build:extension && node scripts/stress-extension.mjs",
-    "e2e:extension": "node scripts/e2e-extension.mjs"
+    "e2e:extension": "node scripts/e2e-extension.mjs",
+    "test:fuzz": "vitest run tests/fuzz",
+    "test:coverage": "vitest run --coverage",
+    "verify": "node scripts/verify.mjs"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^3.2.7",
     "esbuild": "^0.28.2",
+    "fast-check": "^3.23.2",
     "playwright": "^1.63.0",
     "vitest": "^3.2.7"
   },

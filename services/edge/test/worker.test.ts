@@ -21,6 +21,13 @@ describe('return target allowlist', () => {
     expect(isAllowedReturn('javascript:alert(1)', env)).toBe(false);
     expect(isAllowedReturn('exp://192.168.1.2:8081/--/auth/callback', env)).toBe(false);
   });
+  it('a custom-scheme rule with a path matches only that place', () => {
+    const pinned = { ...env, ALLOWED_RETURN: 'https://gitling.vercel.app,gitling://auth/callback' };
+    expect(isAllowedReturn('gitling://auth/callback', pinned)).toBe(true);
+    expect(isAllowedReturn('GITLING://auth/callback?x=1', pinned)).toBe(true);
+    for (const bad of ['gitling://evil', 'gitling:x', 'gitling://auth/callback/../../x', 'gitling://auth/callbackx', 'gitling://evil/auth/callback'])
+      expect(isAllowedReturn(bad, pinned), bad).toBe(false);
+  });
 });
 
 describe('GET /auth/callback', () => {
@@ -92,11 +99,75 @@ describe('POST /auth/exchange', () => {
   });
 });
 
+describe('exchange input', () => {
+  it('GitHub answering null (or nothing) is a 400, not a crash (found by fuzzing on Windows CI)', async () => {
+    for (const reply of ['null', '', '[]']) {
+      const res = await handle(new Request(`${W}/auth/exchange`, { method: 'POST', body: JSON.stringify({ code: 'abcdefgh12', code_verifier: verifier }) }), env, (async () => new Response(reply, { status: 200 })) as never);
+      expect(res.status, reply).toBe(400);
+    }
+  });
+  it('a JSON body of null is a 400, not a crash (found by fuzzing)', async () => {
+    const res = await handle(new Request(`${W}/auth/exchange`, { method: 'POST', body: 'null' }), env, vi.fn() as never);
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('scope check', () => {
+  it('a token with more scopes than Gitling asks for is revoked, not returned', async () => {
+    const calls: { url: string; method?: string }[] = [];
+    const f = (async (u: string, init: RequestInit) => {
+      calls.push({ url: u, method: init.method });
+      return u.includes('access_token') ? new Response(JSON.stringify({ access_token: 'gho_x', scope: 'repo,notifications,read:user,admin:org', token_type: 'bearer' })) : new Response(null, { status: 204 });
+    }) as never;
+    const res = await handle(new Request(`${W}/auth/exchange`, { method: 'POST', body: JSON.stringify({ code: 'abcdef1234', code_verifier: verifier }) }), env, f);
+    expect(res.status).toBe(400);
+    expect(JSON.stringify(await res.json())).not.toContain('gho_x');
+    expect(calls[1]).toMatchObject({ url: 'https://api.github.com/applications/cid/token', method: 'DELETE' });
+  });
+  it('the exact scopes Gitling asks for (in any order or separator) pass', async () => {
+    const f = (async () => new Response(JSON.stringify({ access_token: 'gho_y', scope: 'notifications read:user,repo' }))) as never;
+    const res = await handle(new Request(`${W}/auth/exchange`, { method: 'POST', body: JSON.stringify({ code: 'abcdef1234', code_verifier: verifier }) }), env, f);
+    expect((await res.json()).access_token).toBe('gho_y');
+  });
+  it('`user` in place of `read:user` (granted earlier) passes instead of locking the person out', async () => {
+    const f = (async () => new Response(JSON.stringify({ access_token: 'gho_z', scope: 'notifications,repo,user' }))) as never;
+    const res = await handle(new Request(`${W}/auth/exchange`, { method: 'POST', body: JSON.stringify({ code: 'abcdef1234', code_verifier: verifier }) }), env, f);
+    expect((await res.json()).access_token).toBe('gho_z');
+  });
+});
+
+describe('rate limit', () => {
+  it('refuses exchanges over the limit with 429 and never calls GitHub', async () => {
+    const f = vi.fn();
+    const EXCHANGE_LIMIT = { limit: vi.fn(async () => ({ success: false })) };
+    const res = await handle(new Request(`${W}/auth/exchange`, { method: 'POST', headers: { 'CF-Connecting-IP': '1.2.3.4' }, body: JSON.stringify({ code: 'abcdef1234', code_verifier: verifier }) }), { ...env, EXCHANGE_LIMIT }, f as never);
+    expect(res.status).toBe(429);
+    expect(EXCHANGE_LIMIT.limit).toHaveBeenCalledWith({ key: '1.2.3.4' });
+    expect(f).not.toHaveBeenCalled();
+  });
+});
+
 describe('static assets', () => {
   it('hands non-auth paths to the app assets when bound', async () => {
     const ASSETS = { fetch: vi.fn(async () => new Response('<html>app</html>')) };
     const res = await handle(new Request(`${W}/repo/a/b`), { ...env, ASSETS });
     expect(await res.text()).toBe('<html>app</html>');
+    expect(ASSETS.fetch).toHaveBeenCalledOnce();
+  });
+  it('serves the app at /auth/callback when the app and the worker share an origin (no redirect loop)', async () => {
+    const ASSETS = { fetch: vi.fn(async () => new Response('<html>app</html>')) };
+    const same = { ...env, ASSETS, ALLOWED_RETURN: `${W},gitling://` };
+    const state = encodeState('n0nce', `${W}/auth/callback`);
+    const res = await handle(new Request(`${W}/auth/callback?code=abc123&state=${state}`), same);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe('<html>app</html>');
+    expect(res.headers.get('Cache-Control')).toBe('no-store');
+    expect(res.headers.get('Referrer-Policy')).toBe('no-referrer');
+    // a different path on the same origin still redirects; an evil target is still refused without touching assets
+    const other = await handle(new Request(`${W}/auth/callback?code=abc123&state=${encodeState('n', `${W}/done`)}`), same);
+    expect(other.status).toBe(302);
+    const evil = await handle(new Request(`${W}/auth/callback?code=abc123&state=${encodeState('n', 'https://evil.com/auth/callback')}`), same);
+    expect(evil.status).toBe(400);
     expect(ASSETS.fetch).toHaveBeenCalledOnce();
   });
   it('still answers /health itself', async () => {

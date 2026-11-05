@@ -24,3 +24,9 @@ it('anchors comments: deletions LEFT, everything else RIGHT, hunks nowhere', () 
 });
 
 it('handles empty patches', () => { expect(parsePatch(undefined)).toEqual([]); });
+
+it('drops the "\r" of CRLF patches and ignores a final newline', () => {
+  const l = parsePatch('@@ -1,2 +1,2 @@\r\n a\r\n-b\r\n+c\r\n');
+  expect(l.map((x) => x.text)).toEqual(['@@ -1,2 +1,2 @@', ' a', '-b', '+c']);
+  expect(l.at(-1)).toMatchObject({ kind: 'add', new: 2 });
+});
