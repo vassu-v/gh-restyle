@@ -1,0 +1,378 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gitling.truckcoding.workers.dev/design.schema.json",
+  "title": "Gitling design file",
+  "description": "A Gitling setup: look, tab bar, home layout and shortcuts. See docs/DESIGN-FILE.md.",
+  "type": "object",
+  "required": [
+    "format",
+    "formatVersion",
+    "design"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "format": {
+      "const": "gitling.design"
+    },
+    "formatVersion": {
+      "const": 1
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 80
+    },
+    "exportedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "design": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "number",
+          "const": 1
+        },
+        "skin": {
+          "type": "string",
+          "const": "signal"
+        },
+        "theme": {
+          "type": "object",
+          "properties": {
+            "accent": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "background": {
+              "type": "string",
+              "enum": [
+                "graphite",
+                "black",
+                "paper"
+              ]
+            },
+            "numbers": {
+              "type": "string",
+              "enum": [
+                "dot",
+                "mono",
+                "sans"
+              ]
+            },
+            "tiles": {
+              "type": "string",
+              "enum": [
+                "window",
+                "plain"
+              ]
+            },
+            "density": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5
+            },
+            "textScale": {
+              "type": "number",
+              "minimum": 0.85,
+              "maximum": 1.3
+            }
+          },
+          "required": [
+            "accent",
+            "background",
+            "numbers",
+            "tiles",
+            "density",
+            "textScale"
+          ],
+          "additionalProperties": false
+        },
+        "nav": {
+          "type": "object",
+          "properties": {
+            "tabs": {
+              "minItems": 2,
+              "maxItems": 5,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "home",
+                  "feed",
+                  "inbox",
+                  "repos",
+                  "studio"
+                ]
+              }
+            }
+          },
+          "required": [
+            "tabs"
+          ],
+          "additionalProperties": false
+        },
+        "home": {
+          "type": "object",
+          "properties": {
+            "sections": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "enum": [
+                      "status",
+                      "shortcuts",
+                      "needs",
+                      "feed",
+                      "inbox",
+                      "recent"
+                    ]
+                  },
+                  "visible": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "id",
+                  "visible"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "sections"
+          ],
+          "additionalProperties": false
+        },
+        "tiles": {
+          "maxItems": 24,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "icon": {
+                "type": "string"
+              },
+              "tint": {
+                "type": "string",
+                "pattern": "^#[0-9A-Fa-f]{6}$"
+              },
+              "count": {
+                "type": "boolean"
+              },
+              "size": {
+                "type": "string",
+                "enum": [
+                  "half",
+                  "full"
+                ]
+              },
+              "target": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "search"
+                      },
+                      "q": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "q"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "repo"
+                      },
+                      "repo": {
+                        "type": "string",
+                        "pattern": "^[\\w.-]+\\/[\\w.-]+$"
+                      },
+                      "tab": {
+                        "default": "overview",
+                        "type": "string",
+                        "enum": [
+                          "overview",
+                          "issues",
+                          "prs",
+                          "code",
+                          "commits"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "repo",
+                      "tab"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "user"
+                      },
+                      "login": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "login"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "file"
+                      },
+                      "repo": {
+                        "type": "string",
+                        "pattern": "^[\\w.-]+\\/[\\w.-]+$"
+                      },
+                      "path": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "repo",
+                      "path"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "inbox"
+                      },
+                      "filter": {
+                        "type": "string",
+                        "enum": [
+                          "all",
+                          "review_requested",
+                          "mention",
+                          "assign",
+                          "author",
+                          "comment",
+                          "ci_activity"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "filter"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "link"
+                      },
+                      "url": {
+                        "type": "string",
+                        "format": "uri"
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "url"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "const": "ask"
+                      },
+                      "prompt": {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      "template": {
+                        "type": "string",
+                        "format": "includes",
+                        "pattern": "\\{query\\}"
+                      },
+                      "dest": {
+                        "type": "string",
+                        "enum": [
+                          "issues",
+                          "repos",
+                          "link"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "prompt",
+                      "template",
+                      "dest"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "label",
+              "icon",
+              "tint",
+              "count",
+              "size",
+              "target"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "version",
+        "skin",
+        "theme",
+        "nav",
+        "home",
+        "tiles"
+      ],
+      "additionalProperties": false
+    }
+  }
+}
