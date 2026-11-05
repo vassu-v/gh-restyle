@@ -78,6 +78,12 @@ defers something.
     - Safe background check; a design too large for sync storage saves without tiles; save errors show in the popup.
     - `e2e:extension` and `stress:extension` compute the extension id correctly on Windows.
   - **Windows:** `smoke` exits cleanly (no libuv assertion); CI now also runs on Windows.
+- Follow-up from reviewing PR #2:
+  - `/auth/exchange` survives GitHub answering `null` (found by fuzzing on Windows CI).
+  - Links: only schemes that run code in the page are blocked (`javascript:`, `data:`, `blob:`, `file:`…). App links (`obsidian://`, `tel:`) work, and ask templates must spell out their scheme before `{query}`.
+  - Saved designs are salvaged part by part (Studio says what was left out) instead of being reset.
+  - Suggestion files are read as base64 JSON and decoded by plain code, so it works on React Native too. Each comment is re-checked by id, so there's no 500-comment cap.
+  - Image approval is tied to the exact address. The extension's sync quota is counted in bytes. Draft comments use the commit their diff was read at. Blocked links say why.
 - Not verifiable here: the CSP, rate limit and sign-in loop fix on real Cloudflare (check after the next deploy); the native double-callback (no device build).
 
 - Any asset path containing `@` loops on Cloudflare's asset server. `@` folders are renamed to `_at_`, and `@` files are kept out of the precache.

@@ -1,3 +1,4 @@
+import { utf8DecodeStrict } from './bytes';
 import { GitHubError } from './client';
 import { applyEdits, checkSuggestion, coAuthorLine, originalLines, REASONS, type Edit } from './suggest';
 import type { ApplyResult, GitCommit, GitTree, NewTreeEntry, PullRequest, ReviewComment, User } from './types';
@@ -12,7 +13,8 @@ import type { ApplyResult, GitCommit, GitTree, NewTreeEntry, PullRequest, Review
 /** The api members this needs (a structural type, so api.ts can wire it in without a type cycle). */
 export type ApplyDeps = {
   pull(owner: string, repo: string, n: number): Promise<PullRequest>;
-  reviewComments(owner: string, repo: string, n: number): Promise<ReviewComment[]>;
+  /** One review comment as GitHub has it now, or null if it's gone (one request each: no pagination cap). */
+  reviewComment(owner: string, repo: string, id: number): Promise<ReviewComment | null>;
   fileSource(owner: string, repo: string, path: string, ref?: string): Promise<FileSource>;
   gitCommit(owner: string, repo: string, sha: string): Promise<GitCommit>;
   gitTree(owner: string, repo: string, treeSha: string): Promise<GitTree>;
@@ -37,9 +39,9 @@ export type FileSource = { text: string; bom: boolean };
  * Decodes raw file bytes. Plain `Response.text()` would drop a BOM and turn other encodings into U+FFFD, and
  * writing that back would change bytes nobody suggested changing — so anything that isn't UTF-8 is refused.
  */
-export function decodeSource(bytes: ArrayBuffer | Uint8Array): FileSource {
-  let text: string;
-  try { text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes); } catch { return refuse(APPLY_ERRORS.encoding); }
+export function decodeSource(bytes: Uint8Array): FileSource {
+  const text = utf8DecodeStrict(bytes);
+  if (text === null) return refuse(APPLY_ERRORS.encoding);
   return text.startsWith('﻿') ? { text: text.slice(1), bom: true } : { text, bom: false };
 }
 
@@ -65,9 +67,9 @@ export async function applySuggestions(
 
   // 2b. The comments the person saw may predate a push: their line numbers would then point at the wrong lines
   // of head.sha (and repeated lines like "}" can still match). GitHub's current copy must say the same thing.
-  const live = new Map((await api.reviewComments(owner, repo, n)).map((c) => [c.id, c]));
-  for (const { c } of suggestions) {
-    const now = live.get(c.id);
+  const live = await Promise.all(suggestions.map(({ c }) => api.reviewComment(owner, repo, c.id)));
+  for (const [i, { c }] of suggestions.entries()) {
+    const now = live[i];
     if (!now || now.body !== c.body || now.line !== c.line || (now.start_line ?? null) !== (c.start_line ?? null) || now.diff_hunk !== c.diff_hunk) refuse(REASONS.outdated);
   }
 

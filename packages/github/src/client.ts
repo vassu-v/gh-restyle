@@ -12,8 +12,6 @@ export type RequestOptions = {
   accept?: string;
   /** Return the body as text instead of JSON. */
   text?: boolean;
-  /** Return the body as raw bytes (an ArrayBuffer), for callers that must write the file back unchanged. */
-  bytes?: boolean;
 };
 
 export type Response<T> = { data: T; status: number; headers: { get(name: string): string | null } };
@@ -47,9 +45,8 @@ const NO_HEADERS = { get: () => null };
 export function createClient(session: Session, deps: ClientDeps = {}): GitHubClient {
   if (session.kind === 'sample') {
     const raw = async <T,>(path: string, opts?: RequestOptions) => {
-      // Sample files are strings; bytes mode gets them UTF-8 encoded, like the wire.
-      const r = await mockRequest(path, opts?.bytes ? { ...opts, text: true } : opts);
-      const data = opts?.bytes && typeof r.data === 'string' ? new TextEncoder().encode(r.data).buffer : r.data;
+      const r = await mockRequest(path, opts);
+      const data = r.data;
       return { data: data as T, status: 200, headers: { get: (n: string) => (n.toLowerCase() === 'link' ? r.link ?? null : null) } };
     };
     return {
@@ -72,7 +69,7 @@ export function createClient(session: Session, deps: ClientDeps = {}): GitHubCli
 
   async function raw<T>(path: string, opts: RequestOptions = {}): Promise<Response<T>> {
     const method = opts.method ?? 'GET';
-    const key = `${opts.accept ?? ''}|${opts.bytes ? 'b' : opts.text ? 't' : 'j'}|${path}`;
+    const key = `${opts.accept ?? ''}|${opts.text ? 't' : 'j'}|${path}`;
     const cached = method === 'GET' ? etags.get(key) : undefined;
     let res: globalThis.Response;
     try {
@@ -103,7 +100,7 @@ export function createClient(session: Session, deps: ClientDeps = {}): GitHubCli
     if (res.status === 204 || res.status === 205) return { data: true as T, status: res.status, headers: h };
     if (!res.ok) throw await toError(res);
 
-    const data = (opts.bytes ? await res.arrayBuffer() : opts.text ? await res.text() : await res.json()) as T;
+    const data = (opts.text ? await res.text() : await res.json()) as T;
     const etag = h.get('ETag');
     if (method === 'GET' && etag) {
       etags.delete(key);

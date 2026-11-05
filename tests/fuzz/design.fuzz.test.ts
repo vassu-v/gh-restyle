@@ -2,7 +2,7 @@ import { runs } from './runs';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
-  BACKGROUNDS, contrast, decodeDesign, Design, encodeDesign, fit, inkOn, isSafeLink, resolveTokens, TileTarget,
+  BACKGROUNDS, contrast, decodeDesign, Design, encodeDesign, fit, inkOn, isSafeLink, isSafeTemplate, resolveTokens, TileTarget,
 } from '../../packages/design/src';
 
 /* ─── arbitraries built from schema.ts constraints ─── */
@@ -130,37 +130,41 @@ function oracleScheme(s: string): string | null {
 }
 
 const junk = fc.constantFrom('\t', '\n', '\r', ' ', '\u0000', '\u0001', '\u001f', ' ', '​', '﻿', '%09', '%0a', '&#x09;', '\\', '{query}', ' ');
-const scheme = fc.constantFrom('javascript', 'data', 'vbscript', 'file', 'blob', 'about', 'http', 'https', 'mailto', 'jar', 'view-source', 'intent');
+const scheme = fc.constantFrom('javascript', 'data', 'vbscript', 'file', 'blob', 'about', 'filesystem', 'http', 'https', 'mailto', 'jar', 'view-source', 'intent', 'obsidian', 'tel');
 const caseMix = (s: string) => fc.array(fc.boolean(), { minLength: s.length, maxLength: s.length }).map((bs) => s.split('').map((c, i) => (bs[i] ? c.toUpperCase() : c)).join(''));
 const sprinkle = (s: string) => fc.array(fc.tuple(fc.nat({ max: s.length }), junk), { maxLength: 4 })
   .map((ins) => { let out = s; for (const [i, j] of ins.sort((a, b) => b[0] - a[0])) out = out.slice(0, i) + j + out.slice(i); return out; });
 const trickyUrl = fc.tuple(scheme.chain(caseMix).chain(sprinkle), fc.constantFrom(':', '%3a', '&colon;', ':'), fc.constantFrom('alert(1)', '//evil.com/', 'text/html,<script>', '//x', 'a@b.c', ''), fc.array(junk, { maxLength: 2 }), fc.array(junk, { maxLength: 2 }))
   .map(([sc, colon, rest, pre, post]) => pre.join('') + sc + colon + rest + post.join(''));
 
+/** Schemes that run code or content in the opening page; isSafeLink must never let one through. */
+const DANGEROUS = ['javascript', 'data', 'vbscript', 'blob', 'file', 'about', 'filesystem', 'view-source'];
+
 describe('isSafeLink', () => {
-  it('never true when the parsed scheme is not http/https/mailto (tricky schemes)', () => {
+  it('never true for a dangerous scheme (tricky schemes)', () => {
     fc.assert(fc.property(trickyUrl, (u) => {
       if (isSafeLink(u)) {
-        expect(['http', 'https', 'mailto']).toContain(oracleScheme(u));
-        expect(['http:', 'https:', 'mailto:']).toContain(new URL(u.trim().replace(/\{query\}/g, 'q')).protocol);
+        expect(oracleScheme(u)).not.toBeNull();
+        expect(DANGEROUS).not.toContain(oracleScheme(u));
+        expect(DANGEROUS.map((d) => d + ':')).not.toContain(new URL(u.trim().replace(/\{query\}/g, 'q')).protocol);
       }
     }), { numRuns: runs(1000) });
   });
 
-  it('never true when the parsed scheme is not http/https/mailto (arbitrary strings)', () => {
+  it('never true for a dangerous scheme (arbitrary strings)', () => {
     fc.assert(fc.property(fc.oneof(fc.string(), fc.fullUnicodeString(), fc.webUrl()), (u) => {
-      if (isSafeLink(u)) expect(['http', 'https', 'mailto']).toContain(oracleScheme(u));
+      if (isSafeLink(u)) expect(DANGEROUS).not.toContain(oracleScheme(u));
     }), { numRuns: runs(1000) });
   });
 
   it('a safe ask template stays safe after the app substitutes any query (ask.tsx: replace + encodeURIComponent)', () => {
     const tmpl = fc.tuple(trickyUrl, fc.nat(), fc.constantFrom('', '/', '?q=')).map(([u, i, mid]) => { const k = i % (u.length + 1); return u.slice(0, k) + mid + '{query}' + u.slice(k); });
     fc.assert(fc.property(fc.oneof(tmpl, fc.webUrl().map((u) => u + '{query}')), fc.fullUnicodeString(), (t, q) => {
-      fc.pre(isSafeLink(t));
+      fc.pre(isSafeTemplate(t));
       const final = t.replace('{query}', encodeURIComponent(q));
       let proto: string | null = null;
       try { proto = new URL(final).protocol; } catch { /* unparseable is fine: nothing opens */ }
-      if (proto) expect(['http:', 'https:', 'mailto:']).toContain(proto);
+      if (proto) expect(DANGEROUS.map((d) => d + ':')).not.toContain(proto);
     }), { numRuns: runs(500) });
   });
 });

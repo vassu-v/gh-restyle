@@ -1,6 +1,7 @@
 /* Sample data with the same shapes as the GitHub API, so every screen works before sign-in. */
 import type { Comment, DraftComment, FeedEvent, Issue, NewTreeEntry, Notification, PrFile, PullRequest, Repo, Review, ReviewComment, ReviewEvent, User } from './types';
 import type { RequestOptions } from './client';
+import { base64Encode, utf8Encode } from './bytes';
 import { parsePatch } from './diff';
 import { originalLines } from './suggest';
 
@@ -265,7 +266,9 @@ function contents(r: Repo, path: string, files: Record<string, string> = { ...TR
   const names = Object.keys(files);
   if (names.includes(path)) {
     const text = files[path];
-    return { file: { type: 'file' as const, name: path.split('/').pop()!, path, size: text.length, sha: 'f' + path.length }, text };
+    // Like GitHub's JSON form: base64 of the UTF-8 bytes, wrapped at 60 characters.
+    const content = (base64Encode(utf8Encode(text)).match(/.{1,60}/g) ?? []).join('\n');
+    return { file: { type: 'file' as const, name: path.split('/').pop()!, path, size: text.length, sha: 'f' + path.length, encoding: 'base64', content }, text };
   }
   const prefix = path ? path + '/' : '';
   const kids = new Map<string, 'file' | 'dir'>();
@@ -484,6 +487,10 @@ function route(path: string, o: RequestOptions): unknown {
       // Anchored against the PR's current patch and head, so a suggestion written here can be applied in sample mode.
       for (const c of b.comments ?? []) (REVIEW_COMMENTS[key] ??= []).push({ id: rid++, user: u('you'), body: c.body, ...anchored(key, c.path, c.line, c.side, c.start_line, c.start_side), created_at: review.submitted_at! });
       return review;
+    }
+    if (m === 'GET' && (r = rest.match(/^\/pulls\/comments\/(\d+)$/))) {
+      const c = Object.entries(REVIEW_COMMENTS).filter(([k]) => k.startsWith(full + '#')).flatMap(([, v]) => v).find((x) => x.id === Number(r![1]));
+      return c ?? notFound();
     }
     if (m === 'POST' && (r = rest.match(/^\/pulls\/(\d+)\/comments\/(\d+)\/replies$/))) {
       find(full, r[1]);

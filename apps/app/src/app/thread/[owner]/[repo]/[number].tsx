@@ -37,8 +37,8 @@ export default function Thread() {
   const [batch, setBatch] = useState<ReviewComment[]>([]);
   const [applied, setApplied] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<DraftComment[]>([]);
-  // The head commit the pending comments' line numbers refer to. Sent as commit_id, so GitHub places them on the
-  // diff they were written against even if the PR moved on (e.g. after applying a suggestion) before submitting.
+  // The head commit the pending comments' line numbers refer to: the one the diff on screen was read at (not the
+  // PR's current head, which may have moved). Sent as commit_id so GitHub places them on that diff.
   const [draftSha, setDraftSha] = useState<string | undefined>(undefined);
   const [reviewing, setReviewing] = useState(false);
   const [reviewDone, setReviewDone] = useState<string | null>(null);
@@ -132,11 +132,11 @@ export default function Thread() {
               ) : null}
               {applied ? <T v="sub" c="ok" style={{ paddingHorizontal: 18, paddingTop: 10 }}>{applied}</T> : null}
               {open ? <T v="monoS" c="dim" style={{ paddingHorizontal: 18, paddingTop: 10 }}>tap a line to comment on it, long-press to pick a range</T> : null}
-              {(files.data ?? []).map((f) => (
+              {(files.data?.files ?? []).map((f) => (
                 <DiffFile key={f.filename} file={f} canComment={open} ctx={ctx}
                   threads={threads.threads.filter((th) => th.path === f.filename)}
                   drafts={drafts.filter((d) => d.path === f.filename)}
-                  onDraft={(d) => { setDraftSha((s) => (drafts.length ? s : pr.data?.head.sha)); setDrafts((x) => [...x, d]); setReviewDone(null); }}
+                  onDraft={(d) => { setDraftSha((s) => (drafts.length ? s : files.data?.sha)); setDrafts((x) => [...x, d]); setReviewDone(null); }}
                   onRemoveDraft={(d) => setDrafts((x) => x.filter((y) => y !== d))} />
               ))}
             </>

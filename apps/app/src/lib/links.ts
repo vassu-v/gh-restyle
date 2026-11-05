@@ -1,5 +1,5 @@
 import { router, type Href } from 'expo-router';
-import { Linking } from 'react-native';
+import { Alert, Linking, Platform } from 'react-native';
 import { isSafeLink } from '@gitling/design';
 
 /**
@@ -44,4 +44,15 @@ export function openUrl(url: string) {
   const r = routeForUrl(url);
   if (r) router.push(r);
   else if (isSafeLink(url)) Linking.openURL(url).catch(() => {});
+  else blockedLink(url);
+}
+
+export const BLOCKED_LINK_MESSAGE = 'Gitling didn’t open this link because links like it can run code inside the app.';
+
+/** Says why nothing happened. react-native-web's Alert.alert does nothing, so web uses window.alert. */
+export function blockedLink(url: string) {
+  const scheme = /^\s*([a-z][\w+.-]*):/i.exec(url)?.[1];
+  const msg = scheme ? `${BLOCKED_LINK_MESSAGE} (${scheme.toLowerCase()}: link)` : BLOCKED_LINK_MESSAGE;
+  if (Platform.OS === 'web') globalThis.alert?.(msg);
+  else Alert.alert('Link blocked', msg);
 }

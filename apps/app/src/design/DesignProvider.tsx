@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DEFAULT_DESIGN, Design, resolveTokens, type Tokens } from '@gitling/design';
+import { DEFAULT_DESIGN, Design, resolveTokens, salvageDesign, type Tokens } from '@gitling/design';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 const KEY = 'gitling.design.v1';
@@ -14,9 +14,12 @@ type Ctx = {
   undo: () => void;
   canUndo: boolean;
   reset: () => void;
+  /** Parts of the saved design that couldn't be loaded (the full original is kept under KEY + '.unreadable'). */
+  dropped: string[];
+  dismissDropped: () => void;
 };
 
-type State = { design: Design; history: Design[]; loaded: boolean };
+type State = { design: Design; history: Design[]; loaded: boolean; dropped: string[] };
 
 const DesignContext = createContext<Ctx | null>(null);
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
@@ -29,17 +32,19 @@ function apply(s: State, next: Design): State {
 }
 
 export function DesignProvider({ children }: { children: ReactNode }) {
-  const [s, setS] = useState<State>({ design: DEFAULT_DESIGN, history: [], loaded: false });
+  const [s, setS] = useState<State>({ design: DEFAULT_DESIGN, history: [], loaded: false, dropped: [] });
 
   useEffect(() => {
     AsyncStorage.getItem(KEY)
       .then(async (raw) => {
-        let parsed: ReturnType<typeof Design.safeParse> | null = null;
-        try { parsed = raw ? Design.safeParse(JSON.parse(raw)) : null; } catch { /* corrupt JSON: handled below */ }
-        // A stored design that no longer validates (corrupt, or a future schema change) is about to be replaced by
-        // the default. Keep a copy first so it can be recovered or migrated instead of being lost.
-        if (raw && !parsed?.success) await AsyncStorage.setItem(`${KEY}.unreadable`, raw).catch(() => {});
-        setS((x) => ({ ...x, design: parsed?.success ? parsed.data : x.design, loaded: true }));
+        let json: unknown = null;
+        try { json = raw ? JSON.parse(raw) : null; } catch { /* corrupt JSON: handled below */ }
+        // A saved design that a newer schema partly rejects keeps every part that still validates, instead of
+        // resetting to the default. The full original is kept so nothing is lost for good.
+        const got = raw ? salvageDesign(json, DEFAULT_DESIGN) : null;
+        const dropped = raw && !got ? ['the whole design (unreadable)'] : (got?.dropped ?? []);
+        if (dropped.length) await AsyncStorage.setItem(`${KEY}.unreadable`, raw!).catch(() => {});
+        setS((x) => ({ ...x, design: got?.design ?? x.design, loaded: true, dropped }));
       })
       .catch(() => setS((x) => ({ ...x, loaded: true })));
   }, []);
@@ -55,9 +60,12 @@ export function DesignProvider({ children }: { children: ReactNode }) {
   const undo = useCallback(() => setS((x) => (x.history.length ? { ...x, design: x.history[x.history.length - 1], history: x.history.slice(0, -1) } : x)), []);
   const reset = useCallback(() => setS((x) => apply(x, clone(DEFAULT_DESIGN))), []);
 
+  const dismissDropped = useCallback(() => setS((x) => ({ ...x, dropped: [] })), []);
+
   const value = useMemo<Ctx>(() => ({
     design: s.design, tokens: resolveTokens(s.design), update, replace, undo, reset, canUndo: s.history.length > 0,
-  }), [s.design, s.history.length, update, replace, undo, reset]);
+    dropped: s.dropped, dismissDropped,
+  }), [s.design, s.history.length, update, replace, undo, reset, s.dropped, dismissDropped]);
 
   if (!s.loaded) return null;
   return <DesignContext.Provider value={value}>{children}</DesignContext.Provider>;

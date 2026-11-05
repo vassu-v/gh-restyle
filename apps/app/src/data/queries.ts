@@ -140,7 +140,20 @@ export function useThread(owner: string, repo: string, n: number) {
 }
 export function usePrFiles(owner: string, repo: string, n: number, enabled: boolean) {
   const { api, k } = useApi();
-  return useQuery({ queryKey: [k, 'files', owner, repo, n], queryFn: () => api.prFiles(owner, repo, n), enabled });
+  // The diff's line numbers belong to one head commit. Read the head before and after the files; if someone
+  // pushed in between, read again, so `sha` is the commit these files (and comments drafted on them) refer to.
+  return useQuery({
+    queryKey: [k, 'files', owner, repo, n],
+    queryFn: async () => {
+      for (let i = 0; ; i++) {
+        const before = (await api.pull(owner, repo, n)).head.sha;
+        const files = await api.prFiles(owner, repo, n);
+        const after = (await api.pull(owner, repo, n)).head.sha;
+        if (before === after || i === 2) return { files, sha: after === before ? after : undefined };
+      }
+    },
+    enabled,
+  });
 }
 export function useReviews(owner: string, repo: string, n: number, enabled: boolean) {
   const { api, k } = useApi();

@@ -100,6 +100,12 @@ describe('POST /auth/exchange', () => {
 });
 
 describe('exchange input', () => {
+  it('GitHub answering null (or nothing) is a 400, not a crash (found by fuzzing on Windows CI)', async () => {
+    for (const reply of ['null', '', '[]']) {
+      const res = await handle(new Request(`${W}/auth/exchange`, { method: 'POST', body: JSON.stringify({ code: 'abcdefgh12', code_verifier: verifier }) }), env, (async () => new Response(reply, { status: 200 })) as never);
+      expect(res.status, reply).toBe(400);
+    }
+  });
   it('a JSON body of null is a 400, not a crash (found by fuzzing)', async () => {
     const res = await handle(new Request(`${W}/auth/exchange`, { method: 'POST', body: 'null' }), env, vi.fn() as never);
     expect(res.status).toBe(400);

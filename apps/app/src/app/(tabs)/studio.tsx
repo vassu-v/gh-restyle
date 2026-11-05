@@ -63,7 +63,7 @@ function Preview({ design, width = 272, tiles = true }: { design: Design; width?
 const safeDecode = (s: string) => { try { return decodeURIComponent(s); } catch { return s; } };
 
 export default function Studio() {
-  const { design, tokens: t, update, undo, canUndo, replace, reset } = useDesign();
+  const { design, tokens: t, update, undo, canUndo, replace, reset, dropped, dismissDropped } = useDesign();
   const params = useLocalSearchParams<{ tab?: string; import?: string }>();
   const [tab, setTab] = useState<Tab>('look');
   const [code, setCode] = useState('');
@@ -91,6 +91,13 @@ export default function Studio() {
         </Pressable>
       </View>
     }>
+      {dropped.length ? (
+        <View style={{ marginHorizontal: 14, marginTop: 6, padding: 12, borderRadius: 13, backgroundColor: t.c.el2, gap: 6 }}>
+          <T v="bodyStrong">Part of your saved design couldn’t be loaded</T>
+          <T v="sub" c="mut">{`Kept everything else. Left out: ${dropped.join(', ')}. The original is saved on this device.`}</T>
+          <Pressable onPress={dismissDropped} accessibilityRole="button" hitSlop={8}><T v="bodyStrong" c="acc">OK</T></Pressable>
+        </View>
+      ) : null}
       <View style={{ marginHorizontal: 14, marginTop: 6 }}><Preview design={design} /></View>
       <View style={{ paddingVertical: 14 }}>
         <Chips value={tab} onChange={setTab} options={[{ value: 'look', label: 'Look' }, { value: 'home', label: 'Home' }, { value: 'tabs', label: 'Tabs' }, { value: 'tiles', label: 'Tiles' }, { value: 'share', label: 'Share' }]} />

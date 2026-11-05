@@ -22,10 +22,14 @@ export async function loadSettings(): Promise<Settings> {
   return { enabled: raw?.enabled ?? true, design: looksValid(raw?.design) ? raw!.design! : DEFAULT_DESIGN };
 }
 
-/** storage.sync allows 8 KB per item. The extension only renders the theme, so a design with many long tiles
- *  is stored without its tiles rather than failing to save. */
+/** storage.sync allows 8192 bytes per item, counted as UTF-8 bytes of the key plus the JSON value. */
+const SYNC_ITEM_BYTES = 8192;
+export const syncBytes = (s: Settings) => new TextEncoder().encode(KEY + JSON.stringify(s)).length;
+
+/** The extension only renders the theme, so a design too big for one sync item (many tiles, long or
+ *  non-English labels: 2–4 bytes a character) is stored without its tiles rather than failing to save. */
 export function forSync(s: Settings): Settings {
-  return JSON.stringify(s).length > 7000 ? { ...s, design: { ...s.design, tiles: [] } } : s;
+  return syncBytes(s) > SYNC_ITEM_BYTES - 256 ? { ...s, design: { ...s.design, tiles: [] } } : s;
 }
 
 export async function saveSettings(s: Settings) {

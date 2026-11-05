@@ -1,3 +1,4 @@
+import type { ReviewComment } from '../src/types';
 import { describe, expect, it } from 'vitest';
 import { createApi } from '../src/api';
 import { applySuggestions, decodeSource, type ApplyDeps } from '../src/apply';
@@ -125,11 +126,14 @@ describe('review threads against sample data', () => {
   });
 });
 
+/** A fake GitHub that knows these comments, by id. */
+const knownComments = (list: ReviewComment[]) => async (_o: string, _r: string, id: number) => list.find((c) => c.id === id) ?? null;
+
 describe('applySuggestions guards (fake GitHub)', () => {
   const comment = { id: 7, user: { login: 'mira', id: 101, avatar_url: '' }, body: '```suggestion\nB\n```', path: 'f.txt', line: 2, side: 'RIGHT' as const, original_line: 2, diff_hunk: '@@ -1,2 +1,2 @@\n a\n+b', created_at: '' };
   const fake = (o: Partial<ApplyDeps> & { pr?: object } = {}): ApplyDeps => ({
     pull: async () => ({ state: 'open', head: { ref: 'f', sha: 'h1', repo: { full_name: 'me/r', owner: { login: 'me' } } }, ...o.pr }) as never,
-    reviewComments: async () => [comment],
+    reviewComment: async (_o, _r, id) => (id === comment.id ? comment : null),
     fileSource: async () => ({ text: 'a\nb\n', bom: false }),
     gitCommit: async () => ({ sha: 'h1', tree: { sha: 't1' } }),
     gitTree: async () => ({ sha: 't1', tree: [{ path: 'f.txt', mode: '100755', type: 'blob', sha: 'b' }] }),
@@ -163,11 +167,11 @@ describe('applySuggestions guards (fake GitHub)', () => {
     ]);
   });
   it('rejects overlapping suggestions in a batch', async () => {
-    await expect(applySuggestions(fake({ reviewComments: async () => [comment, { ...comment, id: 8 }] }), 'me', 'r', 1, [comment, { ...comment, id: 8 }])).rejects.toThrow('Two suggestions change the same lines.');
+    await expect(applySuggestions(fake({ reviewComment: knownComments([comment, { ...comment, id: 8 }]) }), 'me', 'r', 1, [comment, { ...comment, id: 8 }])).rejects.toThrow('Two suggestions change the same lines.');
   });
   it("refuses when GitHub's copy of a comment moved on (a push since the comments loaded)", async () => {
-    await expect(applySuggestions(fake({ reviewComments: async () => [{ ...comment, line: 5 }] }), 'me', 'r', 1, [comment])).rejects.toThrow("It's outdated.");
-    await expect(applySuggestions(fake({ reviewComments: async () => [] }), 'me', 'r', 1, [comment])).rejects.toThrow("It's outdated.");
+    await expect(applySuggestions(fake({ reviewComment: knownComments([{ ...comment, line: 5 }]) }), 'me', 'r', 1, [comment])).rejects.toThrow("It's outdated.");
+    await expect(applySuggestions(fake({ reviewComment: knownComments([]) }), 'me', 'r', 1, [comment])).rejects.toThrow("It's outdated.");
   });
   const written = () => {
     const trees: NewTreeEntry[][] = [];
@@ -178,13 +182,13 @@ describe('applySuggestions guards (fake GitHub)', () => {
     expect(() => decodeSource(new Uint8Array([0xe9, 0x0a]))).toThrow("isn't saved as UTF-8");
     const first = { ...comment, line: 1, original_line: 1, diff_hunk: '@@ -0,0 +1,2 @@\n+﻿a\n+b' };
     const w = written();
-    await applySuggestions(fake({ reviewComments: async () => [first], fileSource: async () => ({ text: 'a\nb\n', bom: true }), createTree: w.createTree }), 'me', 'r', 1, [first]);
+    await applySuggestions(fake({ reviewComment: knownComments([first]), fileSource: async () => ({ text: 'a\nb\n', bom: true }), createTree: w.createTree }), 'me', 'r', 1, [first]);
     expect(w.trees[0][0].content).toBe('﻿B\nb\n');
   });
   it('applies to CRLF files, whose hunks carry "\\r"', async () => {
     const crlf = { ...comment, diff_hunk: '@@ -1,2 +1,2 @@\r\n a\r\n+b\r' };
     const w = written();
-    await applySuggestions(fake({ reviewComments: async () => [crlf], fileSource: async () => ({ text: 'a\r\nb\r\n', bom: false }), createTree: w.createTree }), 'me', 'r', 1, [crlf]);
+    await applySuggestions(fake({ reviewComment: knownComments([crlf]), fileSource: async () => ({ text: 'a\r\nb\r\n', bom: false }), createTree: w.createTree }), 'me', 'r', 1, [crlf]);
     expect(w.trees[0][0].content).toBe('a\r\nB\r\n');
   });
   it('defaults the mode only when the tree is really missing, and stops on other errors', async () => {

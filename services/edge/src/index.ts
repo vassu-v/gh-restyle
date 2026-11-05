@@ -118,7 +118,7 @@ async function exchange(req: Request, url: URL, env: Env, f: Fetch, cors: Record
       redirect_uri: `${url.origin}/auth/callback`,
     }),
   });
-  const data = (await gh.json().catch(() => ({}))) as { access_token?: string; scope?: string; token_type?: string; error?: string; error_description?: string };
+  const data = ((await gh.json().catch(() => null)) ?? {}) as { access_token?: string; scope?: string; token_type?: string; error?: string; error_description?: string };
   if (!gh.ok || !data.access_token) {
     const expired = data.error === 'bad_verification_code';
     return json({ error: expired ? 'That sign-in expired. Try again.' : (data.error_description ?? 'GitHub refused the sign-in.') }, 400, cors);

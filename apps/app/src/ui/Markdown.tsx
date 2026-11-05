@@ -194,10 +194,13 @@ export function imageLoadsWithoutAsking(uri: string): boolean {
 
 function RemoteImage({ uri, alt, onPress }: { uri: string; alt: string; onPress?: () => void }) {
   const t = useTokens();
-  const [allowed, setAllowed] = useState(() => imageLoadsWithoutAsking(uri));
+  // The tap approves this exact address. If the comment is edited and the image changes, React reuses this
+  // component, so a boolean would carry the approval over to a new (possibly tracking) address.
+  const [approved, setApproved] = useState<string | null>(null);
+  const allowed = imageLoadsWithoutAsking(uri) || approved === uri;
   if (!allowed) {
     let host = ''; try { host = new URL(uri).hostname; } catch { /* shown without a host */ }
-    return <Text style={{ color: t.c.acc, fontFamily: t.font.ui.regular, fontSize: 13 }} onPress={() => setAllowed(true)} accessibilityRole="button">[{alt || 'image'} · load from {host || 'link'}]</Text>;
+    return <Text style={{ color: t.c.acc, fontFamily: t.font.ui.regular, fontSize: 13 }} onPress={() => setApproved(uri)} accessibilityRole="button">[{alt || 'image'} · load from {host || 'link'}]</Text>;
   }
   return <LoadedImage uri={uri} alt={alt} onPress={onPress} />;
 }
