@@ -78,6 +78,8 @@ await ctx.route('https://api.github.com/**', (route) => {
 });
 
 const page = await ctx.newPage();
+// A returning user: first-launch tour behaviour is covered by npm run e2e:onboarding.
+await page.addInitScript(() => localStorage.setItem('gitling.onboarded.v1', 'e2e'));
 const errors = []; page.on('pageerror', (e) => errors.push(e.message));
 await page.goto(`${APP}/account`, { waitUntil: 'networkidle' });
 log(await page.getByText('Sign in with GitHub', { exact: true }).isVisible(), 'Account shows the one-tap button when sign-in is configured');

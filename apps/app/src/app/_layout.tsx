@@ -13,6 +13,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DesignProvider, useDesign } from '@/design/DesignProvider';
+import { OnboardingProvider } from '@/onboarding/OnboardingProvider';
 import { SessionProvider } from '@/session/SessionProvider';
 import '@/pwa/register';
 
@@ -23,6 +24,7 @@ function Shell() {
       <StatusBar style={t.mode === 'dark' ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: t.c.bg }, animation: 'slide_from_right' }}>
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="welcome" options={{ animation: 'fade', gestureEnabled: false }} />
         <Stack.Screen name="search" options={{ animation: 'fade_from_bottom' }} />
         <Stack.Screen name="tile/[id]" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="ask" options={{ presentation: 'transparentModal', animation: 'fade' }} />
@@ -38,11 +40,14 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={qc}>
-        <DesignProvider>
-          <SessionProvider>
-            <Shell />
-          </SessionProvider>
-        </DesignProvider>
+        {/* Outside DesignProvider: it must read storage before DesignProvider saves the default design. */}
+        <OnboardingProvider>
+          <DesignProvider>
+            <SessionProvider>
+              <Shell />
+            </SessionProvider>
+          </DesignProvider>
+        </OnboardingProvider>
       </QueryClientProvider>
     </SafeAreaProvider>
   );

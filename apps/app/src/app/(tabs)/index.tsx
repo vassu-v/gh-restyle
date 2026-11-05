@@ -1,11 +1,12 @@
 import type { SectionId } from '@gitling/design';
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { Pressable, View } from 'react-native';
 import { useDesign } from '@/design/DesignProvider';
 import { useFeed, useMe, useMyRepos, useNotifications, useRuns, useSearchIssues } from '@/data/queries';
 import { FeedItem, groupFeed, IssueRow, RepoRow } from '@/features/rows';
 import { TileView } from '@/features/tiles/TileView';
 import { pad2 } from '@/lib/format';
+import { useOnboarding } from '@/onboarding/OnboardingProvider';
 import { useSession } from '@/session/SessionProvider';
 import { Icon } from '@/ui/Icon';
 import { Avatar, Empty, Loading, Num, Panel, Screen, SectionLabel, T, Ticks } from '@/ui/primitives';
@@ -113,6 +114,9 @@ const SECTION: Record<SectionId, () => React.ReactNode> = { status: StatusPanel,
 export default function Home() {
   const { design, tokens: t } = useDesign();
   const me = useMe(); const { isSample } = useSession();
+  // First launch only lands on Home; deep links to other screens never trigger the tour.
+  const { needed } = useOnboarding();
+  if (needed) return <Redirect href="/welcome" />;
   return (
     <Screen header={
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 10 }}>
