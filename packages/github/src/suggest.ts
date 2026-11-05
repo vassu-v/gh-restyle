@@ -83,24 +83,32 @@ export function checkSuggestion(c: ReviewComment, ctx: { prOpen: boolean; canWri
 export type Edit = { startLine: number; endLine: number; lines: string[] };
 
 /**
- * Replaces 1-based inclusive line ranges. Keeps the file's line endings (CRLF or LF) and whether it ends with a
- * newline, so applying a suggestion changes only the suggested lines.
+ * Replaces 1-based inclusive line ranges. Each line keeps its own ending (CRLF or LF, so files with mixed endings
+ * stay byte-identical outside the edits), and the file keeps whether it ends with a newline. Line numbers match
+ * `text.split(/\r?\n/)`, which is how apply.ts checks the original lines.
  */
 export function applyEdits(text: string, edits: Edit[]): string {
-  const eol = text.includes('\r\n') ? '\r\n' : '\n';
-  const finalNewline = text.endsWith('\n');
-  const body = finalNewline ? text.slice(0, -eol.length) : text;
-  const lines = text === '' ? [] : body.split(eol);
+  const lines = (text.match(/[^\n]*\n|[^\n]+$/g) ?? []).map((raw) => {
+    const m = raw.match(/\r?\n$/);
+    return { content: m ? raw.slice(0, -m[0].length) : raw, eol: m ? m[0] : '' };
+  });
   const sorted = [...edits].sort((a, b) => a.startLine - b.startLine);
   for (let i = 0; i < sorted.length; i++) {
     const e = sorted[i];
     if (e.startLine < 1 || e.endLine < e.startLine || e.endLine > lines.length) throw new Error('A suggestion points past the end of the file.');
     if (i > 0 && sorted[i - 1].endLine >= e.startLine) throw new Error('Two suggestions change the same lines.');
   }
-  // Bottom-up, so earlier ranges keep their line numbers.
-  for (const e of sorted.reverse()) lines.splice(e.startLine - 1, e.endLine - e.startLine + 1, ...e.lines);
-  if (!lines.length) return '';
-  return lines.join(eol) + (finalNewline ? eol : '');
+  // Bottom-up, so earlier ranges keep their line numbers. New lines take the replaced lines' endings: the first
+  // replaced line's inside the block, the last one's at its end (empty at the end of a file without a final newline).
+  for (const e of sorted.reverse()) {
+    const inner = lines[e.startLine - 1].eol || '\n';
+    const last = lines[e.endLine - 1].eol;
+    const repl = e.lines.map((content, i) => ({ content, eol: i === e.lines.length - 1 ? last : inner }));
+    lines.splice(e.startLine - 1, e.endLine - e.startLine + 1, ...repl);
+  }
+  // Deleting the last lines of a file without a final newline must not leave one behind.
+  if (lines.length && !/\n$/.test(text)) lines[lines.length - 1].eol = '';
+  return lines.map((l) => l.content + l.eol).join('');
 }
 
 /** The trailer GitHub uses to credit a suggestion's author on the commit. */

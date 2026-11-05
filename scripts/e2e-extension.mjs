@@ -9,10 +9,10 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { build } from 'esbuild';
 
-const root = new URL('..', import.meta.url).pathname;
+const root = fileURLToPath(new URL('..', import.meta.url));
 const ext = join(root, 'apps/extension/dist');
 if (!existsSync(join(ext, 'manifest.json'))) { console.error('Build the extension first: npm run build:extension'); process.exit(1); }
 const { chromium } = createRequire(import.meta.url)('playwright');
@@ -127,7 +127,8 @@ try {
   check('extension loads and the popup opens', popState.title === 'Gitling', `id ${extId}`);
   check('popup shows the default settings (on, Graphite, Dot)', popState.enabled && popState.bg === 'graphite' && popState.num === 'dot', JSON.stringify(popState));
 
-  // 2. Default state on a repo page.
+  // 2. Default state on a repo page (wait for the content script's async settings read first).
+  await shows(gh, DEFAULT_DESIGN);
   let s = await snap(gh);
   check('default: html has class gitling-on', s.on);
   check('default: page background is the design background (Graphite #0E0F11)', s.bodyBg === rgb(BACKGROUNDS.graphite.palette.bg), s.bodyBg);
@@ -243,7 +244,8 @@ try {
     const soft = (await gh2.evaluate(() => window.__gitlingE2E)) === 'nav';
     ok = await shows(gh2, graphitePaper);
     s = await snap(gh2);
-    check(`in-site navigation: ${label} keeps the style`, ok && s.inlineVars > 0, `${soft ? 'soft' : 'full'} navigation to ${s.path}; ${describe(s)}`);
+    // Only a soft (no reload) navigation proves the style survives GitHub's in-site navigation.
+    check(`in-site navigation: ${label} keeps the style`, soft && ok && s.inlineVars > 0, `${soft ? 'soft' : 'full'} navigation to ${s.path}; ${describe(s)}`);
   }
   await gh2.goBack({ waitUntil: 'domcontentloaded' }).catch(() => {});
   await gh2.waitForTimeout(1500);

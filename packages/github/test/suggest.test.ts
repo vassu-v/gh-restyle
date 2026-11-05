@@ -94,3 +94,15 @@ it('coAuthorLine', () => {
   expect(coAuthorLine({ login: 'mira', id: 101, avatar_url: '' })).toBe('Co-authored-by: mira <101+mira@users.noreply.github.com>');
   expect(coAuthorLine({ login: 'ghost', avatar_url: '' })).toBe('Co-authored-by: ghost <ghost@users.noreply.github.com>');
 });
+
+describe('applyEdits with mixed line endings', () => {
+  it('keeps every untouched line byte-identical and numbers lines like split(/\\r?\\n/)', () => {
+    const text = 'a\nb\r\nc\nd\n';
+    expect(applyEdits(text, [{ startLine: 3, endLine: 3, lines: ['C'] }])).toBe('a\nb\r\nC\nd\n');
+    expect(applyEdits(text, [{ startLine: 2, endLine: 2, lines: ['B1', 'B2'] }])).toBe('a\nB1\r\nB2\r\nc\nd\n');
+    expect(applyEdits(text, [{ startLine: 4, endLine: 4, lines: ['D'] }])).toBe('a\nb\r\nc\nD\n');
+  });
+  it('deleting the last lines of a file without a final newline adds none', () => {
+    expect(applyEdits('a\nb\nc', [{ startLine: 2, endLine: 3, lines: [] }])).toBe('a');
+  });
+});
