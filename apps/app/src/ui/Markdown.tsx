@@ -1,10 +1,13 @@
-import { lexer, type Token, type Tokens } from 'marked';
-import { memo, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { lexer, type Links, type Token, type Tokens } from 'marked';
+import { createContext, memo, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Image, Platform, ScrollView, Text, View, type TextStyle } from 'react-native';
 import { useTokens } from '@/design/DesignProvider';
 import { openUrl, routes } from '@/lib/links';
 import { CodeLines, languageForFence } from './Code';
-import { ALERT_LABEL, alertOf } from './alerts';
+import { ALERT_LABEL, alertOf, lexAlertBody } from './alerts';
+
+/** The document's reference-link definitions, for blocks lexed on their own (alert bodies). */
+const DocLinks = createContext<Links | undefined>(undefined);
 import { router } from 'expo-router';
 
 /**
@@ -24,7 +27,7 @@ export const Markdown = memo(function Markdown({ source, base }: { source: strin
   const t = useTokens();
   if (!source?.trim()) return null;
   if (!tokens) return <Text style={{ color: t.c.fg, fontFamily: t.font.ui.regular }}>{source}</Text>;
-  return <View style={{ gap: 10 }}><Blocks tokens={tokens} base={base} /></View>;
+  return <DocLinks.Provider value={tokens.links}><View style={{ gap: 10 }}><Blocks tokens={tokens} base={base} /></View></DocLinks.Provider>;
 });
 
 function Blocks({ tokens, base }: { tokens: Token[]; base?: MarkdownBase }) {
@@ -33,6 +36,7 @@ function Blocks({ tokens, base }: { tokens: Token[]; base?: MarkdownBase }) {
 
 function Block({ tk, base }: { tk: Token; base?: MarkdownBase }) {
   const t = useTokens(); const s = t.scale;
+  const links = useContext(DocLinks);
   const body: TextStyle = { fontFamily: t.font.ui.regular, fontSize: s(15), lineHeight: s(22), color: t.c.fg };
   switch (tk.type) {
     case 'space': return null;
@@ -74,7 +78,7 @@ function Block({ tk, base }: { tk: Token; base?: MarkdownBase }) {
       if (alert) {
         const col = { NOTE: t.c.acc, TIP: t.c.ok, IMPORTANT: t.c.merged, WARNING: t.c.wait, CAUTION: t.c.bad }[alert.kind];
         let rest: Token[] = [];
-        try { rest = lexer(alert.rest, { gfm: true, breaks: false }); } catch { /* label only */ }
+        try { rest = lexAlertBody(alert.rest, links); } catch { /* label only */ }
         return (
           <View style={{ borderLeftWidth: 3, borderColor: col, paddingLeft: 12, gap: 6 }}>
             <Text style={{ ...body, fontFamily: t.font.ui.semibold, color: col }}>{ALERT_LABEL[alert.kind]}</Text>

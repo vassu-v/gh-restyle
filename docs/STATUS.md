@@ -9,7 +9,7 @@ defers something.
 |---|---|---|
 | M0 | Design direction (Signal skin) | ✅ done |
 | M1 | Skeleton: monorepo, app, design engine, sample data, extension v0 | ✅ done |
-| M2 | Sign in with GitHub (OAuth App + PKCE + worker), secure token storage, PAT fallback | ✅ built and tested · ⚠️ live Worker lost its client secret on a deploy (it was a plain variable); owner must re-add `GITHUB_CLIENT_SECRET` as a **Secret**. `/health` shows configured:false until then |
+| M2 | Sign in with GitHub (OAuth App + PKCE + worker), secure token storage, PAT fallback | ✅ built and tested; a real account signed in through the live Worker on 2026-11-05 (the client secret is set as a Secret). The one-tap loop fix still needs a check on the deployed site |
 | M3 | Core GitHub: feed, inbox triage, repos, code browser (syntax colors, branch picker), issues, PRs (diff, checks, merge, reviews with line comments / approve / request changes), search, profiles, markdown | ✅ done (see gaps below) |
 | M4 | Studio: presets gallery, theme, drag-to-reorder tabs/sections/tiles, tile editor, share codes + share links with live preview | ✅ done |
 | M5 | Ship the PWA: installable, offline shell, icons; hosted on one Cloudflare Worker with sign-in (`npm run deploy`) | ✅ live at https://gitling.truckcoding.workers.dev |
@@ -34,8 +34,8 @@ defers something.
 
 ## Not verified yet (be honest about these)
 
-- **Real OAuth against github.com:** verified up to GitHub's login page (correct client ID, callback, scopes,
-  S256), and GitHub accepts the Worker's client secret. The final approve-and-return step needs a human login.
+- **Real OAuth against github.com:** done 2026-11-05 end to end (approve on GitHub, code exchange in the live
+  Worker, token stored) from a local build. Still to check: the same on the deployed site once the loop fix ships.
 - **Signed-in screens with a real account:** done 2026-11-05 with a local build signed in through the live
   Worker (see "Tested with a real account" below). Not yet repeated on the deployed site.
 - **iOS / Android builds:** none made yet. Native sign-in uses `expo-web-browser` `openAuthSessionAsync`

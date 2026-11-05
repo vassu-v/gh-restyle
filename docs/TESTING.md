@@ -22,8 +22,9 @@ CI runs `check`, smoke and the three app e2e suites on **Ubuntu and Windows**, p
 3. **Property-based fuzz tests** (`tests/fuzz`, [fast-check](https://fast-check.dev)): instead of picking
    examples, state a rule that must hold for *every* input and let fast-check generate thousands of inputs and
    shrink any failure to the smallest one. They cover the code where a missed edge case is costly:
-   - share codes: encode/decode round-trips; decoding junk never throws; `isSafeLink` never lets a
-     non-http(s) scheme through, including `java\tscript:` and similar tricks
+   - share codes: encode/decode round-trips; decoding junk never throws; `isSafeLink` never lets a scheme
+     that can run code or content in the page through (`javascript:`, `data:`, `vbscript:`, `blob:`…), including
+     `java\tscript:` and similar tricks. App links (`tel:`, `obsidian:`, `vscode:`…) are allowed on purpose
    - contrast fitting always reaches the minimum
    - sign-in Worker: the allowlist never admits a foreign origin; `/auth/callback` never redirects outside it;
      no request makes it crash or answer 5xx
