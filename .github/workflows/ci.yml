@@ -4,6 +4,10 @@ on:
     branches: [main]
   pull_request:
 
+# Read-only token: CI only builds and tests.
+permissions:
+  contents: read
+
 jobs:
   check:
     # Windows too: path bugs (URL.pathname → "D:\D:\…", "/" vs "\" in pwa.mjs) once broke every script and

@@ -1,6 +1,6 @@
 import { groupThreads, type DraftComment, type MergeMethod, type ReviewComment, type ReviewEvent } from '@gitling/github';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { useSession } from '@/session/SessionProvider';
 
 /**
@@ -128,12 +128,15 @@ export function useThread(owner: string, repo: string, n: number) {
   const { api, k } = useApi();
   const issue = useQuery({ queryKey: [k, 'issue', owner, repo, n], queryFn: () => api.issue(owner, repo, n) });
   const isPr = !!issue.data?.pull_request;
+  // Polls since mergeability last became unknown. dataUpdateCount counts the query's whole life, so after a few
+  // refreshes (e.g. applying suggestions) a new commit's "checking" state was never polled again.
+  const unknownPolls = useRef(0);
   const pr = useQuery({
     queryKey: [k, 'pr', owner, repo, n],
-    queryFn: () => api.pull(owner, repo, n),
+    queryFn: async () => { const p = await api.pull(owner, repo, n); unknownPolls.current = p.mergeable === null ? unknownPolls.current + 1 : 0; return p; },
     enabled: isPr,
     // GitHub computes mergeability in the background and returns null until it's ready.
-    refetchInterval: (q) => (q.state.data && q.state.data.state === 'open' && q.state.data.mergeable === null && q.state.dataUpdateCount < 6 ? 2500 : false),
+    refetchInterval: (q) => (q.state.data && q.state.data.state === 'open' && q.state.data.mergeable === null && unknownPolls.current < 8 ? 2500 : false),
   });
   const comments = useQuery({ queryKey: [k, 'comments', owner, repo, n], queryFn: () => api.comments(owner, repo, n) });
   return { issue, pr, comments, isPr };
@@ -189,9 +192,11 @@ export function useThreadActions(owner: string, repo: string, n: number) {
   const { api, k } = useApi();
   const me = useMe();
   const qc = useQueryClient();
-  const refresh = () => qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === k && q.queryKey.includes(owner) && q.queryKey.includes(repo) });
-  const refreshLists = () => qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === k && (q.queryKey[1] === 'search' || q.queryKey[1] === 'notifications') });
-  const after = () => Promise.all([refresh(), refreshLists()]);
+  // Not awaited by the mutations: a mutation is done when GitHub says so. Waiting for every query of the repo to
+  // refetch kept "Committing…" on screen ~20 s after the commit had landed.
+  const refresh = () => { void qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === k && q.queryKey.includes(owner) && q.queryKey.includes(repo) }); };
+  const refreshLists = () => { void qc.invalidateQueries({ predicate: (q) => q.queryKey[0] === k && (q.queryKey[1] === 'search' || q.queryKey[1] === 'notifications') }); };
+  const after = () => { refresh(); refreshLists(); };
   return {
     comment: useMutation({ mutationFn: (body: string) => api.comment(owner, repo, n, body), onSuccess: refresh }),
     setState: useMutation({ mutationFn: (state: 'open' | 'closed') => api.setState(owner, repo, n, state), onSuccess: after }),

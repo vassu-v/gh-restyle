@@ -21,8 +21,11 @@ run_worker_first = ["/auth/*", "/health"]
 # The deployed origin (https://gitling.<subdomain>.workers.dev) must be listed here.
 # No localhost here: any program listening on a visitor's localhost:8081 could otherwise receive their sign-in
 # code (and get CORS on /auth/exchange). Local dev signs in with a pasted token, or add localhost to a dev
-# Worker of your own. gitling:// is pinned to the exact callback path.
-ALLOWED_RETURN = "https://gitling.truckcoding.workers.dev,gitling://auth/callback"
+# Worker of your own.
+# No gitling:// either, until the native app ships: any app can claim a custom scheme and catch the code (and
+# /auth/exchange has to accept native requests without an Origin). Native should use claimed https links
+# (Android App Links / iOS Universal Links) on this origin instead.
+ALLOWED_RETURN = "https://gitling.truckcoding.workers.dev"
 # The GitHub OAuth App's client ID (public).
 GITHUB_CLIENT_ID = "Ov23likikLApWz5YvJtj"
 

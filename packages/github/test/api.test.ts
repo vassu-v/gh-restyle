@@ -92,3 +92,19 @@ describe('request shapes (fake fetch)', () => {
     expect((await api.reviewComment('you', 'trail-notes', c.id))?.body).toBe(c.body);
   });
 });
+
+describe('path segments', () => {
+  it('"." and ".." are refused before any request (no climbing out of the intended API path)', async () => {
+    const urls: string[] = [];
+    const f = (async (u: string) => { urls.push(u); return new Response('{}'); }) as unknown as typeof fetch;
+    const live = createApi(createClient({ kind: 'token', token: 't' }, { fetch: f }));
+    await expect(live.isStarred('x/..')).rejects.toMatchObject({ status: 404 });
+    await expect(live.setStar('../../../repos/v/s/collaborators/a', true)).rejects.toMatchObject({ status: 404 });
+    await expect(live.repo('..', 'x')).rejects.toMatchObject({ status: 404 });
+    await expect(live.fileText('o', 'r', 'a/../../../../user')).rejects.toMatchObject({ status: 404 });
+    expect(urls).toEqual([]);
+    await live.isStarred('o/r');
+    expect(urls).toEqual(['https://api.github.com/user/starred/o/r']);
+  });
+});
+

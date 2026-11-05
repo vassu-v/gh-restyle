@@ -37,6 +37,13 @@ const HEAD = `
     <style>html, body { background: #0E0F11; }</style>
     <script>/* Catch the install prompt before the app bundle loads; src/pwa/register.ts picks it up. */
       addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); window.__gitlingInstall = e; });</script>
+    <script>/* Trusted Types (CSP require-trusted-types-for): the app's only script sinks are Expo loading its own code
+       chunks and the service worker. Allow exactly those; everything else (HTML strings, other script URLs) is refused. */
+      if (window.trustedTypes) trustedTypes.createPolicy('default', {
+        createScriptURL: function (u) { var x = new URL(u, location.href); if (x.origin === location.origin && (x.pathname.indexOf('/_expo/static/') === 0 || x.pathname === '/sw.js')) return x.href; throw new TypeError('Blocked script URL'); },
+        createHTML: function () { throw new TypeError('Blocked HTML'); },
+        createScript: function () { throw new TypeError('Blocked script'); }
+      });</script>
     <!-- /gitling:pwa -->`;
 html = html.replace(/\n\s*<!-- gitling:pwa -->[\s\S]*?<!-- \/gitling:pwa -->/, '');
 html = html.replace('</head>', `${HEAD}\n</head>`);
@@ -98,6 +105,8 @@ const csp = [
   "default-src 'self'", `script-src 'self' ${hashes.join(' ')}`.trim(), "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:", "font-src 'self' data:", `connect-src 'self' https://api.github.com https://raw.githubusercontent.com ${authOrigin}`.trim(),
   "worker-src 'self'", "manifest-src 'self'", "object-src 'none'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'none'",
+  // No HTML string may reach a script or markup sink (innerHTML, eval…): a second wall behind the hash-only scripts.
+  "require-trusted-types-for 'script'", "trusted-types default",
 ].join('; ');
 const headersFile = join(dist, '_headers');
 if (existsSync(headersFile)) writeFileSync(headersFile, readFileSync(headersFile, 'utf8').replace(/^\/\*\r?\n/m, (m) => `${m}  Content-Security-Policy: ${csp}\n`));

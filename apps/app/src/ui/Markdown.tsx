@@ -4,6 +4,7 @@ import { Image, Platform, ScrollView, Text, View, type TextStyle } from 'react-n
 import { useTokens } from '@/design/DesignProvider';
 import { openUrl, routes } from '@/lib/links';
 import { CodeLines, languageForFence } from './Code';
+import { ALERT_LABEL, alertOf } from './alerts';
 import { router } from 'expo-router';
 
 /**
@@ -69,6 +70,18 @@ function Block({ tk, base }: { tk: Token; base?: MarkdownBase }) {
     }
     case 'blockquote': {
       const q = tk as Tokens.Blockquote;
+      const alert = alertOf(q.text);
+      if (alert) {
+        const col = { NOTE: t.c.acc, TIP: t.c.ok, IMPORTANT: t.c.merged, WARNING: t.c.wait, CAUTION: t.c.bad }[alert.kind];
+        let rest: Token[] = [];
+        try { rest = lexer(alert.rest, { gfm: true, breaks: false }); } catch { /* label only */ }
+        return (
+          <View style={{ borderLeftWidth: 3, borderColor: col, paddingLeft: 12, gap: 6 }}>
+            <Text style={{ ...body, fontFamily: t.font.ui.semibold, color: col }}>{ALERT_LABEL[alert.kind]}</Text>
+            <Blocks tokens={rest} base={base} />
+          </View>
+        );
+      }
       return <View style={{ borderLeftWidth: 3, borderColor: t.c.line, paddingLeft: 12, gap: 8, opacity: 0.85 }}><Blocks tokens={q.tokens} base={base} /></View>;
     }
     case 'list': {

@@ -80,3 +80,14 @@ describe('presets', () => {
     expect(salvageDesign('junk', DEFAULT_DESIGN)).toBeNull();
   });
 });
+
+describe('sample tiles', () => {
+  it('spots targets on the sample account and nothing else', async () => {
+    const { isSampleTarget, DEFAULT_DESIGN } = await import('../src');
+    expect(DEFAULT_DESIGN.tiles.filter((t) => isSampleTarget(t.target)).map((t) => t.id)).toEqual(['t-repo', 't-actions']);
+    expect(isSampleTarget({ type: 'repo', repo: 'youth/x', tab: 'overview' })).toBe(false);
+    expect(isSampleTarget({ type: 'link', url: 'https://github.com/young/x' })).toBe(false);
+    expect(isSampleTarget({ type: 'link', url: 'https://example.com/you/x' })).toBe(false);
+    expect(isSampleTarget({ type: 'user', login: 'you' })).toBe(true);
+  });
+});

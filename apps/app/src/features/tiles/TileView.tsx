@@ -1,8 +1,9 @@
-import { fit, type Tile, type TileTarget } from '@gitling/design';
+import { fit, isSampleTarget, type Tile, type TileTarget } from '@gitling/design';
 import { router } from 'expo-router';
 import { openUrl, routes } from '@/lib/links';
 import { Linking, Pressable, View } from 'react-native';
 import { useTokens } from '@/design/DesignProvider';
+import { useSession } from '@/session/SessionProvider';
 import { useSearchIssues, useNotifications } from '@/data/queries';
 import { Icon } from '@/ui/Icon';
 import { Num, T } from '@/ui/primitives';
@@ -42,6 +43,8 @@ export function openTarget(target: TileTarget, label: string) {
 export function TileView({ tile, preview, onLongPress }: { tile: Tile; preview?: boolean; onLongPress?: () => void }) {
   const t = useTokens();
   const count = useTileCount(tile);
+  const { isSample } = useSession();
+  const press = () => (!isSample && isSampleTarget(tile.target) ? router.push({ pathname: '/tile/[id]', params: { id: tile.id, setup: '1' } }) : openTarget(tile.target, tile.label));
   const tinted = tile.tint !== '#8D8F96';
   const ink = fit(tile.tint, t.c.el, 3.2); // readable on light and dark backgrounds
   const window = t.tiles === 'window';
@@ -64,7 +67,7 @@ export function TileView({ tile, preview, onLongPress }: { tile: Tile; preview?:
   );
   if (preview) return inner;
   return (
-    <Pressable onPress={() => openTarget(tile.target, tile.label)} onLongPress={onLongPress} delayLongPress={450}
+    <Pressable onPress={press} onLongPress={onLongPress} delayLongPress={450}
       accessibilityRole="button" accessibilityLabel={tile.label} accessibilityHint="Long press to edit"
       style={({ pressed }) => [{ width: tile.size === 'full' ? '100%' : '48.6%', transform: [{ scale: pressed ? 0.97 : 1 }] }]}>
       {inner}

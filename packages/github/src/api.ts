@@ -13,8 +13,17 @@ import type {
 
 const RAW = 'application/vnd.github.raw+json';
 const e = encodeURIComponent;
+/**
+ * One URL path segment. "." and ".." are refused: encodeURIComponent leaves them alone, and the URL parser would
+ * then climb out of the intended path (a crafted /repo/x/..%2F..%2F… link could aim an authenticated request at
+ * any API path).
+ */
+const seg = (s: string) => {
+  if (s === '' || s === '.' || s === '..') throw new GitHubError('Not found.', 404);
+  return encodeURIComponent(s);
+};
 /** Encodes each segment of a file path but keeps the slashes. */
-const ePath = (p: string) => p.split('/').filter(Boolean).map(e).join('/');
+const ePath = (p: string) => p.split('/').filter(Boolean).map(seg).join('/');
 const contentsPath = (path: string, ref?: string) => `/contents${path ? '/' + ePath(path) : ''}${ref ? `?ref=${e(ref)}` : ''}`;
 
 // The databaseId of a thread's first comment is the REST id of its root, which is how threads.ts joins the two.
@@ -31,6 +40,14 @@ type ThreadsAnswer = { repository: { pullRequest: { reviewThreads: {
 const RESOLVE = (verb: 'resolveReviewThread' | 'unresolveReviewThread') =>
   `mutation($threadId: ID!) { ${verb}(input: { threadId: $threadId }) { thread { id isResolved } } }`;
 
+/** Every api function returns a promise, even when it fails before any request (e.g. a refused path segment). */
+function promised<T extends Record<string, unknown>>(o: T): T {
+  for (const [k, v] of Object.entries(o)) {
+    if (typeof v === 'function') (o as Record<string, unknown>)[k] = (...a: unknown[]) => { try { return (v as (...x: unknown[]) => unknown)(...a); } catch (err) { return Promise.reject(err); } };
+  }
+  return o;
+}
+
 export function createApi(client: GitHubClient) {
   const get = <T,>(path: string, opts?: RequestOptions) => client.request<T>(path, opts);
   async function page<T>(path: string, p: number): Promise<Page<T>> {
@@ -43,13 +60,15 @@ export function createApi(client: GitHubClient) {
     for (let i = 0; p && i < max; i++) { const r: Page<T> = await page<T>(path, p); out.push(...r.items); p = r.next; }
     return out;
   }
-  const repoPath = (owner: string, repo: string) => `/repos/${e(owner)}/${e(repo)}`;
+  /** "owner/name" → two safe segments (repo names from links, tiles and API data all go through here). */
+  const fullPath = (full: string) => { const [o, n, ...rest] = full.split('/'); if (!o || !n || rest.length) throw new GitHubError('Not found.', 404); return `${seg(o)}/${seg(n)}`; };
+  const repoPath = (owner: string, repo: string) => `/repos/${seg(owner)}/${seg(repo)}`;
 
   const api = {
     // ── people
     me: () => get<User>('/user'),
-    user: (login: string) => get<User>(`/users/${e(login)}`),
-    userRepos: (login: string) => get<Repo[]>(`/users/${e(login)}/repos?sort=pushed&per_page=30`),
+    user: (login: string) => get<User>(`/users/${seg(login)}`),
+    userRepos: (login: string) => get<Repo[]>(`/users/${seg(login)}/repos?sort=pushed&per_page=30`),
 
     // ── search
     searchIssues: (q: string, perPage = 20) => get<SearchResult<Issue>>(`/search/issues?sort=updated&per_page=${perPage}&q=${e(q)}`),
@@ -57,16 +76,16 @@ export function createApi(client: GitHubClient) {
 
     // ── inbox
     notifications: (all = false) => get<Notification[]>(`/notifications?per_page=50${all ? '&all=true' : ''}`),
-    markThread: (id: string, kind: 'read' | 'done') => get<true>(`/notifications/threads/${e(id)}`, { method: kind === 'done' ? 'DELETE' : 'PATCH' }),
+    markThread: (id: string, kind: 'read' | 'done') => get<true>(`/notifications/threads/${seg(id)}`, { method: kind === 'done' ? 'DELETE' : 'PATCH' }),
 
     // ── feed
-    feed: (login: string, mine = false) => get<FeedEvent[]>(`/users/${e(login)}/${mine ? 'events' : 'received_events'}?per_page=60`),
+    feed: (login: string, mine = false) => get<FeedEvent[]>(`/users/${seg(login)}/${mine ? 'events' : 'received_events'}?per_page=60`),
 
     // ── repos
     myRepos: () => get<Repo[]>('/user/repos?sort=pushed&per_page=50'),
     starred: () => get<Repo[]>('/user/starred?per_page=50'),
-    isStarred: (full: string) => get<true>(`/user/starred/${full}`).then(() => true, (err: { status?: number }) => { if (err.status === 404) return false; throw err; }),
-    setStar: (full: string, on: boolean) => get<true>(`/user/starred/${full}`, { method: on ? 'PUT' : 'DELETE' }),
+    isStarred: (full: string) => get<true>(`/user/starred/${fullPath(full)}`).then(() => true, (err: { status?: number }) => { if (err.status === 404) return false; throw err; }),
+    setStar: (full: string, on: boolean) => get<true>(`/user/starred/${fullPath(full)}`, { method: on ? 'PUT' : 'DELETE' }),
     repo: (owner: string, repo: string) => get<Repo>(repoPath(owner, repo)),
     /** README as markdown text. Resolves to null when the repo has none. */
     readme: (owner: string, repo: string) => get<string>(`${repoPath(owner, repo)}/readme`, { accept: RAW, text: true }).catch((err: { status?: number }) => { if (err.status === 404) return null; throw err; }),
@@ -90,7 +109,7 @@ export function createApi(client: GitHubClient) {
     },
     /** Up to 300 branches, for the branch picker. */
     branches: (owner: string, repo: string) => all<Branch>(`${repoPath(owner, repo)}/branches?per_page=100`, 3),
-    runs: (full: string) => get<WorkflowRuns>(`/repos/${full}/actions/runs?per_page=24`),
+    runs: (full: string) => get<WorkflowRuns>(`/repos/${fullPath(full)}/actions/runs?per_page=24`),
     /** Issues only (GitHub's /issues list also returns PRs; they're filtered out). */
     issues: async (owner: string, repo: string, state: 'open' | 'closed', p = 1) => {
       const r = await page<Issue>(`${repoPath(owner, repo)}/issues?state=${state}&per_page=30&sort=updated`, p);
@@ -103,7 +122,7 @@ export function createApi(client: GitHubClient) {
     pull: (owner: string, repo: string, n: number) => get<PullRequest>(`${repoPath(owner, repo)}/pulls/${n}`),
     comments: (owner: string, repo: string, n: number) => all<Comment>(`${repoPath(owner, repo)}/issues/${n}/comments?per_page=100`),
     prFiles: (owner: string, repo: string, n: number) => all<PrFile>(`${repoPath(owner, repo)}/pulls/${n}/files?per_page=100`, 3),
-    checks: (owner: string, repo: string, sha: string) => get<CheckRuns>(`${repoPath(owner, repo)}/commits/${e(sha)}/check-runs?per_page=100`),
+    checks: (owner: string, repo: string, sha: string) => get<CheckRuns>(`${repoPath(owner, repo)}/commits/${seg(sha)}/check-runs?per_page=100`),
     comment: (owner: string, repo: string, n: number, body: string) => get<Comment>(`${repoPath(owner, repo)}/issues/${n}/comments`, { method: 'POST', body: { body } }),
     setState: (owner: string, repo: string, n: number, state: 'open' | 'closed') => get<Issue>(`${repoPath(owner, repo)}/issues/${n}`, { method: 'PATCH', body: { state } }),
     merge: (owner: string, repo: string, n: number, method: MergeMethod) => get<{ merged: boolean; message?: string }>(`${repoPath(owner, repo)}/pulls/${n}/merge`, { method: 'PUT', body: { merge_method: method } }),
@@ -139,20 +158,20 @@ export function createApi(client: GitHubClient) {
     unresolveThread: (threadId: string) => client.graphql(RESOLVE('unresolveReviewThread'), { threadId }).then(() => true as const),
 
     // ── git data (on the PR's HEAD repo, which may be a fork), for applying suggestions
-    gitCommit: (owner: string, repo: string, sha: string) => get<GitCommit>(`${repoPath(owner, repo)}/git/commits/${e(sha)}`),
+    gitCommit: (owner: string, repo: string, sha: string) => get<GitCommit>(`${repoPath(owner, repo)}/git/commits/${seg(sha)}`),
     /** One level of a tree (not recursive). */
-    gitTree: (owner: string, repo: string, treeSha: string) => get<GitTree>(`${repoPath(owner, repo)}/git/trees/${e(treeSha)}`),
+    gitTree: (owner: string, repo: string, treeSha: string) => get<GitTree>(`${repoPath(owner, repo)}/git/trees/${seg(treeSha)}`),
     createTree: (owner: string, repo: string, t: { base_tree: string; tree: NewTreeEntry[] }) => get<{ sha: string }>(`${repoPath(owner, repo)}/git/trees`, { method: 'POST', body: t }),
     createCommit: (owner: string, repo: string, c: { message: string; tree: string; parents: string[] }) => get<{ sha: string }>(`${repoPath(owner, repo)}/git/commits`, { method: 'POST', body: c }),
     /** Fast-forward only: GitHub answers 422 if the branch moved since `sha`'s parent. */
     updateBranch: (owner: string, repo: string, branch: string, sha: string) => get<unknown>(`${repoPath(owner, repo)}/git/refs/heads/${ePath(branch)}`, { method: 'PATCH', body: { sha, force: false } }),
   };
-  return {
+  return promised({
     ...api,
     /** Commits the comments' suggestions to the PR branch in one commit. See apply.ts. */
     applySuggestions: (owner: string, repo: string, n: number, comments: ReviewComment[], opts?: { message?: string; viewer?: string }): Promise<ApplyResult> =>
       applySuggestions(api, owner, repo, n, comments, opts),
-  };
+  });
 }
 
 export type Api = ReturnType<typeof createApi>;

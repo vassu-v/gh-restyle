@@ -185,7 +185,7 @@ export default function Thread() {
         {p && open && canWrite && armed && methods.length > 1 ? (
           <View style={{ width: '100%', maxWidth: 520, paddingHorizontal: 14, marginBottom: 8 }}>
             <View style={[{ borderRadius: 14, padding: 4 }, glass(t)]}>
-              <Seg small value={chosen} onChange={(m) => { setMethod(m); setArmed(true); }} options={methods.map((m) => ({ value: m, label: MERGE_LABEL[m] }))} />
+              <Seg small value={chosen} onChange={(m) => { setMethod(m); setArmed(true); clearTimeout(disarm.current); disarm.current = setTimeout(() => setArmed(false), 6000); }} options={methods.map((m) => ({ value: m, label: MERGE_LABEL[m] }))} />
             </View>
           </View>
         ) : null}

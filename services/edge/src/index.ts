@@ -53,14 +53,21 @@ export async function handle(req: Request, env: Env, f: Fetch = fetch): Promise<
 
 /* ─── callback: bounce GitHub's redirect back into the app ─── */
 
-function callback(req: Request, url: URL, env: Env): Response | Promise<Response> {
+async function callback(req: Request, url: URL, env: Env): Promise<Response> {
   const state = url.searchParams.get('state') ?? '';
   const target = returnTarget(state);
   if (!target || !isAllowedReturn(target, env)) return page(400, 'This sign-in link is not valid. Go back to Gitling and try again.');
   const out = new URL(target);
   // When the app is served by this same Worker, its return address IS this URL. Redirecting would loop
   // forever (run_worker_first sends /auth/* back here), so serve the app's page and let it read code+state.
-  if (out.origin === url.origin && out.pathname === url.pathname && env.ASSETS) return env.ASSETS.fetch(req);
+  if (out.origin === url.origin && out.pathname === url.pathname && env.ASSETS) {
+    // The address holds a one-time code: never cache this page, never send it on as a Referer.
+    const page = await env.ASSETS.fetch(req);
+    const res = new Response(page.body, page);
+    res.headers.set('Cache-Control', 'no-store');
+    res.headers.set('Referrer-Policy', 'no-referrer');
+    return res;
+  }
   for (const k of ['code', 'state', 'error', 'error_description']) {
     const v = url.searchParams.get(k);
     if (v) out.searchParams.set(k, v);
@@ -98,6 +105,9 @@ export function isAllowedReturn(target: string, env: Env): boolean {
 
 /* ─── exchange: code + verifier → token ─── */
 
+/** The scopes Gitling requests (packages/github auth.ts OAUTH_SCOPES). */
+const ALLOWED_SCOPES = new Set(['repo', 'notifications', 'read:user']);
+
 async function exchange(req: Request, url: URL, env: Env, f: Fetch, cors: Record<string, string> | null): Promise<Response> {
   if (!env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET) return json({ error: 'Sign-in is not configured on the server yet.' }, 503, cors);
   let body: { code?: unknown; code_verifier?: unknown };
@@ -122,6 +132,17 @@ async function exchange(req: Request, url: URL, env: Env, f: Fetch, cors: Record
   if (!gh.ok || !data.access_token) {
     const expired = data.error === 'bad_verification_code';
     return json({ error: expired ? 'That sign-in expired. Try again.' : (data.error_description ?? 'GitHub refused the sign-in.') }, 400, cors);
+  }
+  // Anyone can start an authorize request with Gitling's client id and any scope list. Hand out only tokens with
+  // the scopes Gitling asks for; revoke anything broader instead of returning it.
+  const extra = (data.scope ?? '').split(/[,\s]+/).filter((s) => s && !ALLOWED_SCOPES.has(s));
+  if (extra.length) {
+    await f(`https://api.github.com/applications/${encodeURIComponent(env.GITHUB_CLIENT_ID)}/token`, {
+      method: 'DELETE',
+      headers: { Authorization: `Basic ${btoa(`${env.GITHUB_CLIENT_ID}:${env.GITHUB_CLIENT_SECRET}`)}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json', 'User-Agent': 'gitling-auth' },
+      body: JSON.stringify({ access_token: data.access_token }),
+    }).catch(() => {});
+    return json({ error: 'That sign-in asked for more access than Gitling uses, so it was cancelled. Start again from Gitling.' }, 400, cors);
   }
   return json({ access_token: data.access_token, scope: data.scope ?? '', token_type: data.token_type ?? 'bearer' }, 200, cors);
 }

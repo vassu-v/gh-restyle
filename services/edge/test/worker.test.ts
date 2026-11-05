@@ -112,6 +112,25 @@ describe('exchange input', () => {
   });
 });
 
+describe('scope check', () => {
+  it('a token with more scopes than Gitling asks for is revoked, not returned', async () => {
+    const calls: { url: string; method?: string }[] = [];
+    const f = (async (u: string, init: RequestInit) => {
+      calls.push({ url: u, method: init.method });
+      return u.includes('access_token') ? new Response(JSON.stringify({ access_token: 'gho_x', scope: 'repo,notifications,read:user,admin:org', token_type: 'bearer' })) : new Response(null, { status: 204 });
+    }) as never;
+    const res = await handle(new Request(`${W}/auth/exchange`, { method: 'POST', body: JSON.stringify({ code: 'abcdef1234', code_verifier: verifier }) }), env, f);
+    expect(res.status).toBe(400);
+    expect(JSON.stringify(await res.json())).not.toContain('gho_x');
+    expect(calls[1]).toMatchObject({ url: 'https://api.github.com/applications/cid/token', method: 'DELETE' });
+  });
+  it('the exact scopes Gitling asks for (in any order or separator) pass', async () => {
+    const f = (async () => new Response(JSON.stringify({ access_token: 'gho_y', scope: 'notifications read:user,repo' }))) as never;
+    const res = await handle(new Request(`${W}/auth/exchange`, { method: 'POST', body: JSON.stringify({ code: 'abcdef1234', code_verifier: verifier }) }), env, f);
+    expect((await res.json()).access_token).toBe('gho_y');
+  });
+});
+
 describe('rate limit', () => {
   it('refuses exchanges over the limit with 429 and never calls GitHub', async () => {
     const f = vi.fn();
@@ -137,6 +156,8 @@ describe('static assets', () => {
     const res = await handle(new Request(`${W}/auth/callback?code=abc123&state=${state}`), same);
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('<html>app</html>');
+    expect(res.headers.get('Cache-Control')).toBe('no-store');
+    expect(res.headers.get('Referrer-Policy')).toBe('no-referrer');
     // a different path on the same origin still redirects; an evil target is still refused without touching assets
     const other = await handle(new Request(`${W}/auth/callback?code=abc123&state=${encodeState('n', `${W}/done`)}`), same);
     expect(other.status).toBe(302);

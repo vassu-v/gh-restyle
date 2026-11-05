@@ -53,6 +53,17 @@ export const TileTarget = z.discriminatedUnion('type', [
 export type TileTarget = z.infer<typeof TileTarget>;
 export type TileTargetType = TileTarget['type'];
 
+/**
+ * The default design's sample tiles point at the sample account "you" (you/trail-notes). Signed in, those
+ * don't exist, so the app opens the tile's editor instead of a "Not found" screen.
+ */
+export function isSampleTarget(t: TileTarget): boolean {
+  if (t.type === 'repo' || t.type === 'file') return t.repo.split('/')[0] === 'you';
+  if (t.type === 'user') return t.login === 'you';
+  if (t.type === 'link') { try { const u = new URL(t.url); return u.hostname === 'github.com' && u.pathname.split('/')[1] === 'you'; } catch { return false; } }
+  return false;
+}
+
 export const Tile = z.object({
   id: z.string(),
   label: z.string().min(1).max(40),

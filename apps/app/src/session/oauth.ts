@@ -28,14 +28,26 @@ function savePending(p: Pending) {
   if (Platform.OS === 'web') sessionStorage.setItem(PENDING, JSON.stringify(p));
   else nativePending = p;
 }
-function takePending(): Pending | null {
+function peekPending(): Pending | null {
   if (Platform.OS === 'web') {
     const raw = sessionStorage.getItem(PENDING);
-    sessionStorage.removeItem(PENDING);
     try { return raw ? (JSON.parse(raw) as Pending) : null; } catch { return null; }
   }
-  const p = nativePending; nativePending = null; return p;
+  return nativePending;
 }
+function clearPending() {
+  if (Platform.OS === 'web') sessionStorage.removeItem(PENDING);
+  else nativePending = null;
+}
+function takePending(): Pending | null { const p = peekPending(); clearPending(); return p; }
+
+/** GitHub's documented error codes, in our words. Anything else gets one fixed sentence: the `error` value comes
+ *  from the URL, so showing it would let anyone put their own text on Gitling's page. */
+const GITHUB_ERRORS: Record<string, string> = {
+  access_denied: 'You cancelled the sign-in on GitHub.',
+  application_suspended: 'GitHub has suspended this app. Use a personal access token instead.',
+  redirect_uri_mismatch: 'Sign-in is set up wrong on the server. Use a personal access token for now.',
+};
 
 /** Where the worker should send the browser back to. */
 function returnTarget() {
@@ -78,10 +90,13 @@ export function completeSignIn(p: { code?: string; state?: string; error?: strin
 }
 
 async function finish(p: { code?: string; state?: string; error?: string }): Promise<ExchangeResult> {
-  const pending = takePending();
-  if (p.error) throw new Error(p.error === 'access_denied' ? 'You cancelled the sign-in on GitHub.' : `GitHub said: ${p.error}`);
+  // The nonce first: a link someone else made must neither show its text here nor cancel a sign-in in progress,
+  // so the pending sign-in is only used up by the answer to it.
+  const pending = peekPending();
   const st = decodeState(p.state ?? '');
   if (!pending || !st || st.nonce !== pending.nonce) throw new Error('This sign-in link is out of date. Start again from Gitling.');
+  clearPending();
+  if (p.error) throw new Error(GITHUB_ERRORS[p.error] ?? 'GitHub didn’t finish the sign-in. Try again.');
   if (Date.now() - pending.at > 10 * 60e3) throw new Error('That sign-in took too long. Try again.');
   if (!p.code) throw new Error('GitHub did not send a sign-in code. Try again.');
   return exchangeCode({ authBase: config.authUrl, code: p.code, verifier: pending.verifier });
