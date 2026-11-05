@@ -77,7 +77,18 @@ environment's quirks. **No secrets live in this repo.**
    extension check) against a written contract (`docs/plans/review-threads-contract.md`). The owner asked for a
    **pull request** for this one, so it lives on `feat/review-threads` instead of being pushed to `main`.
    Same session: `npm run e2e:extension` added; it found and fixed share links not working in the popup.
-   Note: GitHub redirects `facebook/react` to `react/react`.
+   Note: GitHub redirects `facebook/react` to `react/react`. Merged to `main` as PR #1.
+9. **Review pass + real-account testing (2026-11-05, PR #2, merged and deployed):** a local session on the
+   owner's Windows machine, with a cloud session reviewing alongside.
+   - Fixed the live one-tap sign-in loop, `javascript:` links, crashes, and every Windows script bug.
+   - Added property-based fuzz tests (`tests/fuzz`), `npm run verify`, and a Windows CI job.
+   - Signed in with the owner's real account (in their Chrome) and tried every feature on a private test repo,
+     `vassu-v/gitling-test`. This found the slow "Committing…", the stuck merge status, and the broken sample
+     tiles.
+   - A security pass looked for leaks while signed in: token scoped to the API origin, Worker scope check,
+     callback hardening, Trusted Types.
+   - CodeRabbit's review comments were all fixed.
+   - Afterwards the test sign-in was removed: signed out, and the OAuth grant revoked.
 
 ## Live setup (non-secret facts)
 
@@ -89,7 +100,9 @@ environment's quirks. **No secrets live in this repo.**
 | Worker name | `gitling` (`services/edge/wrangler.toml`) |
 | GitHub OAuth App | "Gitling", client ID `Ov23likikLApWz5YvJtj`, callback `https://gitling.truckcoding.workers.dev/auth/callback` |
 | Worker secret | `GITHUB_CLIENT_SECRET`, set in the Cloudflare dashboard; it is **not** in this repo or any env file |
-| Repo | https://github.com/vassu-v/gh-restyle, branch `main` (we push to `main` directly; the owner asked for that) |
+| Repo | https://github.com/vassu-v/gh-restyle, branch `main`. Small changes go straight to `main`; bigger work goes through a PR when the owner asks (PR #1 review threads, PR #2 review pass). Agents never merge; the owner does |
+| Commit identity | AGENTS.md says `vassu-v <shoryavardhaans2@gmail.com>`; for PR #2 the owner chose `vassu-v <coderscode17@gmail.com>`. Ask which to use if unsure |
+| Test repo | `vassu-v/gitling-test` (private): LF, CRLF, BOM and latin1 files, a test issue and PR, for trying writes with a real account. Ask before writing to any other repo |
 
 ### Redeploy from a session
 
@@ -166,13 +179,30 @@ untested, because they need the owner's own browser.
   `lucide-react-native/icons/<name>`. The package index pulls in everything (the web build went from
   9.4 MB to 3.1 MB after this fix).
 
+## Environment quirks (local Windows sessions)
+
+- **Line endings:** git has `core.autocrlf=true`, so checkouts come out CRLF. Scripted find-and-replace must
+  allow for `\r\n`. When seeding test files whose bytes matter, clone with `-c core.autocrlf=false`.
+- **Local sign-in:** `ALLOWED_RETURN` only lists the live site, so a local build can't do one-tap sign-in.
+  Paste a token, or test sign-in on the live site.
+- **Testing with the owner's account:** use Claude in Chrome (their Chrome, already signed in to GitHub) against a
+  local build served on `localhost:8081`. Sign out and revoke the grant at github.com/settings/applications
+  afterwards. The auto-mode safety check blocks merging a PR by click, so the owner merges.
+- **Chrome HTTP cache:** GitHub gives a file's raw and JSON forms the same ETag, so the client fetches with
+  `cache: 'no-store'`. Keep it.
+- **Extension IDs on Windows:** Chrome hashes the path as UTF-16LE with the drive letter upper-cased (the e2e
+  scripts do the same).
+
 ## Open to-dos (most useful next)
 
-1. **Owner tests real sign-in** and sends screenshots of anything off. Inbox, Feed, Search and Profiles
-   haven't been exercised with a real account yet.
+1. **Owner tries the live site on their phone:** one-tap sign-in (confirms the loop fix), install, offline, the
+   Files tab with the keyboard open. Then send screenshots of anything off.
 2. **Studio follow-ups:** saved custom presets, custom accent picker. Studio polish (M4) shipped: presets, drag reorder, share links.
 3. **Push notifications (phase 2):** the plan is in `PLAN.md` § 7; the owner asked how it would work and was shown that plan.
-4. **Review threads:** built on `feat/review-threads` (replies, resolve, multi-line, suggestions). Owner to try on a real PR.
-5. **Extension:** optionally slim the popup (zod).
-6. **Phase 2:** design sync through a private gist; native builds with EAS.
-7. **Optional:** GitHub Developer Program application, and a custom domain in place of `workers.dev`.
+4. **Review threads:** merged and tried live (comments, suggestions, apply, batch). Replies, resolve and
+   multi-line ranges are still untried with a real account. Applying a suggestion takes ~8 s of sequential git API
+   calls; some could run in parallel.
+5. **Housekeeping:** the owner can delete `vassu-v/gitling-test` when done with it.
+6. **Extension:** optionally slim the popup (zod).
+7. **Phase 2:** design sync through a private gist; native builds with EAS.
+8. **Optional:** GitHub Developer Program application, and a custom domain in place of `workers.dev`.

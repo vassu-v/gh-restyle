@@ -1,7 +1,7 @@
 # Status
 
-Last updated: 2026-11-05 (review threads + suggestions on `feat/review-threads`; extension e2e). Keep this file true: update it in the same change that finishes, breaks or
-defers something.
+Last updated: 2026-11-05, after PR #2 (review pass, real-account testing, security pass) was merged to `main` and
+deployed. Keep this file true: update it in the same change that finishes, breaks or defers something.
 
 ## Milestones
 
@@ -9,7 +9,7 @@ defers something.
 |---|---|---|
 | M0 | Design direction (Signal skin) | ✅ done |
 | M1 | Skeleton: monorepo, app, design engine, sample data, extension v0 | ✅ done |
-| M2 | Sign in with GitHub (OAuth App + PKCE + worker), secure token storage, PAT fallback | ✅ built and tested; a real account signed in through the live Worker on 2026-11-05 (the client secret is set as a Secret). The one-tap loop fix still needs a check on the deployed site |
+| M2 | Sign in with GitHub (OAuth App + PKCE + worker), secure token storage, PAT fallback | ✅ built and tested; a real account signed in through the live Worker on 2026-11-05 (the client secret is set as a Secret). The loop fix is deployed; a real one-tap sign-in on the deployed site (owner's phone) is still to do |
 | M3 | Core GitHub: feed, inbox triage, repos, code browser (syntax colors, branch picker), issues, PRs (diff, checks, merge, reviews with line comments / approve / request changes), search, profiles, markdown | ✅ done (see gaps below) |
 | M4 | Studio: presets gallery, theme, drag-to-reorder tabs/sections/tiles, tile editor, share codes + share links with live preview | ✅ done |
 | M5 | Ship the PWA: installable, offline shell, icons; hosted on one Cloudflare Worker with sign-in (`npm run deploy`) | ✅ live at https://gitling.truckcoding.workers.dev |
@@ -21,23 +21,25 @@ defers something.
 |---|---|---|
 | Types (app + worker) | `npm run typecheck` | clean |
 | Lint | `npm run lint` | clean |
-| Unit tests: client, api × sample data, PKCE/state, worker, design + presets | `npm test` | 76/76 |
+| Unit + property-based fuzz tests: client, api × sample data, PKCE/state, worker, design + presets, suggestions, diffs, extension storage | `npm test` (`npm run verify` runs everything) | 151/151 |
 | Every screen in Chromium at phone size, plus PWA files, service worker and offline launch | `npm run smoke` | 16/16 screens, SW registers, opens offline |
 | Full sign-in flow, GitHub simulated, real worker code | `npm run e2e:signin` | 12/12 |
 | Studio: presets, mouse drag reorder, share link preview/apply | `npm run e2e:studio` | 12/12 |
 | PR reviews: line comments, verdicts, timeline, own-PR rules, replies, resolve/unresolve, multi-line ranges, suggestions (apply, batch, blocked reasons), file changed in the code browser | `npm run e2e:review` | 47/47 |
 | Extension stress test on live github.com: 26 page types × 3 backgrounds vs a no-extension baseline, signed out | `npm run stress:extension` (report in `stress-report/`, git-ignored) | 0 new low-contrast text in ~15,000 checks, 0 extension errors, content script 6.3 KB |
 | Read endpoints against the real api.github.com | `LIVE_REPO=vassu-v/gh-restyle LIVE_REPO_ONLY=1 npm run test:live` | pass (repo, readme, tree, file, issues, pulls, thread, files, checks) |
-| Live site: every screen, service worker, offline launch, Chrome installability | `SMOKE_URL=https://gitling.truckcoding.workers.dev npm run smoke` + CDP installability check | 16/16, SW active, opens offline, 0 installability errors |
+| Live site: every screen, service worker, offline launch, Chrome installability | `SMOKE_URL=https://gitling.truckcoding.workers.dev npm run smoke` + CDP installability check | 16/16, SW active, opens offline, 0 installability errors; re-run after the PR #2 deploy: all screens ok under the CSP |
 | Extension end to end on live github.com: popup controls, design codes and share links, off/on restore, persistence, in-site navigation | `npm run e2e:extension` | 34/34 |
 | Extension | `npm run build:extension` | builds; restyle verified on live github.com during M1 |
 
 ## Not verified yet (be honest about these)
 
 - **Real OAuth against github.com:** done 2026-11-05 end to end (approve on GitHub, code exchange in the live
-  Worker, token stored) from a local build. Still to check: the same on the deployed site once the loop fix ships.
+  Worker, token stored) from a local build. The loop fix is deployed and a bad callback now gets a clear error
+  page (checked); a real one-tap sign-in on the deployed site is still to do.
 - **Signed-in screens with a real account:** done 2026-11-05 with a local build signed in through the live
   Worker (see "Tested with a real account" below). Not yet repeated on the deployed site.
+- **`/auth/exchange` rate limit** on real Cloudflare: configured, not exercised.
 - **iOS / Android builds:** none made yet. Native sign-in uses `expo-web-browser` `openAuthSessionAsync`
   with `gitling://auth/callback`, which isn't exercised on a device.
 - **On a real phone:** install and offline behaviour. Chrome's installability check reports no errors on the live site, and offline launch passes in Chromium.
@@ -45,8 +47,8 @@ defers something.
 ## Fixed 2026-11-05 (review pass)
 
 - **One-tap sign-in looped forever on the live site.** The app and Worker share an origin, so the Worker
-  redirected `/auth/callback` to itself (`run_worker_first`). It now serves the app page instead. Unit-tested;
-  needs a real sign-in on the live site after the next deploy to confirm.
+  redirected `/auth/callback` to itself (`run_worker_first`). It now serves the app page instead. Unit-tested and
+  deployed; a real sign-in on the live site will confirm it.
 - **`javascript:` links:** `/ask?template=…`, link tiles and ask tiles from shared designs could hand
   `javascript:` URLs to `window.open`. Script-running schemes (`javascript:`, `data:`, `vbscript:`, `blob:`, …)
   are now refused (`isSafeLink` in packages/design); app links like `gitling://` and `vscode://` still work, and a
@@ -136,16 +138,17 @@ From the CodeRabbit review of PR #2, fixed:
   - Saved designs are salvaged part by part (Studio says what was left out) instead of being reset.
   - Suggestion files are read as base64 JSON and decoded by plain code, so it works on React Native too. Each comment is re-checked by id, so there's no 500-comment cap.
   - Image approval is tied to the exact address. The extension's sync quota is counted in bytes. Draft comments use the commit their diff was read at. Blocked links say why.
-- Not verifiable here: the CSP, rate limit and sign-in loop fix on real Cloudflare (check after the next deploy); the native double-callback (no device build).
+- Deployed with PR #2: the CSP (with Trusted Types) is served live and the smoke test passes under it. Still not
+  checked on real Cloudflare: the rate limit. Not checkable without a device build: the native double-callback.
 
-- Any asset path containing `@` loops on Cloudflare's asset server. `@` folders are renamed to `_at_`, and `@` files are kept out of the precache.
-- (old note) Asset folders starting with `@` (scoped npm packages, e.g. fonts) loop forever on Cloudflare's asset server. `scripts/pwa.mjs` renames them to `_at_…` at build time; keep that step.
+- Any asset path containing `@` loops on Cloudflare's asset server. `scripts/pwa.mjs` renames `@` folders (scoped
+  packages such as fonts) to `_at_` and keeps `@` files out of the precache; keep that step.
 
 - Markdown has no emoji shortcodes, math or mermaid. SVG badges show as links on native.
 - Code browser: files over 512 KB open on GitHub; highlighting skips files over 3,000 lines. Diffs aren't syntax-colored.
-- PR review threads: replies, resolve, multi-line comments and suggested changes (apply one or a batch) are built and
-  tested in sample mode. Not yet tried against a real PR with a real account; the GraphQL `databaseId` = REST `id`
-  join is from GitHub's docs, not yet confirmed live (the build sandbox blocks GraphQL).
+- PR review threads: line comments, suggestions, apply one and batch apply were tried on a real PR with a real
+  account (2026-11-05). Threads showed Resolve, so the GraphQL `databaseId` = REST `id` join works live. Replies,
+  resolve and multi-line ranges are tested in sample mode only.
 - No commits list. The repo tile's "commits" tab opens github.com.
 - **Extension (v0.2.0):** not tested signed in, in Firefox/Edge, or with GitHub's dim/high-contrast settings; not in the Chrome Web Store. The popup still bundles zod (about 450 KB, loads only when opened); the content script is 5.9 KB.
 - Studio: drag-to-reorder not yet tried on a real touchscreen (mouse-tested in Chromium). Ideas: user-saved presets, custom accent color picker.
