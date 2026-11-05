@@ -1,6 +1,6 @@
 // Deep imports keep zod out of the content script (see storage.ts).
 import type { Design } from '@gitling/design/src/schema';
-import { mix, resolveTokens } from '@gitling/design/src/tokens';
+import { fit, mix, resolveTokens } from '@gitling/design/src/tokens';
 
 /**
  * Map a Gitling design onto GitHub's own Primer design tokens.
@@ -17,7 +17,9 @@ export function primerVars(design: Design): Record<string, string> {
     '--bgColor-emphasis': c.line2,
     '--bgColor-neutral-muted': c.el2,
     '--bgColor-accent-muted': c.accSoft,
-    '--bgColor-accent-emphasis': c.acc,
+    // GitHub puts white text on accent-emphasis (skip link, badges, selected items). Our accents are pastel,
+    // so deepen the same hue until white reads at 4.5:1.
+    '--bgColor-accent-emphasis': fit(c.acc, '#FFFFFF', 4.5),
     '--overlay-bgColor': c.el,
     '--card-bgColor': c.el,
     '--fgColor-default': c.fg,

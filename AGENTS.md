@@ -33,7 +33,7 @@ packages/github/     typed GitHub REST: client.ts (transport), api.ts (every end
 packages/design/     Design schema (zod), Signal skin, token resolver, contrast fitting, share codes
 services/edge/       Cloudflare Worker "gitling": serves the web app (static assets) + sign-in routes (phase 2: push)
 scripts/             pwa.mjs (post-build), smoke.mjs (every screen), e2e-signin/studio/review.mjs, deploy.mjs
-docs/                CONTEXT, STATUS, ARCHITECTURE, SETUP-SIGNIN, DEPLOY, decisions/
+docs/                CONTEXT, STATUS, ARCHITECTURE, SETUP-SIGNIN, DEPLOY, decisions/, plans/ (next features)
 ```
 
 ## Commands (from the repo root)
@@ -69,6 +69,7 @@ Playwright-based scripts need Chromium (`npx playwright install chromium` if it 
 6. **Secrets never go in the app.** The OAuth client secret lives only in the worker (`wrangler secret`).
    `EXPO_PUBLIC_*` values are public by design.
 7. **Tokens never leave the device** except to api.github.com. Don't log them, don't put them in URLs.
+   The one planned exception is opt-in push notifications (decision 0009), which store an encrypted token in the Worker.
 8. Expo moves fast: check versioned docs before using an Expo API (see `apps/app/AGENTS.md`). Add native
    packages with `npx expo install`, not `npm i`.
 9. Keep `docs/STATUS.md` true. If you finish, break or defer something, update it in the same change.

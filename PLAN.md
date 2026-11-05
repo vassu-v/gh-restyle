@@ -83,49 +83,11 @@ Design = {
 - Planned: sync your Design across devices through a private gist on your own account, so no server stores it.
 - Every UI primitive reads from resolved tokens. No screen hardcodes a color, radius or font.
 
-## 7. Phase 2: push notifications (planned, not built)
+## 7. Next features (planned, with full architecture)
 
-**Why a server is needed.** GitHub doesn't push to third-party apps. Something has to check
-`/notifications` for you and wake your phone. That's the same Worker that already serves the app
-(`services/edge`), plus Cloudflare's free cron and storage.
-
-```
-Phone (installed PWA or native app)      Worker (Cloudflare)                       GitHub
-──────────────────────────────────      ───────────────────                       ──────
-Settings → "Notify me" → allow
-  ├─ web: PushManager.subscribe(VAPID key) ─┐
-  └─ native: Expo push token ───────────────┤
-POST /push/register {subscription, token, rules} → store in D1:
-                                              subscription, rules, GitHub token encrypted (AES-GCM, key = Worker secret)
-                                            cron, every minute:
-                                              for each user due (respect X-Poll-Interval, usually 60 s):
-                                                GET /notifications  If-Modified-Since ──→  304 (free) or new threads
-                                                filter by rules (review requested, mention, CI failed on my PR, …)
-                                                send Web Push (VAPID-signed) or Expo push ─→ phone shows it
-Tap notification → opens the thread in Gitling (deep link /thread/owner/repo/n)
-```
-
-- **Storage:** Cloudflare D1, a small SQLite table per device. The free tier is enough for personal use.
-- **Security:**
-  - GitHub tokens are encrypted at rest with a key that only the Worker has.
-  - Sign-out or "stop notifications" deletes the row.
-  - A 401 from GitHub deletes it too.
-- **Rules, set in Studio** (planned):
-  - which reasons notify you (review requested, mention, assigned, CI failed)
-  - quiet hours
-  - per-repo mute
-- **iPhone:** web push works only once the PWA is added to the Home Screen (iOS 16.4+). Android and desktop
-  Chrome work in the browser.
-- **Native apps later:** the Expo push token goes to the same endpoint, and the server sends through Expo's
-  push service.
-- **Cost:** about 1 GitHub request per user per minute, mostly free 304s; a minute of cron per run. This
-  stays well inside free tiers for personal or small-team use.
-- **Build steps:**
-  1. D1 schema and `/push/register` + `/push/unregister`.
-  2. Cron poller with ETag / `If-Modified-Since`.
-  3. VAPID Web Push sender. Workers can't use node `web-push`, so sign with WebCrypto.
-  4. App: permission prompt, service-worker `push` and `notificationclick` handlers, settings UI.
-  5. Tests: rule filtering unit tests, a poller test with GitHub faked, an e2e of subscribe → push → open.
+- **Push notifications:** `docs/plans/push-notifications.md` (decision 0009).
+- **Review replies, resolved threads, multi-line comments, suggested changes:**
+  `docs/plans/review-threads-and-suggestions.md` (decision 0010).
 
 ## 8. Milestones
 

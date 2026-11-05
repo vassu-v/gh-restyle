@@ -13,3 +13,5 @@ instead of rewriting history; if a decision is replaced, mark the old one "Super
 | 0006 | [PWA via post-export script](0006-pwa-post-export.md) | Accepted |
 | 0007 | [Extension styles via Primer CSS variables](0007-extension-primer-vars.md) | Accepted |
 | 0008 | [App + sign-in on one Cloudflare Worker](0008-cloudflare-single-worker.md) | Accepted |
+| 0009 | [Push: opt-in server-held token, cron → queue → Web Push](0009-push-notifications.md) | Proposed |
+| 0010 | [Review threads (REST + GraphQL), suggestions via Git Data API](0010-review-threads-and-suggestions.md) | Proposed |
