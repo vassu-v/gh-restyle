@@ -7,7 +7,7 @@ import { rel } from '@/lib/format';
 import { routes } from '@/lib/links';
 import { Avatar, Button, T } from '@/ui/primitives';
 import { Markdown } from '@/ui/Markdown';
-import { SuggestionCard } from './Suggestion';
+import { Act, SuggestionCard } from './Suggestion';
 
 /**
  * What a thread needs from the screen. The screen owns the mutations and the suggestion batch, so a thread
@@ -108,16 +108,5 @@ function CommentView({ c, ctx }: { c: ReviewComment; ctx: ThreadCtx }) {
           : <SuggestionCard key={i} c={c} lines={p.lines} ctx={ctx} />)}
       </View>
     </View>
-  );
-}
-
-/** A compact action button for inside the diff (the full-size Button is too tall between code lines). */
-export function Act({ label, a11y, onPress, disabled, tone = 'fg' }: { label: string; a11y?: string; onPress: () => void; disabled?: boolean; tone?: 'fg' | 'acc' | 'bad' }) {
-  const t = useTokens();
-  return (
-    <Pressable onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityLabel={a11y ?? label} accessibilityState={{ disabled: !!disabled }} hitSlop={4}
-      style={({ pressed }) => ({ paddingHorizontal: 12, height: 32, borderRadius: 16, justifyContent: 'center', borderWidth: 1, borderColor: t.c.line2, backgroundColor: t.c.el, opacity: disabled ? 0.45 : pressed ? 0.75 : 1 })}>
-      <T v="sub" c={tone} style={{ fontFamily: t.font.ui.medium, fontSize: 13 }}>{label}</T>
-    </Pressable>
   );
 }

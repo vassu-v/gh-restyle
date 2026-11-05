@@ -1,14 +1,17 @@
 /* Sample data with the same shapes as the GitHub API, so every screen works before sign-in. */
-import type { Comment, DraftComment, FeedEvent, Issue, Notification, PrFile, PullRequest, Repo, Review, ReviewComment, ReviewEvent, User } from './types';
+import type { Comment, DraftComment, FeedEvent, Issue, NewTreeEntry, Notification, PrFile, PullRequest, Repo, Review, ReviewComment, ReviewEvent, User } from './types';
 import type { RequestOptions } from './client';
+import { parsePatch } from './diff';
+import { originalLines } from './suggest';
 
 export const SAMPLE_LOGIN = 'you';
 const API = 'https://api.github.com';
 const now = Date.now();
 const ago = (h: number) => new Date(now - h * 3600e3).toISOString();
-const u = (login: string): User => ({ login, avatar_url: '' });
+const IDS: Record<string, number> = { you: 100, mira: 101, lin: 102, devansh: 103 };
+const u = (login: string): User => ({ id: IDS[login], login, avatar_url: '' });
 const NAMES: Record<string, string> = { mira: 'Mira Okafor', devansh: 'Devansh Rao', lin: 'Lin Zhou', you: 'Sample User' };
-const ME: User = { login: 'you', name: 'Sample User', bio: 'Building small tools for big trips.', avatar_url: '', public_repos: 6, followers: 48, following: 31, location: 'Bengaluru' };
+const ME: User = { id: 100, login: 'you', name: 'Sample User', bio: 'Building small tools for big trips.', avatar_url: '', public_repos: 6, followers: 48, following: 31, location: 'Bengaluru' };
 
 const repo = (o: string, r: string, d: string, lang: string | null, stars: number, forks: number, open: number, h: number, extra: Partial<Repo> = {}): Repo => ({
   name: r, full_name: `${o}/${r}`, owner: u(o), description: d, language: lang, stargazers_count: stars, forks_count: forks,
@@ -29,7 +32,7 @@ const OTHER = [
 const ALL = [...REPOS, ...OTHER];
 const starred = new Set(['openmaps/tilekit', 'lin/tiny-sync']);
 
-type PrExtra = Pick<PullRequest, 'draft' | 'merged' | 'merged_at' | 'mergeable' | 'head' | 'base' | 'additions' | 'deletions' | 'changed_files' | 'commits'>;
+type PrExtra = Pick<PullRequest, 'draft' | 'merged' | 'merged_at' | 'mergeable' | 'head' | 'base' | 'additions' | 'deletions' | 'changed_files' | 'commits' | 'maintainer_can_modify'>;
 type Stored = Issue & { _comments: Comment[]; _pr?: PrExtra };
 const ISSUES: Record<string, Stored[]> = {};
 let cid = 1;
@@ -42,7 +45,9 @@ function add(full: string, n: number, title: string, who: string, state: 'open' 
   if (pr) {
     it.pull_request = { url: `${API}/repos/${full}/pulls/${n}`, merged_at: pr.merged ? ago(h) : null };
     it.draft = !!pr.draft;
-    it._pr = { draft: false, merged: false, merged_at: null, mergeable: true, head: { ref: 'feature', sha: 'f00dfeed' }, base: { ref: 'main' }, additions: 20, deletions: 4, changed_files: 1, commits: 1, ...pr };
+    it._pr = { draft: false, merged: false, merged_at: null, mergeable: true, head: { ref: 'feature', sha: 'f00dfeed' }, base: { ref: 'main' }, additions: 20, deletions: 4, changed_files: 1, commits: 1, maintainer_can_modify: false, ...pr };
+    // Every sample PR comes from a branch in the same repo (no forks).
+    it._pr.head.repo ??= { full_name: full, owner: { login: full.split('/')[0] } };
   }
   (ISSUES[full] ??= []).push(it);
   return it;
@@ -57,7 +62,7 @@ comment(i42, 'devansh', 1, 'Same here on Android. Happy to test the branch.');
 const p45 = add('you/trail-notes', 45, 'Merge offline edits instead of overwriting them', 'you', 'open', 1,
   'Fixes #42. Offline edits are stored as a patch queue and merged field by field on reconnect.\n\n- [x] Patch queue\n- [x] Field-level merge\n- [ ] Conflict UI\n\n| Case | Before | After |\n|---|---|---|\n| Title edit offline | lost | kept |\n| Both sides edit | server wins | newest wins |', [['sync', '1d76db']],
   { head: { ref: 'fix/offline-merge', sha: 'a91f3c2e' }, base: { ref: 'main' }, additions: 184, deletions: 37, changed_files: 3, commits: 4, mergeable: true });
-comment(p45, 'mira', 0.5, 'Tested on my phone, the title edit survives now. One nit on the timestamp comparison:\n\n> newer timestamp wins\n\nShould be `>=` so ties keep the local edit.');
+comment(p45, 'mira', 0.5, 'Tested on my phone, the title edit survives now. One nit on the timestamp comparison:\n\n> newer timestamp wins\n\nShould be `>` so ties keep the local edit.');
 add('you/trail-notes', 44, 'Export a trip as GPX', 'devansh', 'open', 26, 'Would love to bring my routes into other map apps.', [['enhancement', 'a2eeef']]);
 add('you/trail-notes', 39, 'Tag chips are hard to read in dark mode', 'lin', 'closed', 50, 'The grey chips almost vanish.', [['design', 'c5def5']]);
 add('you/pocket-ledger', 88, 'Rounding error when splitting 3 ways', 'mira', 'open', 8, 'Splitting ₹100 three ways gives ₹99.99 total.', [['bug', 'd73a4a']]);

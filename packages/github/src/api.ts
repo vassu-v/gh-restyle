@@ -1,7 +1,8 @@
+import { applySuggestions } from './apply';
 import { nextPage, type GitHubClient, type RequestOptions } from './client';
 import type {
-  Branch, CheckRuns, Comment, DraftComment, Review, ReviewComment, ReviewEvent, ContentFile, ContentItem, FeedEvent, Issue, MergeMethod, Notification, Page,
-  PrFile, PullRequest, Repo, SearchResult, User, WorkflowRuns,
+  ApplyResult, Branch, CheckRuns, Comment, DraftComment, GitCommit, GitTree, NewTreeEntry, Review, ReviewComment, ReviewEvent, ContentFile, ContentItem, FeedEvent,
+  Issue, MergeMethod, Notification, Page, PrFile, PullRequest, Repo, SearchResult, ThreadState, User, WorkflowRuns,
 } from './types';
 
 /**
@@ -14,6 +15,20 @@ const e = encodeURIComponent;
 /** Encodes each segment of a file path but keeps the slashes. */
 const ePath = (p: string) => p.split('/').filter(Boolean).map(e).join('/');
 const contentsPath = (path: string, ref?: string) => `/contents${path ? '/' + ePath(path) : ''}${ref ? `?ref=${e(ref)}` : ''}`;
+
+// The databaseId of a thread's first comment is the REST id of its root, which is how threads.ts joins the two.
+const THREADS_QUERY = `query($owner: String!, $repo: String!, $number: Int!, $after: String) {
+  repository(owner: $owner, name: $repo) { pullRequest(number: $number) { reviewThreads(first: 100, after: $after) {
+    pageInfo { hasNextPage endCursor }
+    nodes { id isResolved isOutdated viewerCanResolve viewerCanUnresolve viewerCanReply comments(first: 1) { nodes { databaseId } } }
+  } } }
+}`;
+type ThreadsAnswer = { repository: { pullRequest: { reviewThreads: {
+  pageInfo: { hasNextPage: boolean; endCursor: string | null };
+  nodes: (Omit<ThreadState, 'rootId'> & { comments: { nodes: { databaseId: number | null }[] } })[];
+} } | null } | null };
+const RESOLVE = (verb: 'resolveReviewThread' | 'unresolveReviewThread') =>
+  `mutation($threadId: ID!) { ${verb}(input: { threadId: $threadId }) { thread { id isResolved } } }`;
 
 export function createApi(client: GitHubClient) {
   const get = <T,>(path: string, opts?: RequestOptions) => client.request<T>(path, opts);
@@ -29,7 +44,7 @@ export function createApi(client: GitHubClient) {
   }
   const repoPath = (owner: string, repo: string) => `/repos/${e(owner)}/${e(repo)}`;
 
-  return {
+  const api = {
     // ── people
     me: () => get<User>('/user'),
     user: (login: string) => get<User>(`/users/${e(login)}`),
@@ -88,6 +103,43 @@ export function createApi(client: GitHubClient) {
     /** Submits a review in one call: the verdict, an optional summary and any line comments. */
     submitReview: (owner: string, repo: string, n: number, r: { event: ReviewEvent; body?: string; comments?: DraftComment[] }) =>
       get<Review>(`${repoPath(owner, repo)}/pulls/${n}/reviews`, { method: 'POST', body: { event: r.event, ...(r.body ? { body: r.body } : {}), ...(r.comments?.length ? { comments: r.comments } : {}) } }),
+    /** GitHub only takes replies to a thread's root comment, so pass the root's id. */
+    replyToReviewComment: (owner: string, repo: string, n: number, rootId: number, body: string) =>
+      get<ReviewComment>(`${repoPath(owner, repo)}/pulls/${n}/comments/${rootId}/replies`, { method: 'POST', body: { body } }),
+    /** Resolved state and permissions per thread (GraphQL only; REST has neither). */
+    reviewThreads: async (owner: string, repo: string, n: number): Promise<ThreadState[]> => {
+      const out: ThreadState[] = [];
+      let after: string | null = null;
+      for (let i = 0; i < 5; i++) {
+        const d: ThreadsAnswer = await client.graphql<ThreadsAnswer>(THREADS_QUERY, { owner, repo, number: n, after });
+        const rt = d.repository?.pullRequest?.reviewThreads;
+        if (!rt) break;
+        for (const { comments, ...t } of rt.nodes) {
+          const rootId = comments.nodes[0]?.databaseId;
+          if (rootId != null) out.push({ ...t, rootId });
+        }
+        if (!rt.pageInfo.hasNextPage) break;
+        after = rt.pageInfo.endCursor;
+      }
+      return out;
+    },
+    resolveThread: (threadId: string) => client.graphql(RESOLVE('resolveReviewThread'), { threadId }).then(() => true as const),
+    unresolveThread: (threadId: string) => client.graphql(RESOLVE('unresolveReviewThread'), { threadId }).then(() => true as const),
+
+    // ── git data (on the PR's HEAD repo, which may be a fork), for applying suggestions
+    gitCommit: (owner: string, repo: string, sha: string) => get<GitCommit>(`${repoPath(owner, repo)}/git/commits/${e(sha)}`),
+    /** One level of a tree (not recursive). */
+    gitTree: (owner: string, repo: string, treeSha: string) => get<GitTree>(`${repoPath(owner, repo)}/git/trees/${e(treeSha)}`),
+    createTree: (owner: string, repo: string, t: { base_tree: string; tree: NewTreeEntry[] }) => get<{ sha: string }>(`${repoPath(owner, repo)}/git/trees`, { method: 'POST', body: t }),
+    createCommit: (owner: string, repo: string, c: { message: string; tree: string; parents: string[] }) => get<{ sha: string }>(`${repoPath(owner, repo)}/git/commits`, { method: 'POST', body: c }),
+    /** Fast-forward only: GitHub answers 422 if the branch moved since `sha`'s parent. */
+    updateBranch: (owner: string, repo: string, branch: string, sha: string) => get<unknown>(`${repoPath(owner, repo)}/git/refs/heads/${ePath(branch)}`, { method: 'PATCH', body: { sha, force: false } }),
+  };
+  return {
+    ...api,
+    /** Commits the comments' suggestions to the PR branch in one commit. See apply.ts. */
+    applySuggestions: (owner: string, repo: string, n: number, comments: ReviewComment[], opts?: { message?: string; viewer?: string }): Promise<ApplyResult> =>
+      applySuggestions(api, owner, repo, n, comments, opts),
   };
 }
 

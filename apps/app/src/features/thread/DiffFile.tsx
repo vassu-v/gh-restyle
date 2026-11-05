@@ -1,31 +1,61 @@
-import { anchorFor, parsePatch, type DiffLine, type DraftComment, type PrFile, type ReviewComment } from '@gitling/github';
-import { router } from 'expo-router';
+import { anchorFor, parsePatch, type DiffLine, type DraftComment, type PrFile, type ReviewThread } from '@gitling/github';
 import { Fragment, useMemo, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { useTokens } from '@/design/DesignProvider';
-import { rel } from '@/lib/format';
-import { routes } from '@/lib/links';
-import { Avatar, Button, Panel, T } from '@/ui/primitives';
-import { Markdown } from '@/ui/Markdown';
+import { Button, Panel, T } from '@/ui/primitives';
+import { Act } from './Suggestion';
+import { ThreadView, type ThreadCtx } from './ThreadView';
+
+type Anchor = { line: number; side: 'LEFT' | 'RIGHT' };
+type Pick = { idx: number; a: Anchor };
 
 /**
- * One changed file of a PR. Tap a line to add a comment to your pending review; existing review comments
- * and your drafts show under the line they belong to. Comments whose code has since changed are listed as
- * "outdated" at the end of the file.
+ * One changed file of a PR. Tap a line to add a comment to your pending review; long-press a line, then tap a
+ * later line of the same hunk, to comment on a range. Review threads and your drafts show under the line they
+ * end on. Threads whose code has since changed are listed as "outdated" at the end of the file.
  */
-export function DiffFile({ file, owner, repo, existing, drafts, onDraft, onRemoveDraft, canComment }: {
-  file: PrFile; owner: string; repo: string;
-  existing: ReviewComment[]; drafts: DraftComment[];
+export function DiffFile({ file, threads, drafts, onDraft, onRemoveDraft, canComment, ctx }: {
+  file: PrFile;
+  threads: ReviewThread[]; drafts: DraftComment[];
   onDraft: (d: DraftComment) => void; onRemoveDraft: (d: DraftComment) => void;
   canComment: boolean;
+  ctx: ThreadCtx;
 }) {
   const t = useTokens();
   const lines = useMemo(() => parsePatch(file.patch), [file.patch]);
-  const [openAt, setOpenAt] = useState<string | null>(null);
+  // The composer covers lines start.idx..end.idx (one line when they're equal) and sits under the end line.
+  const [open, setOpen] = useState<{ start: Pick; end: Pick } | null>(null);
+  const [rangeStart, setRangeStart] = useState<Pick | null>(null);
   const [text, setText] = useState('');
-  const keyOf = (a: { line: number; side: string }) => `${a.side}:${a.line}`;
-  const outdated = existing.filter((c) => c.line == null);
+  const outdated = threads.filter((th) => th.outdated);
+  const current = threads.filter((th) => !th.outdated);
   const mono = { fontFamily: t.font.mono.regular, fontSize: 12.5, lineHeight: 19 } as const;
+
+  const sameHunk = (i: number, j: number) => !lines.slice(Math.min(i, j), Math.max(i, j) + 1).some((l) => l.kind === 'hunk');
+  const tap = (p: Pick) => {
+    setText('');
+    if (rangeStart) {
+      setRangeStart(null);
+      if (rangeStart.idx !== p.idx && sameHunk(rangeStart.idx, p.idx)) {
+        const [start, end] = rangeStart.idx < p.idx ? [rangeStart, p] : [p, rangeStart];
+        setOpen({ start, end });
+        return;
+      }
+    }
+    setOpen(open && open.end.idx === p.idx && open.start.idx === p.idx ? null : { start: p, end: p });
+  };
+  const longPress = (p: Pick) => { setOpen(null); setRangeStart(p); };
+
+  const lo = open?.start.idx ?? rangeStart?.idx ?? -1;
+  const hi = open?.end.idx ?? rangeStart?.idx ?? -1;
+  const isRange = !!open && open.start.idx !== open.end.idx;
+  // Suggestions replace RIGHT-side (new) lines only, so Suggest needs every selected line to be one.
+  const selected = open ? lines.slice(open.start.idx, open.end.idx + 1) : [];
+  const canSuggest = selected.length > 0 && selected.every((l) => l.kind === 'add' || l.kind === 'ctx');
+  const suggest = () => {
+    const block = '```suggestion\n' + selected.map((l) => l.text.slice(1)).join('\n') + '\n```';
+    setText((x) => (x.trim() ? x.replace(/\s*$/, '') + '\n' + block : block));
+  };
 
   return (
     <Panel style={{ marginHorizontal: 14, marginTop: 12 }}>
@@ -39,32 +69,49 @@ export function DiffFile({ file, owner, repo, existing, drafts, onDraft, onRemov
         <View style={{ paddingVertical: 6 }}>
           {lines.map((ln, i) => {
             const a = anchorFor(ln);
-            const k = a ? keyOf(a) : null;
-            const here = a ? existing.filter((c) => c.line === a.line && (c.side ?? 'RIGHT') === a.side) : [];
-            const mine = a ? drafts.filter((d) => d.line === a.line && d.side === a.side) : [];
+            const at = (x: { line: number | null; side: string }) => !!a && x.line === a.line && x.side === a.side;
+            const here = a ? current.filter(at) : [];
+            const mine = a ? drafts.filter(at) : [];
+            const p = a ? { idx: i, a } : null;
+            const live = !!p && canComment;
             return (
               <Fragment key={i}>
-                <Pressable disabled={!canComment || !a} onPress={() => { setOpenAt(openAt === k ? null : k); setText(''); }}
-                  accessibilityRole={a && canComment ? 'button' : undefined} accessibilityLabel={a && canComment ? `Comment on line ${a.line}` : undefined}>
-                  <LineView ln={ln} mono={mono} active={openAt === k} />
+                <Pressable disabled={!live} onPress={() => p && tap(p)} onLongPress={() => p && longPress(p)}
+                  accessibilityRole={live ? 'button' : undefined} accessibilityLabel={live ? `Comment on line ${a!.line}` : undefined}
+                  accessibilityHint={live ? 'Long-press to start a range' : undefined}
+                  accessibilityActions={live ? [{ name: 'longpress', label: `Start a range at line ${a!.line}` }] : undefined}
+                  onAccessibilityAction={(e) => { if (p && e.nativeEvent.actionName === 'longpress') longPress(p); }}>
+                  <LineView ln={ln} mono={mono} active={i >= lo && i <= hi} />
                 </Pressable>
-                {here.map((c) => <InlineComment key={c.id} c={c} owner={owner} repo={repo} />)}
+                {rangeStart && rangeStart.idx === i ? (
+                  <View style={{ marginHorizontal: 10, marginVertical: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, backgroundColor: t.c.accSoft, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <T v="sub" c="acc" style={{ flex: 1, fontSize: 13 }}>Tap the last line of the range</T>
+                    <Act label="Cancel" onPress={() => setRangeStart(null)} />
+                  </View>
+                ) : null}
+                {here.map((th) => <ThreadView key={th.root.id} th={th} ctx={ctx} />)}
                 {mine.map((d, j) => (
                   <View key={`d${j}`} style={{ marginHorizontal: 10, marginVertical: 4, padding: 10, borderRadius: 10, borderWidth: 1, borderStyle: 'dashed', borderColor: t.c.acc, gap: 4 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                      <T v="monoS" c="acc">pending · line {d.line}</T>
+                      <T v="monoS" c="acc">{d.start_line != null && d.start_line !== d.line ? `pending · lines ${d.start_line}–${d.line}` : `pending · line ${d.line}`}</T>
                       <Pressable onPress={() => onRemoveDraft(d)} hitSlop={8} accessibilityLabel="Remove pending comment"><T v="monoS" c="mut">remove</T></Pressable>
                     </View>
                     <T v="sub">{d.body}</T>
                   </View>
                 ))}
-                {a && openAt === k ? (
+                {open && open.end.idx === i ? (
                   <View style={{ marginHorizontal: 10, marginVertical: 6, gap: 8 }}>
-                    <TextInput autoFocus value={text} onChangeText={setText} multiline placeholder={`Comment on line ${a.line}`} placeholderTextColor={t.c.dim}
+                    <TextInput autoFocus value={text} onChangeText={setText} multiline placeholderTextColor={t.c.dim}
+                      placeholder={isRange ? `Comment on lines ${open.start.a.line}–${open.end.a.line}` : `Comment on line ${open.end.a.line}`}
                       style={{ minHeight: 70, padding: 10, borderRadius: 10, backgroundColor: t.c.el2, color: t.c.fg, fontFamily: t.font.ui.regular, fontSize: 14, textAlignVertical: 'top' }} />
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                      <Button label="Add to review" disabled={!text.trim()} onPress={() => { onDraft({ path: file.filename, line: a.line, side: a.side, body: text.trim() }); setOpenAt(null); setText(''); }} />
-                      <Button kind="quiet" label="Cancel" onPress={() => setOpenAt(null)} />
+                    <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                      <Button label="Add to review" disabled={!text.trim()} onPress={() => {
+                        const { start, end } = open;
+                        onDraft({ path: file.filename, line: end.a.line, side: end.a.side, ...(isRange ? { start_line: start.a.line, start_side: start.a.side } : {}), body: text.trim() });
+                        setOpen(null); setText('');
+                      }} />
+                      {canSuggest ? <Button kind="quiet" label="Suggest" accessibilityLabel="Suggest" onPress={suggest} /> : null}
+                      <Button kind="quiet" label="Cancel" onPress={() => setOpen(null)} />
                     </View>
                   </View>
                 ) : null}
@@ -76,7 +123,7 @@ export function DiffFile({ file, owner, repo, existing, drafts, onDraft, onRemov
       {outdated.length ? (
         <View style={{ borderTopWidth: 1, borderColor: t.c.line, paddingVertical: 6 }}>
           <T v="monoS" c="mut" style={{ paddingHorizontal: 12, paddingTop: 4 }}>outdated comments</T>
-          {outdated.map((c) => <InlineComment key={c.id} c={c} owner={owner} repo={repo} />)}
+          {outdated.map((th) => <ThreadView key={th.root.id} th={th} ctx={ctx} />)}
         </View>
       ) : null}
     </Panel>
@@ -92,19 +139,6 @@ function LineView({ ln, mono, active }: { ln: DiffLine; mono: object; active: bo
       <Text style={{ ...mono, width: 40, textAlign: 'right', paddingRight: 8, color: t.c.dim }}>{num}</Text>
       {/* Long lines wrap (like GitHub's mobile diff) so comments stay in view without sideways scrolling. */}
       <Text style={{ ...mono, flex: 1, paddingRight: 12, color: kind === 'hunk' ? t.c.mut : t.c.fg }}>{ln.text || ' '}</Text>
-    </View>
-  );
-}
-
-function InlineComment({ c, owner, repo }: { c: ReviewComment; owner: string; repo: string }) {
-  const t = useTokens();
-  return (
-    <View style={{ marginHorizontal: 10, marginVertical: 4, padding: 10, borderRadius: 10, backgroundColor: t.c.el2, gap: 6, flexDirection: 'row' }}>
-      <Pressable onPress={() => router.push(routes.user(c.user.login))}><Avatar login={c.user.login} size={22} /></Pressable>
-      <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
-        <T v="monoS" c="mut"><T v="bodyStrong" style={{ fontSize: 13 }}>{c.user.login}</T>  {rel(c.created_at)}</T>
-        <Markdown source={c.body} base={{ owner, repo }} />
-      </View>
     </View>
   );
 }

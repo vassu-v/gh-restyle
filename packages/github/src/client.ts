@@ -29,6 +29,8 @@ export type GitHubClient = {
   request<T = unknown>(path: string, opts?: RequestOptions): Promise<T>;
   /** Like request, but also returns status and headers (for pagination). */
   raw<T = unknown>(path: string, opts?: RequestOptions): Promise<Response<T>>;
+  /** POST /graphql with the same auth. GraphQL errors (which arrive with HTTP 200) throw a GitHubError 422. */
+  graphql<T = unknown>(query: string, variables?: Record<string, unknown>): Promise<T>;
   /** Seconds GitHub asks clients to wait between notification polls. */
   pollInterval: () => number;
   /** Last rate-limit headers seen, or null before the first live call. */
@@ -50,6 +52,7 @@ export function createClient(session: Session, deps: ClientDeps = {}): GitHubCli
       session,
       raw,
       request: async (path, opts) => (await raw(path, opts)).data as never,
+      graphql: graphqlOver(raw),
       pollInterval: () => 60,
       rateLimit: () => null,
     };
@@ -110,8 +113,19 @@ export function createClient(session: Session, deps: ClientDeps = {}): GitHubCli
     session,
     raw,
     request: async <T,>(path: string, opts?: RequestOptions) => (await raw<T>(path, opts)).data,
+    graphql: graphqlOver(raw),
     pollInterval: () => poll,
     rateLimit: () => rate,
+  };
+}
+
+type GraphqlAnswer<T> = { data?: T | null; errors?: { message: string }[] };
+/** GraphQL rides on the same transport (auth, error mapping) as REST, so sample mode answers it from mock.ts too. */
+function graphqlOver(raw: GitHubClient['raw']) {
+  return async <T,>(query: string, variables?: Record<string, unknown>): Promise<T> => {
+    const r = await raw<GraphqlAnswer<T>>('/graphql', { method: 'POST', body: { query, variables: variables ?? {} } });
+    if (r.data.errors?.length) throw new GitHubError(r.data.errors[0].message, 422);
+    return r.data.data as T;
   };
 }
 
