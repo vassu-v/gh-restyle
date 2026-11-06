@@ -1,5 +1,5 @@
 // End-to-end test of the desktop extension, used the way a person uses it, on live github.com (signed out).
-// Loads apps/extension/dist unpacked in Chromium, drives the real popup in its own tab while a GitHub tab stays
+// Loads apps/extension/dist unpacked in Chromium, drives the real settings page (and the toolbar popup) in its own tab while a GitHub tab stays
 // open, and checks that every control changes the page live, that design codes (and share links) from the app's
 // Studio apply, that "off" restores GitHub exactly, that settings survive reloads, new tabs and a browser restart,
 // that GitHub's in-site (Turbo) navigation keeps the style, and that the extension causes no errors.
@@ -97,10 +97,11 @@ const launch = () => chromium.launchPersistentContext(profile, {
   channel: 'chromium', headless: true, viewport: { width: 1280, height: 900 }, proxy,
   args: [`--disable-extensions-except=${ext}`, `--load-extension=${ext}`],
 });
+// Every control lives on the settings page (options.html); the toolbar popup only has on/off (tested in step 1b).
 async function openPopup(ctx) {
   const pop = await ctx.newPage();
-  watchErrors(pop, 'popup');
-  await pop.goto(`${EXT_ORIGIN}/popup.html`);
+  watchErrors(pop, 'settings page');
+  await pop.goto(`${EXT_ORIGIN}/options.html`);
   await pop.waitForFunction(() => document.querySelector('#bg button[aria-pressed="true"]'), null, { timeout: 5000 });
   return pop;
 }
@@ -115,20 +116,69 @@ try {
   await plain.close();
   info(`GitHub without the extension: data-color-mode=${base.mode} light=${base.light} dark=${base.dark} body bg=${base.bodyBg}`);
 
-  // 1. Install: the unpacked extension loads, the popup opens without errors.
+  // 1. Install: the unpacked extension loads, the settings page opens without errors.
   let ctx = await launch();
   const gh = await ctx.newPage();
   watchErrors(gh, 'github');
   await goto(gh, REPO);
   let pop = await openPopup(ctx);
   const popState = await pop.evaluate(() => ({
-    title: document.querySelector('h1')?.textContent,
+    title: document.title,
     enabled: document.getElementById('enabled').checked,
     bg: document.querySelector('#bg button[aria-pressed="true"]')?.dataset.v,
     num: document.querySelector('#num button[aria-pressed="true"]')?.dataset.v,
   }));
-  check('extension loads and the popup opens', popState.title === 'Gitling', `id ${extId}`);
-  check('popup shows the default settings (on, Graphite, Dot)', popState.enabled && popState.bg === 'graphite' && popState.num === 'dot', JSON.stringify(popState));
+  check('extension loads and the settings page opens', popState.title === 'Gitling settings', `id ${extId}`);
+  check('settings page shows the default settings (on, Graphite, Dot)', popState.enabled && popState.bg === 'graphite' && popState.num === 'dot', JSON.stringify(popState));
+
+  // 1b. The toolbar popup: names the design, switches Gitling off and on, opens the settings page.
+  {
+    await shows(gh, DEFAULT_DESIGN);
+    const mini = await ctx.newPage();
+    watchErrors(mini, 'popup');
+    await mini.goto(`${EXT_ORIGIN}/popup.html`);
+    await mini.waitForFunction(() => document.getElementById('state')?.textContent, null, { timeout: 5000 });
+    const m = await mini.evaluate(() => ({ name: document.getElementById('name').textContent, on: document.getElementById('enabled').checked, settings: !!document.getElementById('settings') }));
+    check('popup names the design (Signal), shows it on, and has a Settings button', m.name === 'Signal' && m.on && m.settings, JSON.stringify(m));
+    await mini.uncheck('#enabled');
+    await gh.waitForFunction(() => !document.documentElement.classList.contains('gitling-on'), null, { timeout: 5000 }).catch(() => {});
+    const off = await snap(gh);
+    await mini.check('#enabled');
+    const back = await shows(gh, DEFAULT_DESIGN);
+    check('popup switch turns GitHub off and back on, live', !off.on && back, `off: ${describe(off)}`);
+    // Text size from the settings page scales GitHub evenly (zoom), and 100% leaves it alone.
+    await pop.$eval('#scale', (el) => { el.value = '1.2'; el.dispatchEvent(new Event('change')); });
+    await gh.waitForFunction(() => document.documentElement.style.zoom === '1.2', null, { timeout: 5000 }).catch(() => {});
+    const zoomed = await gh.evaluate(() => document.documentElement.style.zoom);
+    await pop.$eval('#scale', (el) => { el.value = '1'; el.dispatchEvent(new Event('change')); });
+    await gh.waitForFunction(() => !document.documentElement.style.zoom, null, { timeout: 5000 }).catch(() => {});
+    const unzoomed = await gh.evaluate(() => document.documentElement.style.zoom);
+    check('text size 120% scales GitHub (zoom 1.2); 100% removes it', zoomed === '1.2' && unzoomed === '', `zoom ${zoomed} then "${unzoomed}"`);
+    await mini.close();
+  }
+
+  // 1c. Developer mode (settings page): sales menus, Copilot links and the footer go; wide layout; all of it comes back.
+  {
+    const dev = () => gh.evaluate(() => ({
+      cls: document.documentElement.className,
+      salesNav: !!document.querySelector('.HeaderMktg nav[aria-label="Global"]')?.offsetParent,
+      footer: !!document.querySelector('footer.footer')?.offsetParent,
+      copilot: [...document.querySelectorAll('a[href*="/features/copilot"]')].filter((a) => a.offsetParent).length,
+      pricing: [...document.querySelectorAll('a[href$="/pricing"]')].filter((a) => a.offsetParent).length,
+    }));
+    const before = await dev();
+    await pop.check('#clean-all');
+    await gh.waitForFunction(() => document.documentElement.classList.contains('gitling-clean-wide'), null, { timeout: 5000 }).catch(() => {});
+    const on = await dev();
+    check('developer mode hides the sales menus, pricing and Copilot links and the footer, live',
+      on.cls.includes('gitling-clean-sales') && !on.salesNav && !on.footer && on.copilot === 0 && on.pricing === 0 && (before.salesNav || before.pricing > 0), `before ${JSON.stringify(before)} after ${JSON.stringify(on)}`);
+    const parts = await pop.evaluate(() => [...document.querySelectorAll('#clean input[data-k]')].map((i) => i.checked));
+    check('developer mode switch turns on each part on the settings page', parts.length === 4 && parts.every(Boolean), JSON.stringify(parts));
+    await pop.uncheck('#clean-all');
+    await gh.waitForFunction(() => !document.documentElement.className.includes('gitling-clean'), null, { timeout: 5000 }).catch(() => {});
+    const off = await dev();
+    check('developer mode off brings everything back', !off.cls.includes('gitling-clean') && off.salesNav === before.salesNav && off.footer === before.footer, JSON.stringify(off));
+  }
 
   // 2. Default state on a repo page (wait for the content script's async settings read first).
   await shows(gh, DEFAULT_DESIGN);
@@ -139,7 +189,7 @@ try {
   const defVars = primerVars(DEFAULT_DESIGN);
   check('default: accent tokens set (--fgColor-accent, deepened --bgColor-accent-emphasis)', s.accent.toLowerCase() === DEFAULT_DESIGN.theme.accent.toLowerCase() && s.accentEmphasis.toLowerCase() === defVars['--bgColor-accent-emphasis'].toLowerCase(), `${s.accent} / ${s.accentEmphasis}`);
 
-  // 3. Every popup control changes the open GitHub tab live (a marker on window proves no reload).
+  // 3. Every settings-page control changes the open GitHub tab live (a marker on window proves no reload).
   await gh.evaluate(() => { window.__gitlingE2E = 'live'; });
   let design = clone(DEFAULT_DESIGN);
   for (const bg of ['black', 'paper', 'graphite']) {
@@ -147,14 +197,14 @@ try {
     design.theme.background = bg;
     const ok = await shows(gh, design, 'live');
     s = await snap(gh);
-    check(`popup Background → ${BACKGROUNDS[bg].label}: page changes live`, ok, describe(s));
+    check(`settings Background → ${BACKGROUNDS[bg].label}: page changes live`, ok, describe(s));
   }
   for (const [num, font] of [['mono', 'Gitling Geist Mono'], ['sans', 'Gitling Geist'], ['dot', 'Gitling Doto']]) {
     await pop.click(`#num button[data-v="${num}"]`);
     const ok = await waitFor(gh, (f) => getComputedStyle(document.documentElement).getPropertyValue('--gitling-num-font').includes(f) && window.__gitlingE2E === 'live', font);
     s = await snap(gh);
     const counterOk = s.counterFont === null || s.counterFont.includes(font);
-    check(`popup Counters → ${num}: counter font changes live`, ok && counterOk, `--gitling-num-font=${s.numFont}; counter font=${s.counterFont ?? 'no counter on page'}`);
+    check(`settings Counters → ${num}: counter font changes live`, ok && counterOk, `--gitling-num-font=${s.numFont}; counter font=${s.counterFont ?? 'no counter on page'}`);
   }
 
   // 4. Bring a design over from the app: a Studio design code, then a Studio share link.
@@ -168,7 +218,7 @@ try {
   check('import a design code (Terminal preset): applied live', okMsg && ok, describe(s));
   check('imported accent reaches GitHub tokens (--fgColor-accent, --bgColor-accent-emphasis)', s.accent.toLowerCase() === primerVars(terminal)['--fgColor-accent'].toLowerCase() && s.accentEmphasis.toLowerCase() === wantEmph, `${s.accent} / ${s.accentEmphasis}, want ${terminal.theme.accent} / ${wantEmph}`);
   const pState = await pop.evaluate(() => ({ bg: document.querySelector('#bg button[aria-pressed="true"]')?.dataset.v, num: document.querySelector('#num button[aria-pressed="true"]')?.dataset.v, code: document.getElementById('code').value }));
-  check('popup reflects the imported design and clears the box', pState.bg === 'black' && pState.num === 'mono' && pState.code === '', JSON.stringify(pState));
+  check('settings page reflects the imported design and clears the box', pState.bg === 'black' && pState.num === 'mono' && pState.code === '', JSON.stringify(pState));
 
   // A saved design file's text (Studio → Save as file, format in docs/DESIGN-FILE.md).
   const calm = applyPreset(clone(DEFAULT_DESIGN), PRESETS.find((p) => p.id === 'calm'));
@@ -176,7 +226,7 @@ try {
   await pop.click('#apply');
   okMsg = await waitFor(pop, () => document.getElementById('msg').className.includes('ok'));
   ok = await shows(gh, calm, 'live');
-  check('import a .gitling.json design file (Calm preset): applied live', okMsg && ok, `${describe(await snap(gh))}; popup says "${await pop.textContent('#msg')}"`);
+  check('import a .gitling.json design file (Calm preset): applied live', okMsg && ok, `${describe(await snap(gh))}; settings page says "${await pop.textContent('#msg')}"`);
 
   const paper = applyPreset(clone(DEFAULT_DESIGN), PRESETS.find((p) => p.id === 'paper'));
   await pop.fill('#code', `https://gitling.truckcoding.workers.dev/studio?import=${encodeURIComponent(encodeDesign(paper))}`);
@@ -184,14 +234,14 @@ try {
   okMsg = await waitFor(pop, () => document.getElementById('msg').className.includes('ok'));
   ok = await shows(gh, paper, 'live');
   s = await snap(gh);
-  check('import a Studio share link (Paper preset, custom accent #4C6EF5): applied live', okMsg && ok, `${describe(s)}; popup says "${await pop.textContent('#msg')}"`);
+  check('import a Studio share link (Paper preset, custom accent #4C6EF5): applied live', okMsg && ok, `${describe(s)}; settings page says "${await pop.textContent('#msg')}"`);
 
   await pop.fill('#code', 'GITLING1.not-a-real-code');
   await pop.click('#apply');
   const bad = await waitFor(pop, () => document.getElementById('msg').className.includes('bad'));
   await gh.waitForTimeout(600);
   ok = await shows(gh, paper, 'live');
-  check('a broken code shows an error and leaves the design alone', bad && ok, `popup says "${await pop.textContent('#msg')}"`);
+  check('a broken code shows an error and leaves the design alone', bad && ok, `settings page says "${await pop.textContent('#msg')}"`);
 
   // 5. Turning it off restores GitHub exactly; turning it on brings the design back.
   await pop.uncheck('#enabled');
@@ -210,7 +260,7 @@ try {
   ok = await shows(gh, paper, 'live2');
   check('on again: design comes back live', ok, describe(await snap(gh)));
 
-  // 6. Settings persist: reload, a new tab, a reopened popup, and a full browser restart.
+  // 6. Settings persist: reload, a new tab, a reopened settings page, and a full browser restart.
   await gh.reload({ waitUntil: 'domcontentloaded' });
   check('persists across a reload', await shows(gh, paper), describe(await snap(gh)));
   const tab2 = await ctx.newPage();
@@ -221,7 +271,7 @@ try {
   await pop.close();
   pop = await openPopup(ctx);
   const reopened = await pop.evaluate(() => ({ enabled: document.getElementById('enabled').checked, bg: document.querySelector('#bg button[aria-pressed="true"]')?.dataset.v, num: document.querySelector('#num button[aria-pressed="true"]')?.dataset.v }));
-  check('reopened popup shows the saved settings', reopened.enabled && reopened.bg === 'paper' && reopened.num === 'sans', JSON.stringify(reopened));
+  check('reopened settings page shows the saved settings', reopened.enabled && reopened.bg === 'paper' && reopened.num === 'sans', JSON.stringify(reopened));
   await ctx.close();
   ctx = await launch();
   const gh2 = await ctx.newPage();
@@ -279,7 +329,7 @@ try {
   check('gist.github.com is styled too', await shows(gist, graphitePaper), describe(await snap(gist)));
 
   // 9. Errors.
-  check('no errors from the extension (pages and popup)', extErrors.length === 0, extErrors.join(' | '));
+  check('no errors from the extension (pages, popup, settings page)', extErrors.length === 0, extErrors.join(' | '));
   if (otherErrors.size) info(`GitHub's own page errors (not from the extension): ${[...otherErrors].join(' | ')}`);
   await ctx.close();
 } catch (e) {

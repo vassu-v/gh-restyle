@@ -1,20 +1,46 @@
 {
   "manifest_version": 3,
   "name": "Gitling for GitHub",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Restyle github.com with your Gitling design: colors, type and shape. Uses your existing GitHub session, no sign-in.",
-  "permissions": ["storage"],
-  "action": { "default_popup": "popup.html", "default_title": "Gitling" },
-  "icons": { "128": "icon.png" },
+  "permissions": [
+    "storage"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Gitling"
+  },
+  "icons": {
+    "128": "icon.png"
+  },
   "content_scripts": [
     {
-      "matches": ["https://github.com/*", "https://gist.github.com/*"],
-      "css": ["content.css"],
-      "js": ["content.js"],
+      "matches": [
+        "https://github.com/*",
+        "https://gist.github.com/*"
+      ],
+      "css": [
+        "content.css"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_start"
     }
   ],
   "web_accessible_resources": [
-    { "resources": ["fonts/*"], "matches": ["https://github.com/*", "https://gist.github.com/*"] }
-  ]
+    {
+      "resources": [
+        "fonts/*"
+      ],
+      "matches": [
+        "https://github.com/*",
+        "https://gist.github.com/*"
+      ]
+    }
+  ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  }
 }

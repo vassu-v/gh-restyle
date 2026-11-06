@@ -2,6 +2,8 @@
 import type { Design } from '@gitling/design/src/schema';
 import { fit, mix, resolveTokens } from '@gitling/design/src/tokens';
 
+const round = (n: number) => Math.round(n * 1000) / 1000;
+
 /**
  * Map a Gitling design onto GitHub's own Primer design tokens.
  * Overriding tokens (not class names) keeps the skin working when GitHub changes its markup.
@@ -57,13 +59,23 @@ export function primerVars(design: Design): Record<string, string> {
     '--fontStack-sansSerif': '"Gitling Geist", -apple-system, "Segoe UI", sans-serif',
     '--fontStack-monospace': '"Gitling Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
     '--borderRadius-medium': `${radius / 16}rem`,
-    '--borderRadius-large': `${(radius + 4) / 16}rem`,
+    '--borderRadius-large': `${(radius + 8) / 16}rem`,
     // Our own copies: some GitHub regions (the signed-out header) re-scope Primer tokens, so content.css uses these.
     '--gitling-bg': c.bg,
     '--gitling-el': c.el,
     '--gitling-fg': c.fg,
     '--gitling-line': c.line,
+    '--gitling-line2': c.line2,
+    '--gitling-el2': c.el2,
+    '--gitling-mut': c.mut,
+    '--gitling-acc': c.acc,
+    '--gitling-acc-soft': c.accSoft,
+    '--borderRadius-default': `${radius / 16}rem`,
+    '--gitling-panel-radius': `${(radius + 8) / 16}rem`,
     '--gitling-num-font': t.numbers === 'dot' ? '"Gitling Doto"' : t.numbers === 'mono' ? '"Gitling Geist Mono"' : '"Gitling Geist"',
     'color-scheme': t.mode,
+    // Text size from Studio: the whole page scales evenly (CSS zoom, like the browser's own zoom). Scaling only
+    // rem sizes broke GitHub's px-sized columns (cut-off times, squashed avatars). 100% leaves GitHub as it is.
+    ...(design.theme.textScale !== 1 ? { zoom: String(round(design.theme.textScale)) } : {}),
   };
 }

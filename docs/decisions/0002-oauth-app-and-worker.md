@@ -1,4 +1,4 @@
-# 0002 — OAuth App + PKCE + stateless worker
+# 0002: OAuth App + PKCE + stateless worker
 
 **Context.**
 - The inbox needs `GET /notifications`. GitHub documents that endpoint as unavailable to fine-grained PATs

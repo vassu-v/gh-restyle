@@ -12,11 +12,12 @@ type Kind = 'repos' | 'issues' | 'prs';
 
 export default function Search() {
   const t = useTokens();
-  const p = useLocalSearchParams<{ q?: string; title?: string; kind?: Kind }>();
+  const p = useLocalSearchParams<{ q?: string; title?: string; kind?: Kind; exact?: string }>();
   const [input, setInput] = useState(p.q ?? '');
   const [q, setQ] = useState(p.q ?? '');
   const [kind, setKind] = useState<Kind>(p.kind ?? 'repos');
-  const issueQ = kind === 'prs' && !/is:pr/.test(q) ? `${q} is:pr` : kind === 'issues' && !/is:(pr|issue)/.test(q) && !/repo:|involves:|label:/.test(q) ? `${q} is:issue` : q;
+  // From a Home section (exact=1): run the search as written, so it matches the section's preview and count.
+  const issueQ = p.exact === '1' && kind === 'issues' && q === p.q ? q : kind === 'prs' && !/is:pr/.test(q) ? `${q} is:pr` : kind === 'issues' && !/is:(pr|issue)/.test(q) && !/repo:|involves:|label:/.test(q) ? `${q} is:issue` : q;
   const issues = useSearchIssues(issueQ, 40, !!q && kind !== 'repos');
   const repos = useSearchRepos(q, !!q && kind === 'repos');
   const active = kind === 'repos' ? repos : issues;

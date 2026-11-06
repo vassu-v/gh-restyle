@@ -1,4 +1,4 @@
-# 0009 — Push notifications: an opt-in, server-held token in the same Worker
+# 0009: Push notifications: an opt-in, server-held token in the same Worker
 
 **Context.** GitHub doesn't push to third-party apps and has no notification webhooks for users. Push means
 polling `/notifications` while the phone sleeps, which needs the person's token on a server. That breaks the

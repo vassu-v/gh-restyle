@@ -2,6 +2,11 @@
 
 How Gitling fits together. For *why* each choice was made, see `docs/decisions/`.
 
+Gitling is **local-first**: the app runs on the device and calls `api.github.com` directly. The token
+(encrypted), the design and the saved data cache live on the device. The one server, a Cloudflare Worker, serves
+the static app and exchanges the OAuth code for a token, and stores nothing. The planned push notifications
+(decision 0009) would be the first opt-in exception.
+
 ## Layers
 
 ```

@@ -3,7 +3,11 @@
 import type { Design } from '@gitling/design/src/schema';
 import { BACKGROUNDS, DEFAULT_DESIGN } from '@gitling/design/src/signal';
 
-export type Settings = { enabled: boolean; design: Design };
+/** Developer mode: parts of GitHub to leave out (each one separately), plus a wider page. */
+export type Clean = { sales: boolean; copilot: boolean; footer: boolean; wide: boolean };
+export const CLEAN_OFF: Clean = { sales: false, copilot: false, footer: false, wide: false };
+export const CLEAN_KEYS = Object.keys(CLEAN_OFF) as (keyof Clean)[];
+export type Settings = { enabled: boolean; design: Design; clean: Clean };
 const KEY = 'gitling';
 
 type ChromeLike = { storage: { sync: { get(k: string): Promise<Record<string, unknown>>; set(v: Record<string, unknown>): Promise<void> }; onChanged: { addListener(fn: (changes: Record<string, unknown>, area: string) => void): void } } };
@@ -19,7 +23,9 @@ function looksValid(d: unknown): d is Design {
 
 export async function loadSettings(): Promise<Settings> {
   const raw = (await ext.storage.sync.get(KEY))[KEY] as Partial<Settings> | undefined;
-  return { enabled: raw?.enabled ?? true, design: looksValid(raw?.design) ? raw!.design! : DEFAULT_DESIGN };
+  const c = (raw?.clean ?? {}) as Partial<Clean>;
+  const clean = Object.fromEntries(CLEAN_KEYS.map((k) => [k, c[k] === true])) as Clean;
+  return { enabled: raw?.enabled ?? true, design: looksValid(raw?.design) ? raw!.design! : DEFAULT_DESIGN, clean };
 }
 
 /** storage.sync allows 8192 bytes per item, counted as UTF-8 bytes of the key plus the JSON value. */

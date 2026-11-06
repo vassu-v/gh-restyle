@@ -1,4 +1,4 @@
-# 0004 — Render markdown source, not GitHub's HTML
+# 0004: Render markdown source, not GitHub's HTML
 
 **Context.** GitHub can return `body_html`, but React Native can't render HTML. A WebView per comment is
 heavy and looks foreign, and stripping tags (M1) lost lists, code and tables.

@@ -55,7 +55,7 @@ export type ApplyResult = { sha: string; applied: number };
 POST `/graphql` with `{ query, variables }` through `raw`. If the JSON has `errors`, throw
 `GitHubError(errors[0].message, 422)`. Return `data`. In sample mode the same POST goes to `mockRequest('/graphql', …)`.
 
-## 3. API (`api.ts`) — new members, exact names
+## 3. API (`api.ts`): new members, exact names
 
 ```ts
 replyToReviewComment(owner, repo, n, rootId: number, body: string): Promise<ReviewComment>   // POST /pulls/{n}/comments/{rootId}/replies
@@ -116,7 +116,7 @@ applySuggestions(owner, repo, n, comments: ReviewComment[], opts?: { message?: s
    403/404 → `"GitHub didn't let Gitling write to this branch."`
 7. Return `{ sha, applied }`.
 
-## 6. Sample data (`mock.ts`) — the UI and e2e depend on these exact facts
+## 6. Sample data (`mock.ts`): the UI and e2e depend on these exact facts
 
 PR **you/trail-notes#45** (yours, you can push; head `fix/offline-merge` @ `a91f3c2e`, head.repo = same repo):
 - `src/sync/queue.ts` patch becomes (14 new lines):
@@ -139,7 +139,7 @@ PR **you/trail-notes#45** (yours, you can push; head `fix/offline-merge` @ `a91f
 - Thread A (id 951, mira, line 12 RIGHT): body `Ties should keep the local edit:` + suggestion `    return remote.updatedAt > local.updatedAt ? remote : local;`
   Reply 952 (you): `Good catch, I'll take it.`
 - Thread B (id 953, lin, line 4 RIGHT): body `Nothing reassigns this:` + suggestion `  private readonly patches: Patch[] = [];`
-- Thread C (id 955, devansh, `src/sync/index.ts` lines 22–24 RIGHT, start_line 22): `Could \`push(merged)\` fail offline? Maybe queue it.` — **resolved**.
+- Thread C (id 955, devansh, `src/sync/index.ts` lines 22–24 RIGHT, start_line 22): `Could \`push(merged)\` fail offline? Maybe queue it.` (**resolved**)
 - All comments carry `diff_hunk`, `original_line`, `original_start_line`, `commit_id: 'a91f3c2e'`.
 - Users carry ids (mira 101, lin 102, devansh 103, you 100).
 - A git store holds the head branch files (consistent with the patches) so `fileText(...,'a91f3c2e' or 'fix/offline-merge')`,
@@ -154,7 +154,7 @@ PR **you/trail-notes#45** (yours, you can push; head `fix/offline-merge` @ `a91f
 
 PR **lin/tiny-sync#33** (not yours, no push) keeps its patch; no existing review comments.
 
-## 7. UI contract (labels the e2e test relies on — exact strings)
+## 7. UI contract (labels the e2e test relies on: exact strings)
 
 In **Files**, under each thread's last line (`line`, or under "outdated comments" when outdated):
 - Thread header shows `lines 22–24` for multi-line threads (en dash).

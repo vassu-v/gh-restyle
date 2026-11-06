@@ -1,4 +1,4 @@
-# AGENTS.md — start here
+# AGENTS.md: start here
 
 Context for any coding agent (Claude Code, Codex, Cursor, …) or new contributor. Read in this order:
 
@@ -12,15 +12,18 @@ Product plan and milestones: `PLAN.md`. Live app: https://gitling.truckcoding.wo
 
 ## What this is
 
-**Gitling** — a GitHub client for your phone whose interface you design yourself (themes, tab bar, home
+**Gitling** is a GitHub client for your phone whose interface you design yourself (themes, tab bar, home
 sections, shortcut tiles that open any GitHub target). One Expo codebase ships as an installable web app (PWA)
 now and iOS/Android apps later. A browser extension applies the same design to github.com on desktop.
+
+**Local-first.** The app runs on the device and calls api.github.com directly. Token, design and cached data
+stay on the device; the Worker only serves files and exchanges the sign-in code. Keep it that way (rule 7).
 
 ## Map
 
 ```
 apps/app/            Expo app (Expo Router, React Native, react-native-web). Has its own AGENTS.md about Expo.
-  src/app/           routes (every file is a screen) — see ARCHITECTURE.md § Routes
+  src/app/           routes (every file is a screen); see ARCHITECTURE.md § Routes
   src/data/queries.ts  the only place screens get GitHub data (TanStack Query hooks over packages/github api)
   src/session/       sign-in (oauth.ts), token vault (tokenStore.ts), SessionProvider
   src/design/        DesignProvider: the user's Design document, persisted, with undo
@@ -71,7 +74,7 @@ Playwright-based scripts need Chromium (`npx playwright install chromium` if it 
    `apps/app/src/data/queries.ts`, never `fetch` or raw paths.
 2. **Every screen must work in sample mode** (no sign-in). That's how the smoke test and new users see it.
 3. **No hardcoded colors, fonts or radii in screens.** Read tokens with `useTokens()`; use `src/ui/primitives`.
-   The Design (packages/design) is the product — users restyle everything through it.
+   The Design (packages/design) is the product: users restyle everything through it.
 4. **In-app navigation uses `routes.*` from `src/lib/links.ts`.** github.com links go through `openUrl()`,
    which opens a Gitling screen when one exists.
 5. **Query keys start with the session kind** (`'sample' | 'live'`); mutations invalidate what they change.

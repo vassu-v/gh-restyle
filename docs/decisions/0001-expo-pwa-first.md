@@ -1,4 +1,4 @@
-# 0001 — One Expo codebase, PWA first
+# 0001: One Expo codebase, PWA first
 
 **Context.** The app has to be usable on any phone now, without app-store review, and become a real
 native app later without a rewrite.

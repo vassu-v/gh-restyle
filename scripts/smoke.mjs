@@ -83,12 +83,13 @@ const bundles = [...head.matchAll(/<script src="([^"]+\.js)"/g)].length;
 const preloads = [...head.matchAll(/rel="preload"[^>]*as="font"/g)].length;
 await page.goto(base + '/', { waitUntil: 'networkidle' });
 const splashGone = await page.waitForFunction(() => !document.getElementById('gitling-splash'), null, { timeout: 8000 }).then(() => true, () => false);
-const chunksOnNav = await page.evaluate(async () => {
-  const before = performance.getEntriesByType('resource').filter((r) => r.name.includes('/_expo/static/js/')).length;
-  window.history.pushState(null, '', '/inbox'); window.dispatchEvent(new PopStateEvent('popstate'));
-  await new Promise((r) => setTimeout(r, 800));
-  return performance.getEntriesByType('resource').filter((r) => r.name.includes('/_expo/static/js/')).length - before;
-});
+const jsLoaded = () => page.evaluate(() => performance.getEntriesByType('resource').filter((r) => r.name.includes('/_expo/static/js/')).length);
+const jsBefore = await jsLoaded();
+// Change screens the way a person does (tap the Inbox tab), and only count once Inbox is really showing.
+await page.getByRole('tab', { name: 'Inbox' }).click();
+const navOk = await page.waitForFunction(() => location.pathname === '/inbox', null, { timeout: 8000 }).then(() => true, () => false);
+await page.waitForTimeout(800);
+const chunksOnNav = navOk ? await jsLoaded() - jsBefore : -1;
 const startOk = head.includes('id="gitling-splash"') && splashGone && preloads >= 7 && chunksOnNav === 0;
 console.log(`${startOk ? '✓' : '✗'} startup: splash shown then removed, ${preloads} fonts preloaded, ${bundles} script(s), no code fetched when changing screens (${chunksOnNav})`);
 if (!startOk) failed++;

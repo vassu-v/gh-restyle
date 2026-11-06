@@ -124,6 +124,7 @@ export function HomeSectionsEditor({ compact }: { compact?: boolean }) {
   const all = design.home.sections;
   const shown = all.filter((s) => s.visible);
   const hidden = SECTION_ORDER.filter((id) => all.some((s) => s.id === id && !s.visible));
+  const hiddenSearches = all.filter((s) => isSearchSection(s) && !s.visible);
   const searches = all.filter(isSearchSection).length;
   const last = shown.length <= 1;
   return (
@@ -170,6 +171,28 @@ export function HomeSectionsEditor({ compact }: { compact?: boolean }) {
           <Icon name="plus" size={18} color={t.c.acc} />
         </Pressable>
       )) : <T v="sub" c="mut" style={{ paddingHorizontal: 18 }}>Every built-in section is on Home.</T>}
+      {/* Searches hidden in a loaded design file: restore or delete them here (they count toward the search limit). */}
+      {hiddenSearches.map((s) => (
+        <View key={s.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, paddingVertical: 10 }}>
+          <View style={{ width: 32, height: 32, borderRadius: 9, backgroundColor: t.c.el2, alignItems: 'center', justifyContent: 'center' }}><Icon name="search" size={16} color={t.c.mut} /></View>
+          <View style={{ flex: 1 }}>
+            <T v="body" lines={1}>{sectionName(s)}</T>
+            <T v="monoS" c="mut" lines={1}>{isSearchSection(s) ? s.q : ''}</T>
+          </View>
+          <Pressable hitSlop={6} accessibilityRole="button" accessibilityLabel={`Delete ${sectionName(s)}`} style={{ padding: 6 }}
+            onPress={() => update((d) => { d.home.sections = d.home.sections.filter((x) => x.id !== s.id); })}>
+            <Icon name="x" size={17} color={t.c.mut} />
+          </Pressable>
+          <Pressable hitSlop={6} accessibilityRole="button" accessibilityLabel={`Add ${sectionName(s)}`} style={{ padding: 6 }}
+            onPress={() => update((d) => {
+              const sec = d.home.sections.find((x) => x.id === s.id);
+              if (!sec) return;
+              d.home.sections = [...d.home.sections.filter((x) => x.visible), { ...sec, visible: true }, ...d.home.sections.filter((x) => !x.visible && x.id !== s.id)];
+            })}>
+            <Icon name="plus" size={18} color={t.c.acc} />
+          </Pressable>
+        </View>
+      ))}
 
       <SearchSectionForm full={searches >= MAX_SEARCH_SECTIONS} />
     </View>
