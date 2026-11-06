@@ -20,6 +20,9 @@ function tighten(s: unknown): never {
   };
   const out = walk(s) as { properties: { nav: { properties: { tabs: Record<string, unknown> } } } };
   Object.assign(out.properties.nav.properties.tabs, { uniqueItems: true, contains: { const: 'studio' } });
+  // Home keeps at least one section (zod's refine has no JSON Schema form).
+  const home = (out as unknown as { properties: { home: { properties: { sections: Record<string, unknown> } } } }).properties.home.properties.sections;
+  Object.assign(home, { contains: { type: 'object', properties: { visible: { const: true } }, required: ['visible'] } });
   return out as never;
 }
 
@@ -103,13 +106,31 @@ describe('design file: hostile and odd input (PR #3 QA)', () => {
     if (r.ok) expect(r.dropped).toContain('tile “?”');
   });
   it('duplicate tabs or sections are left out, and missing sections come back switched off', () => {
-    const r = readDesignText(file({ ...DEFAULT_DESIGN, nav: { tabs: ['studio', 'studio'] }, home: { sections: [] } }));
+    const r = readDesignText(file({ ...DEFAULT_DESIGN, nav: { tabs: ['studio', 'studio'] }, home: { sections: [{ id: 'feed', visible: true }] } }));
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.dropped).toContain('nav');
     expect(new Set(r.design.nav.tabs).size).toBe(r.design.nav.tabs.length);
     expect(r.design.home.sections.map((s) => s.id).sort()).toEqual(DEFAULT_DESIGN.home.sections.map((s) => s.id).sort());
-    expect(r.design.home.sections.every((s) => !s.visible)).toBe(true);
+    expect(r.design.home.sections.filter((s) => s.visible).map((s) => s.id)).toEqual(['feed']);
+  });
+  it('a Home with no section on it is left out (Home keeps at least one)', () => {
+    for (const sections of [[], DEFAULT_DESIGN.home.sections.map((s) => ({ ...s, visible: false }))]) {
+      const r = readDesignText(file({ ...DEFAULT_DESIGN, theme: { ...DEFAULT_DESIGN.theme, accent: '#123456' }, home: { sections } }));
+      expect(r.ok).toBe(true);
+      if (!r.ok) return;
+      expect(r.dropped).toEqual(['home']);
+      expect(r.design.home).toEqual(DEFAULT_DESIGN.home);
+    }
+  });
+  it('search sections: any search under your own title, kept in order; bad ones are left out', () => {
+    const mine = { id: 'q-abc1', visible: true, title: 'Bugs I’m in', q: 'is:open label:bug involves:@me' };
+    const ok = readDesignText(file({ ...DEFAULT_DESIGN, home: { sections: [mine, ...DEFAULT_DESIGN.home.sections] } }));
+    expect(ok.ok && ok.design.home.sections[0]).toEqual(mine);
+    for (const bad of [{ ...mine, id: 'Q-ABC' }, { ...mine, title: '' }, { ...mine, q: 'x'.repeat(257) }, { ...mine, id: 'status' }]) {
+      const r = readDesignText(file({ ...DEFAULT_DESIGN, home: { sections: [bad, ...DEFAULT_DESIGN.home.sections] } }));
+      expect(r.ok && r.dropped, JSON.stringify(bad)).toEqual(['home']);
+    }
   });
   it('refuses input where nothing is valid instead of offering the default design', () => {
     expect(readDesignText('{"theme":1}').ok).toBe(false);

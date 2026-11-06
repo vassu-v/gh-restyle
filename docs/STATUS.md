@@ -13,7 +13,8 @@ deployed. Keep this file true: update it in the same change that finishes, break
 | M3 | Core GitHub: feed, inbox triage, repos, code browser (syntax colors, branch picker), issues, PRs (diff, checks, merge, reviews with line comments / approve / request changes), search, profiles, markdown | ✅ done (see gaps below) |
 | M4 | Studio: presets gallery, theme, drag-to-reorder tabs/sections/tiles, tile editor, share codes + share links with live preview | ✅ done |
 | M5.1 | Install sheet on phones: Install button (Android/Chrome), Add to Home Screen steps (Safari, or the address bar in Chrome/Firefox/Edge on iPhone), "open in your browser" for in-app browsers, menu steps elsewhere; only on the main tabs and never while typing; snoozes 14 days | ✅ built, tested with iPhone/Pixel emulation (`e2e:onboarding`); Chrome reports the preview installable with 0 errors on a Pixel profile. Not yet tried on a real phone |
-| M4.1 | Welcome tour on first launch (look, home, tab bar, bring a design, how-it-works tips) + design files (`.gitling.json`: save, open, load in the app and the extension) | ✅ built and tested in Chromium (`feat/onboarding`); not yet tried on a real phone. Opening a file on native isn't wired up (paste the text instead) |
+| M4.1 | Design files (`.gitling.json`: save, open, load in the app and the extension) | ✅ built and tested in Chromium; not yet tried on a real phone. Opening a file on native isn't wired up (paste the text instead) |
+| M4.2 | First run in order: install (phone browsers) → sign in or look around → 3-step setup tour once signed in. Home sections: 12 built-ins plus your own searches (up to 12), add and remove, at least one kept | ✅ built and tested in Chromium and phone emulation (`feat/first-run-and-home-sections`); not yet tried on a real phone |
 | M5 | Ship the PWA: installable, offline shell, icons; hosted on one Cloudflare Worker with sign-in (`npm run deploy`) | ✅ live at https://gitling.truckcoding.workers.dev |
 | P2 | Push notifications, design sync via gist, native store builds | not started |
 
@@ -23,10 +24,10 @@ deployed. Keep this file true: update it in the same change that finishes, break
 |---|---|---|
 | Types (app + worker) | `npm run typecheck` | clean |
 | Lint | `npm run lint` | clean |
-| Unit + property-based fuzz tests: client, api × sample data, PKCE/state, worker, design + presets, suggestions, diffs, extension storage | `npm test` (`npm run verify` runs everything) | 151/151 |
+| Unit + property-based fuzz tests: client, api × sample data, PKCE/state, worker, design + presets, suggestions, diffs, extension storage | `npm test` (`npm run verify` runs everything) | 168/168 |
 | Every screen in Chromium at phone size, plus PWA files, service worker and offline launch | `npm run smoke` | 17/17 screens (incl. `/welcome`), SW registers, opens offline |
-| Welcome tour + design files: first launch, every step saves, skip/finish, mid-tour reload, returning users, deep links, applying a shared design ends the tour, replay returns to Studio, Search opens pasted github.com links, Studio download + file picker (under the real CSP), pasted file, install sheet on iPhone/Android emulation (shows, installs, snoozes, never on desktop, in the tour, over a PR or Search, or in the installed app; in-app browsers told to open Safari) | `npm run e2e:onboarding` | 43/43 |
-| Full sign-in flow, GitHub simulated, real worker code | `npm run e2e:signin` | 12/12 |
+| First run + tour + Home sections + design files: desktop asks to sign in (no install step), "Look around first", phones get the install step first (iPhone steps, Android install dialog) then sign-in, the install card stays snoozed after it; tour steps save (look, load a file's text, add built-in and search sections, remove down to one, tab bar), replay and Skip return to Studio, returning users, deep links, shared designs, Search links, Studio download + file picker (under the real CSP), install card on iPhone/Android emulation | `npm run e2e:onboarding` | 50/50 |
+| Full sign-in flow, GitHub simulated, real worker code; saved cache; a new person's sign-in step leads into the setup tour | `npm run e2e:signin` | 19/19 |
 | Studio: presets, mouse drag reorder, share link preview/apply | `npm run e2e:studio` | 12/12 |
 | PR reviews: line comments, verdicts, timeline, own-PR rules, replies, resolve/unresolve, multi-line ranges, suggestions (apply, batch, blocked reasons), file changed in the code browser | `npm run e2e:review` | 47/47 |
 | Extension stress test on live github.com: 26 page types × 3 backgrounds vs a no-extension baseline, signed out | `npm run stress:extension` (report in `stress-report/`, git-ignored) | 0 new low-contrast text in ~15,000 checks, 0 extension errors, content script 6.3 KB |

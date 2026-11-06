@@ -2,7 +2,7 @@ import { runs } from './runs';
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
-  BACKGROUNDS, contrast, decodeDesign, Design, encodeDesign, fit, inkOn, isSafeLink, isSafeTemplate, resolveTokens, TileTarget,
+  BACKGROUNDS, contrast, decodeDesign, Design, encodeDesign, fit, inkOn, isSafeLink, isSafeTemplate, resolveTokens, SectionId, TileTarget, type HomeSection,
 } from '../../packages/design/src';
 
 /* ─── arbitraries built from schema.ts constraints ─── */
@@ -61,9 +61,19 @@ export const designArb: fc.Arbitrary<Design> = fc.record({
   }),
   nav: fc.record({ tabs }),
   home: fc.record({
-    // Every section once, in any order and on/off (the schema refuses duplicates; loading adds missing ones).
-    sections: fc.tuple(fc.shuffledSubarray(['status', 'shortcuts', 'needs', 'feed', 'inbox', 'recent'] as const, { minLength: 6, maxLength: 6 }), fc.array(fc.boolean(), { minLength: 6, maxLength: 6 }))
-      .map(([ids, on]) => ids.map((id, i) => ({ id, visible: on[i] }))),
+    // Every built-in once plus a few search sections, in any order and on/off, at least one on (the schema refuses
+    // duplicates and an empty Home; loading adds missing built-ins).
+    sections: fc.tuple(
+      fc.shuffledSubarray([...SectionId.options], { minLength: SectionId.options.length, maxLength: SectionId.options.length }),
+      fc.array(fc.record({ title: fc.string({ minLength: 1, maxLength: 40 }), q: fc.string({ minLength: 1, maxLength: 256 }), visible: fc.boolean() }), { maxLength: 4 }),
+      fc.array(fc.boolean(), { minLength: SectionId.options.length, maxLength: SectionId.options.length }),
+      fc.nat(),
+    ).map(([ids, searches, on, at]) => {
+      const all: HomeSection[] = ids.map((id, i) => ({ id, visible: on[i] }));
+      searches.forEach((s, i) => all.splice(at % (all.length + 1), 0, { id: `q-${i}`, ...s }));
+      if (!all.some((s) => s.visible)) all[at % all.length].visible = true;
+      return all;
+    }),
   }),
   tiles: fc.array(tile, { maxLength: 24 }),
 }) as fc.Arbitrary<Design>;

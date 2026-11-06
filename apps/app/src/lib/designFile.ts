@@ -1,6 +1,6 @@
 import { DESIGN_FILE_EXT, DESIGN_FILE_MAX_BYTES } from '@gitling/design';
 import { Platform, Share } from 'react-native';
-import { isMobileBrowser } from '@/pwa/InstallSheet';
+import { isMobileBrowser } from '@/pwa/useInstall';
 
 /**
  * Saving and opening design files (`*.gitling.json`, format in docs/DESIGN-FILE.md). The format lives in

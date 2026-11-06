@@ -243,7 +243,7 @@ const MY_EVENTS: FeedEvent[] = [
 ];
 
 // 24 most recent CI runs for the home instrument.
-const RUNS = Array.from({ length: 24 }, (_, i) => ({ conclusion: i === 5 ? 'failure' : 'success', created_at: ago(i * 3) }));
+const RUNS = Array.from({ length: 24 }, (_, i) => ({ id: 9000 - i, name: ['CI', 'Deploy', 'Lint'][i % 3], head_branch: i % 4 === 1 ? 'fix/offline-merge' : 'main', status: 'completed', html_url: `https://github.com/you/trail-notes/actions/runs/${9000 - i}`, conclusion: i === 5 ? 'failure' : 'success', created_at: ago(i * 3) }));
 
 const strip = ({ _comments, _pr, ...rest }: Stored): Issue => rest;
 const asPr = (s: Stored): PullRequest => ({ ...strip(s), ...(s._pr as PrExtra) });

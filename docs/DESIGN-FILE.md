@@ -54,7 +54,7 @@ The `design` fields:
 | `theme.density` | 1–5 |
 | `theme.textScale` | 0.85–1.3 |
 | `nav.tabs` | 2–5 of `home`, `feed`, `inbox`, `repos`, `studio`; must include `studio` |
-| `home.sections` | `{ id, visible }` for `status`, `shortcuts`, `needs`, `feed`, `inbox`, `recent`, in display order |
+| `home.sections` | In display order, at least one with `visible: true`. Built-ins are `{ id, visible }`, each id once: `status`, `shortcuts`, `needs`, `feed`, `inbox`, `recent`, `reviews`, `my-prs`, `assigned`, `mentions`, `starred`, `checks` (`visible: false` means "not on Home, can be added"; missing ones are added switched off). Search sections are `{ id: "q-…", visible, title, q }`: any GitHub issue/PR search under your own title (≤ 40 characters), up to 12. A list with nothing visible is left out and the default Home is used. |
 | `tiles` | up to 24; each has `label` (≤ 40 characters), `icon`, `tint`, `count`, `size` (`half` or `full`) and a `target` |
 
 A `target` is one of:
