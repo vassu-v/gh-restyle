@@ -86,9 +86,9 @@ sent(user_id, thread_id, updated_at, PRIMARY KEY(user_id, thread_id))   -- dedup
 **Secrets (Worker):**
 - `VAPID_PRIVATE_KEY`, with `VAPID_PUBLIC_KEY` as a var.
 - `PUSH_TOKEN_KEY` (AES key for tokens).
-- `VAPID_SUBJECT` = `mailto:` the owner's address, set in the dashboard, not committed.
+- `VAPID_SUBJECT` = `mailto:` the maintainer's address, set in the dashboard, not committed.
 
-## Cloudflare plan: the one decision for the owner
+## Cloudflare plan: the one decision for the maintainer
 
 | | Free | Workers Paid ($5/month) |
 |---|---|---|
@@ -137,7 +137,7 @@ quiet hours in the person's time zone (saved from the device)
 - **Browser e2e:** subscribe in Chromium, then deliver a push with the DevTools protocol
   (`ServiceWorker.deliverPushMessage`). Check a notification is shown and that clicking opens the thread.
 - **Live, manual:**
-  - the owner turns it on, on Android, then on iPhone with the app on the Home Screen
+  - the maintainer turns it on, on Android, then on iPhone with the app on the Home Screen
   - a real review request arrives as a push
 
 ## Build order (about 1–2 sessions)
@@ -145,7 +145,7 @@ quiet hours in the person's time zone (saved from the device)
 1. D1 schema and migrations (`wrangler d1`), token encryption, `/push/register` `/unregister` `/rules`
    `/vapid-key`, with tests.
 2. Web Push sender module + `/push/test` + service-worker handlers + Notifications screen. A test push
-   working on the owner's phone is the first milestone.
+   working on a real phone is the first milestone.
 3. Cron → Queue → poller with dedupe and rules.
 4. Rules UI, quiet hours, muted repos.
 5. Docs, STATUS, and a runbook for rotating VAPID or token keys.

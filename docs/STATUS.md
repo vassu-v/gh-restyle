@@ -9,7 +9,7 @@ deployed. Keep this file true: update it in the same change that finishes, break
 |---|---|---|
 | M0 | Design direction (Signal skin) | ✅ done |
 | M1 | Skeleton: monorepo, app, design engine, sample data, extension v0 | ✅ done |
-| M2 | Sign in with GitHub (OAuth App + PKCE + worker), secure token storage, PAT fallback | ✅ built and tested; a real account signed in through the live Worker on 2026-11-05 (the client secret is set as a Secret). The loop fix is deployed; a real one-tap sign-in on the deployed site (owner's phone) is still to do |
+| M2 | Sign in with GitHub (OAuth App + PKCE + worker), secure token storage, PAT fallback | ✅ built and tested; a real account signed in through the live Worker on 2026-11-05 (the client secret is set as a Secret). The loop fix is deployed; a real one-tap sign-in on the deployed site (on a phone) is still to do |
 | M3 | Core GitHub: feed, inbox triage, repos, code browser (syntax colors, branch picker), issues, PRs (diff, checks, merge, reviews with line comments / approve / request changes), search, profiles, markdown | ✅ done (see gaps below) |
 | M4 | Studio: presets gallery, theme, drag-to-reorder tabs/sections/tiles, tile editor, share codes + share links with live preview | ✅ done |
 | M5.1 | Install sheet on phones: Install button (Android/Chrome), Add to Home Screen steps (Safari, or the address bar in Chrome/Firefox/Edge on iPhone), "open in your browser" for in-app browsers, menu steps elsewhere; only on the main tabs and never while typing; snoozes 14 days | ✅ built, tested with iPhone/Pixel emulation (`e2e:onboarding`); Chrome reports the preview installable with 0 errors on a Pixel profile. Not yet tried on a real phone |
@@ -103,7 +103,7 @@ Signed in with GitHub (real OAuth through the live Worker) on a private test rep
 - **Writing:** star and unstar, comment (Unicode), close and reopen, review with line comments and suggestions
   (`commit_id` = head), apply one suggestion, batch apply. Bytes were checked with git afterwards: CRLF and the
   BOM were kept.
-- **Not tested:** the final merge (left to the owner), inbox writes on a real inbox.
+- **Not tested:** the final merge (done by hand), inbox writes on a real inbox.
 
 Bugs this found, now fixed:
 - "Committing…" stayed on screen ~20 s after the commit landed: mutations waited for every repo query to
@@ -153,7 +153,7 @@ URL. Your counts matched GitHub exactly: needs-you 19, mentions 7, unread 8, sta
 live site. No token in readable storage. Only the app and api.github.com were contacted.
 
 That check found, and this change fixes:
-- **Repos → Yours showed only the 50 most recently pushed repos** under a count of "50" (the owner has 61). Your
+- **Repos → Yours showed only the 50 most recently pushed repos** under a count of "50" (the test account had 61). Your
   repos and stars now follow every page, up to 1,000.
 - **Nothing was kept between visits.** Every open started empty, about 1.5 s to Home's data on desktop, and a big PR's
   Files took 3.7 s. Signed-in lists and screens are now saved on the device for a day and shown at once on open
