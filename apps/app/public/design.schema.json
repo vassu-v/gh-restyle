@@ -87,8 +87,7 @@
             "tiles",
             "density",
             "textScale"
-          ],
-          "additionalProperties": false
+          ]
         },
         "nav": {
           "type": "object",
@@ -111,8 +110,7 @@
           },
           "required": [
             "tabs"
-          ],
-          "additionalProperties": false
+          ]
         },
         "home": {
           "type": "object",
@@ -140,15 +138,13 @@
                 "required": [
                   "id",
                   "visible"
-                ],
-                "additionalProperties": false
+                ]
               }
             }
           },
           "required": [
             "sections"
-          ],
-          "additionalProperties": false
+          ]
         },
         "tiles": {
           "maxItems": 24,
@@ -198,8 +194,7 @@
                     "required": [
                       "type",
                       "q"
-                    ],
-                    "additionalProperties": false
+                    ]
                   },
                   {
                     "type": "object",
@@ -226,10 +221,8 @@
                     },
                     "required": [
                       "type",
-                      "repo",
-                      "tab"
-                    ],
-                    "additionalProperties": false
+                      "repo"
+                    ]
                   },
                   {
                     "type": "object",
@@ -246,8 +239,7 @@
                     "required": [
                       "type",
                       "login"
-                    ],
-                    "additionalProperties": false
+                    ]
                   },
                   {
                     "type": "object",
@@ -268,8 +260,7 @@
                       "type",
                       "repo",
                       "path"
-                    ],
-                    "additionalProperties": false
+                    ]
                   },
                   {
                     "type": "object",
@@ -294,8 +285,7 @@
                     "required": [
                       "type",
                       "filter"
-                    ],
-                    "additionalProperties": false
+                    ]
                   },
                   {
                     "type": "object",
@@ -312,8 +302,7 @@
                     "required": [
                       "type",
                       "url"
-                    ],
-                    "additionalProperties": false
+                    ]
                   },
                   {
                     "type": "object",
@@ -345,8 +334,7 @@
                       "prompt",
                       "template",
                       "dest"
-                    ],
-                    "additionalProperties": false
+                    ]
                   }
                 ]
               }
@@ -359,8 +347,7 @@
               "count",
               "size",
               "target"
-            ],
-            "additionalProperties": false
+            ]
           }
         }
       },
@@ -371,8 +358,7 @@
         "nav",
         "home",
         "tiles"
-      ],
-      "additionalProperties": false
+      ]
     }
   }
 }

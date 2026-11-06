@@ -68,7 +68,7 @@ describe('design file', () => {
         formatVersion: { const: 1 },
         name: { type: 'string', maxLength: 80 },
         exportedAt: { type: 'string', format: 'date-time' },
-        design: z.toJSONSchema(Design, { unrepresentable: 'any', target: 'draft-2020-12' }),
+        design: z.toJSONSchema(Design, { unrepresentable: 'any', target: 'draft-2020-12', io: 'input' }) // what a file may contain: defaults may be left out,
       },
     };
     const text = JSON.stringify(schema, null, 2) + '\n';

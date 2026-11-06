@@ -4,8 +4,8 @@
 //   flags: --dry-run           build and bundle, don't upload
 //          --preview[=name]    upload a preview version instead of deploying: it gets its own URL
 //                              (https://<name>-gitling.<subdomain>.workers.dev) and live traffic is untouched.
-//                              Default name: the git branch. Sign-in on a preview sends you back to the live
-//                              origin (it isn't in ALLOWED_RETURN), so try previews in sample mode.
+//                              Default name: the git branch (detached checkouts must name it).
+//                              Sign-in fails on previews (not in ALLOWED_RETURN), so try them in sample mode.
 // Pinned: wrangler runs with CLOUDFLARE_API_TOKEN, so an exact version, not a floating major (bump on purpose).
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { execSync } from 'node:child_process';
@@ -25,15 +25,26 @@ const env = { ...process.env, EXPO_PUBLIC_AUTH_URL: clientId && origin ? origin 
 const run = (cmd, cwd = root) => execSync(cmd, { cwd, env, stdio: 'inherit' });
 
 const previewArg = process.argv.find((a) => a === '--preview' || a.startsWith('--preview='));
-const branch = () => { try { return execSync('git rev-parse --abbrev-ref HEAD', { cwd: root }).toString().trim(); } catch { return 'preview'; } };
-// Preview aliases become part of a hostname: lowercase letters, digits and dashes.
-const alias = previewArg ? (previewArg.split('=')[1] || branch()).toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) : '';
+const dryRun = process.argv.includes('--dry-run');
+// The current branch, or null on a detached checkout (CI, worktrees): those must name their alias, or two of them
+// would share and overwrite one preview address.
+const branch = () => { try { return execSync('git symbolic-ref --quiet --short HEAD', { cwd: root, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() || null; } catch { return null; } };
+let alias = '';
+if (previewArg) {
+  const wanted = previewArg.split('=')[1] || branch();
+  if (!wanted) { console.error('No branch is checked out. Name the preview: node scripts/deploy.mjs --preview=<name>'); process.exit(1); }
+  // Aliases become part of a hostname: lowercase letters, digits and dashes, starting with a letter.
+  alias = wanted.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/, '');
+  if (alias && !/^[a-z]/.test(alias)) alias = `p-${alias}`.slice(0, 40);
+  // Never fall through to the live deploy below because a preview name came out empty.
+  if (!alias) { console.error(`"${wanted}" doesn't make a usable preview name. Use letters, digits and dashes.`); process.exit(1); }
+}
 
 run('npm run build:web');
-if (alias) {
-  run(`npx --yes wrangler@4.158.0 versions upload --preview-alias ${alias} --message "preview ${alias}"`, `${root}services/edge`);
+if (previewArg) {
+  run(`npx --yes wrangler@4.158.0 versions upload --preview-alias ${alias} --message "preview ${alias}"${dryRun ? ' --dry-run' : ''}`, `${root}services/edge`);
   const sub = origin ? new URL(origin).hostname.replace(/^gitling\./, '') : '<subdomain>.workers.dev';
-  console.log(`\nPreview: https://${alias}-gitling.${sub}  (live site unchanged)`);
+  console.log(dryRun ? `\nDry run: nothing uploaded (preview would be ${alias}).` : `\nPreview: https://${alias}-gitling.${sub}  (live site unchanged)`);
   process.exit(0);
 }
 run(`npx --yes wrangler@4.158.0 deploy${process.argv.includes('--dry-run') ? ' --dry-run' : ''}`, `${root}services/edge`);

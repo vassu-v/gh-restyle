@@ -35,8 +35,10 @@ node scripts/deploy.mjs --preview=x # or pick the alias
 Uploads a new Worker version without sending live traffic to it (`wrangler versions upload --preview-alias`).
 It answers at `https://<alias>-gitling.truckcoding.workers.dev`, plus a per-version URL. Check it with
 `SMOKE_URL=<preview url> npm run smoke`.
-- **Sign-in:** a preview isn't in `ALLOWED_RETURN`, so one-tap sign-in returns to the live site. Try previews in
-  sample mode, or paste a token.
+- **Sign-in:** a preview isn't in `ALLOWED_RETURN`, so one-tap sign-in on a preview fails: the Worker answers
+  "This sign-in link is not valid" (HTTP 400). Try previews in sample mode, or paste a token.
+- **Detached checkouts** (CI, worktrees) must name the preview: `--preview=<name>`. `--dry-run` builds without
+  uploading.
 - **Going live:** that's still `npm run deploy` from `main` after the PR merges.
 
 ### First time only
