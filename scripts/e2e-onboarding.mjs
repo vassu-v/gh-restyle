@@ -181,6 +181,67 @@ const next = (page) => page.getByRole('button', { name: 'Next', exact: true }).c
   await ctx.close();
 }
 
+// 9. "Install Gitling" sheet on phones: Android gets the browser's install dialog, iPhone gets the two Safari
+// taps; desktop, the tour and the installed app never show it; "Not now" keeps it away.
+{
+  const { devices } = createRequire(import.meta.url)('playwright');
+  const phone = async (device, init) => {
+    const ctx = await browser.newContext({ ...devices[device], defaultBrowserType: undefined });
+    const page = await ctx.newPage();
+    page.on('pageerror', (e) => errors.push(e.message));
+    await page.addInitScript(() => localStorage.setItem('gitling.onboarded.v1', 'e2e'));
+    if (init) await page.addInitScript(init);
+    return { ctx, page };
+  };
+  // Android: a stand-in for Chrome's beforeinstallprompt, so the test can see the app call prompt().
+  const fakePrompt = () => {
+    window.__prompted = 0;
+    addEventListener('load', () => setTimeout(() => {
+      const e = new Event('beforeinstallprompt', { cancelable: true });
+      e.prompt = async () => { window.__prompted++; };
+      e.userChoice = Promise.resolve({ outcome: 'accepted' });
+      dispatchEvent(e);
+    }, 200));
+  };
+  const a = await phone('Pixel 7', fakePrompt);
+  await a.page.goto(base + '/', { waitUntil: 'networkidle' });
+  log(await visible(a.page.getByText('Install Gitling on this phone'), 6000), 'Android phone: the install sheet appears on Home');
+  await a.page.getByRole('button', { name: 'Install', exact: true }).click();
+  await a.page.waitForTimeout(300);
+  log(await a.page.evaluate(() => window.__prompted) === 1, '"Install" opens the browser\'s own install dialog');
+  log(!(await visible(a.page.getByText('Install Gitling on this phone'), 800)), 'and the sheet goes away');
+  await a.ctx.close();
+
+  const i = await phone('iPhone 14');
+  await i.page.goto(base + '/', { waitUntil: 'networkidle' });
+  log(await visible(i.page.getByText('Add to Home Screen', { exact: false }), 6000), 'iPhone: the sheet shows the Safari steps (Share → Add to Home Screen)');
+  await i.page.getByRole('button', { name: 'Got it' }).click();
+  await i.page.reload({ waitUntil: 'networkidle' });
+  await i.page.waitForTimeout(2500);
+  log(!(await visible(i.page.getByText('Install Gitling on this phone'), 500)), 'after dismissing, it stays away on the next visit');
+  await i.ctx.close();
+
+  const tour = await browser.newContext({ ...devices['iPhone 14'], defaultBrowserType: undefined });
+  const tp = await tour.newPage();
+  await tp.goto(base + '/', { waitUntil: 'networkidle' });
+  await tp.waitForTimeout(2500);
+  log(tp.url().endsWith('/welcome') && !(await visible(tp.getByText('Install Gitling on this phone'), 500)), 'never on top of the welcome tour');
+  await tour.close();
+
+  const desk = await fresh();
+  await desk.page.addInitScript(() => localStorage.setItem('gitling.onboarded.v1', 'e2e'));
+  await desk.page.goto(base + '/', { waitUntil: 'networkidle' });
+  await desk.page.waitForTimeout(2500);
+  log(!(await visible(desk.page.getByText('Install Gitling on this phone'), 500)), 'desktop browsers never see it');
+  await desk.ctx.close();
+
+  const inst = await phone('Pixel 7', () => { const mm = window.matchMedia.bind(window); window.matchMedia = (q) => (q.includes('standalone') ? { matches: true, addEventListener() {}, removeEventListener() {} } : mm(q)); });
+  await inst.page.goto(base + '/', { waitUntil: 'networkidle' });
+  await inst.page.waitForTimeout(2500);
+  log(!(await visible(inst.page.getByText('Install Gitling on this phone'), 500)), 'not inside the installed app');
+  await inst.ctx.close();
+}
+
 log(errors.length === 0, `no page errors${errors.length ? ': ' + errors.join(' | ') : ''}`);
 await browser.close(); server.close();
 console.log(process.exitCode ? '\nonboarding e2e FAILED' : '\nonboarding e2e passed');

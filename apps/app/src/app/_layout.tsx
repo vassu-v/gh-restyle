@@ -14,6 +14,7 @@ import { useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DesignProvider, useDesign } from '@/design/DesignProvider';
 import { OnboardingProvider } from '@/onboarding/OnboardingProvider';
+import { InstallSheet } from '@/pwa/InstallSheet';
 import { SessionProvider } from '@/session/SessionProvider';
 import '@/pwa/register';
 
@@ -29,6 +30,7 @@ function Shell() {
         <Stack.Screen name="tile/[id]" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
         <Stack.Screen name="ask" options={{ presentation: 'transparentModal', animation: 'fade' }} />
       </Stack>
+      <InstallSheet />
     </>
   );
 }
