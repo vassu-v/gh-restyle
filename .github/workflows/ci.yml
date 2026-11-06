@@ -37,7 +37,7 @@ jobs:
         # Also after an earlier step failed, so the report is there to look at.
         if: matrix.os == 'ubuntu-latest' && !cancelled()
         run: npm run test:coverage
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         if: matrix.os == 'ubuntu-latest' && always()
         with:
           name: coverage
