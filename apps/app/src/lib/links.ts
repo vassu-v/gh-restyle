@@ -14,6 +14,7 @@ export const routes = {
   list: (owner: string, name: string, kind: 'issues' | 'pulls') => `/repo/${seg(owner)}/${seg(name)}/list?kind=${kind}` as Href,
   thread: (owner: string, name: string, n: number) => `/thread/${seg(owner)}/${seg(name)}/${n}` as Href,
   user: (login: string) => `/user/${seg(login)}` as Href,
+  authenticator: '/authenticator' as Href,
 };
 
 const RESERVED = new Set(['settings', 'notifications', 'login', 'logout', 'orgs', 'organizations', 'marketplace', 'explore', 'topics', 'trending', 'features', 'pricing', 'about', 'sponsors', 'apps', 'search', 'new', 'pulls', 'issues', 'codespaces', 'collections', 'events', 'site', 'security', 'enterprise', 'team', 'customer-stories', 'readme', 'join', 'users', 'stars', 'dashboard', 'account', 'copilot', 'watching', 'discussions', 'gist', 'github-copilot', 'contact', 'blog', 'models', 'mobile', 'signup', 'sessions', 'password_reset']);

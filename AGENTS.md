@@ -22,20 +22,21 @@ now and iOS/Android apps later. A browser extension applies the same design to g
 apps/app/            Expo app (Expo Router, React Native, react-native-web). Has its own AGENTS.md about Expo.
   src/app/           routes (every file is a screen) — see ARCHITECTURE.md § Routes
   src/data/queries.ts  the only place screens get GitHub data (TanStack Query hooks over packages/github api)
-  src/session/       sign-in (oauth.ts), token vault (tokenStore.ts), SessionProvider
+  src/session/       sign-in (oauth.ts), token vault (tokenStore.ts over vault.ts), SessionProvider
   src/design/        DesignProvider: the user's Design document, persisted, with undo
   src/ui/            primitives (T, Panel, Row, Button, Screen, BackHeader…), Markdown, Code (syntax colors), Icon, Reorder
   src/features/      shared rows, tiles, inbox swipe, tab bar, repo/BranchPicker, thread/DiffFile + ReviewPanel
   src/lib/           links.ts (in-app routes + github.com URL → route), format.ts
   src/onboarding/    first-run state for the welcome tour (src/app/welcome.tsx)
+  src/authenticator/ two-factor codes for GitHub: accounts store + ticking code hook (screen: src/app/authenticator.tsx)
   src/pwa/           service-worker registration + install prompt
   public/            copied into the web build: manifest, icons, _headers
 apps/extension/      Manifest V3 extension; restyles github.com via Primer CSS variables
-packages/github/     typed GitHub REST: client.ts (transport), api.ts (every endpoint), auth.ts (OAuth/PKCE), diff.ts (patch → line numbers), mock.ts (sample data)
+packages/github/     typed GitHub REST: client.ts (transport), api.ts (every endpoint), auth.ts (OAuth/PKCE), diff.ts (patch → line numbers), totp.ts (two-factor codes), mock.ts (sample data)
 packages/design/     Design schema (zod), Signal skin, token resolver, contrast fitting, share codes
 services/edge/       Cloudflare Worker "gitling": serves the web app (static assets) + sign-in routes (phase 2: push)
-scripts/             pwa.mjs (post-build), smoke.mjs (every screen), e2e-signin/studio/review/onboarding/extension.mjs, deploy.mjs
-docs/                STATUS, ARCHITECTURE, TESTING (layers + when to run what), DESIGN-FILE (the .gitling.json format), SETUP-SIGNIN, DEPLOY, EXTENSION (how to use it), decisions/, plans/ (next features)
+scripts/             pwa.mjs (post-build), smoke.mjs (every screen), e2e-signin/studio/review/onboarding/authenticator/extension.mjs, deploy.mjs
+docs/                STATUS, ARCHITECTURE, TESTING (layers + when to run what), DESIGN-FILE (the .gitling.json format), SETUP-SIGNIN, DEPLOY, EXTENSION (how to use it), AUTHENTICATOR (two-factor codes: GitHub setup, trade-off), decisions/, plans/ (next features)
 ```
 
 ## Commands (from the repo root)
@@ -50,6 +51,7 @@ docs/                STATUS, ARCHITECTURE, TESTING (layers + when to run what), 
 | `npm run e2e:signin` | full "Sign in with GitHub" flow in a browser with GitHub simulated (real worker code) |
 | `npm run e2e:studio` | after `build:web`: Studio presets, drag-to-reorder, share links in a browser |
 | `npm run e2e:onboarding` | after `build:web`: the welcome tour (first launch, skip/finish, returning users) and design files (save, open, load) |
+| `npm run e2e:authenticator` | after `build:web`: two-factor codes: add from a key or link, codes match RFC 6238, copy, rename, two-tap remove, reload, no plaintext secret in storage, kept on sign-out |
 | `npm run e2e:review` | after `build:web`: PR reviews in a browser: line comments, verdicts, replies, resolve, multi-line, suggestions (apply + batch) |
 | `npm run test:live` | read-only tests against the real api.github.com (`LIVE_REPO=owner/name`, optional `GITHUB_TOKEN`) |
 | `npm run build:web` | `expo export` + `scripts/pwa.mjs` → `apps/app/dist` (what Vercel/Cloudflare serve) |

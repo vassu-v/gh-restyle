@@ -34,7 +34,7 @@ const SCREENS = [
   ['/repo/you/trail-notes', 'Browse code'], ['/repo/you/trail-notes/tree?path=src', 'sync'], ['/repo/you/trail-notes/blob?path=src%2Ftypes.ts', 'export type Entry'],
   ['/repo/you/trail-notes/blob?path=README.md', 'Install'], ['/repo/you/trail-notes/list?kind=issues', 'Issues'], ['/repo/you/trail-notes/list?kind=pulls', 'Pull requests'],
   ['/thread/you/trail-notes/45', 'Conflict UI'], ['/thread/you/trail-notes/42', 'airplane mode'], ['/user/lin', 'tiny-sync'],
-  ['/welcome?replay=1', 'Pick a look'],
+  ['/welcome?replay=1', 'Pick a look'], ['/authenticator', 'Nothing is sent anywhere'],
 ];
 
 const browser = await chromium.launch({ proxy: process.env.HTTPS_PROXY ? { server: process.env.HTTPS_PROXY, bypass: 'localhost,127.0.0.1' } : undefined });
