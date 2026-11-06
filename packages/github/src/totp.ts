@@ -20,9 +20,13 @@ export type OtpAccount = {
 };
 
 const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+/** What a pasted key may contain before it's cleaned up: ASCII base32 letters and digits, spaces, dashes, padding. */
+const BASE32_INPUT = /^[A-Za-z2-7\s=-]*$/;
 
 /** Base32 (RFC 4648) to bytes. Spaces, dashes and padding are ignored; lower case is fine. Null if invalid. */
 export function base32Decode(input: string): Uint8Array | null {
+  // Checked before upper-casing: some non-ASCII letters (ı, ſ) upper-case into valid base32 letters.
+  if (!BASE32_INPUT.test(input)) return null;
   const s = input.toUpperCase().replace(/[\s-]/g, '').replace(/=+$/, '');
   if (!s || /[^A-Z2-7]/.test(s)) return null;
   const out: number[] = [];
@@ -122,7 +126,9 @@ export function parseOtpInput(input: string, fallbackLabel = 'GitHub'): ParseRes
     const url = { pathname: m[2] };
     const algo = (p.get('algorithm') ?? 'SHA1').toUpperCase();
     if (algo !== 'SHA1') return { ok: false, error: `This link uses ${algo.slice(0, 12)}; Gitling makes SHA-1 codes, which is what GitHub uses.` };
-    const secret = (p.get('secret') ?? '').toUpperCase().replace(/[\s-]/g, '').replace(/=+$/, '');
+    const rawSecret = p.get('secret') ?? '';
+    if (!BASE32_INPUT.test(rawSecret)) return { ok: false, error: "The link's secret isn't valid." };
+    const secret = rawSecret.toUpperCase().replace(/[\s-]/g, '').replace(/=+$/, '');
     if (!base32Decode(secret) || secret.length < 16 || secret.length > MAX_SECRET) return { ok: false, error: "The link's secret isn't valid." };
     const digits = Number(p.get('digits') ?? 6);
     const period = Number(p.get('period') ?? 30);
@@ -135,6 +141,7 @@ export function parseOtpInput(input: string, fallbackLabel = 'GitHub'): ParseRes
     const issuer = (p.get('issuer') ?? (rest.length ? maybeIssuer : '')).trim() || 'GitHub';
     return { ok: true, account: { issuer: issuer.slice(0, 40), label: label.slice(0, 60), secret, digits: digits as 6 | 7 | 8, period } };
   }
+  if (!BASE32_INPUT.test(text)) return { ok: false, error: "That isn't a setup key. It's letters A–Z and digits 2–7, like “ABCD EFGH IJKL MNOP”." };
   const secret = text.toUpperCase().replace(/[\s-]/g, '').replace(/=+$/, '');
   if (/[^A-Z2-7]/.test(secret)) return { ok: false, error: "That isn't a setup key. It's letters A–Z and digits 2–7, like “ABCD EFGH IJKL MNOP”." };
   if (secret.length < 16) return { ok: false, error: 'That setup key is too short. Copy the whole key from GitHub.' };

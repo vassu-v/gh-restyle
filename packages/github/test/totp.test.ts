@@ -104,6 +104,16 @@ describe('base32Decode', () => {
   it('returns null for invalid characters or nothing at all', () => {
     for (const bad of ['GEZD1NBV', 'GEZD0NBV', 'GEZD8', 'GE=ZD', 'ÄBCD', '', '   ', '===']) expect(base32Decode(bad)).toBeNull();
   });
+
+  it('refuses look-alike letters that upper-case into base32 (dotless ı → I, long ſ → S)', () => {
+    expect('ı'.toUpperCase()).toBe('I');
+    expect('ſ'.toUpperCase()).toBe('S');
+    expect(base32Decode('ıııı' + RFC_B32.slice(4))).toBeNull();
+    expect(base32Decode('ſſſſ' + RFC_B32.slice(4))).toBeNull();
+    expect(parseOtpInput('ıııı' + RFC_B32.slice(4))).toMatchObject({ ok: false });
+    expect(parseOtpInput(`otpauth://totp/x?secret=${'ſſſſ' + RFC_B32.slice(4)}`)).toMatchObject({ ok: false });
+    expect(parseOtpInput(`otpauth://totp/x?secret=${encodeURIComponent('ıııı' + RFC_B32.slice(4))}`)).toMatchObject({ ok: false });
+  });
 });
 
 describe('parseOtpInput', () => {

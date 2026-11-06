@@ -155,12 +155,14 @@ Plan and decisions: `docs/plans/authenticator.md`; how to use it: `docs/AUTHENTI
 - **Math:** `packages/github/src/totp.ts`: base32, SHA-1/HMAC and TOTP in plain TypeScript (Hermes has no
   `crypto.subtle`), and `parseOtpInput()` for a pasted setup key or `otpauth://totp/…` link. Only SHA-1, 6–8
   digits and 10–300 s periods; anything else is refused with a sentence.
-- **Storage:** `apps/app/src/session/vault.ts` `createVault(name)`, the same vault as the GitHub token
+- **Storage:** `apps/app/src/session/vault.ts` `createVault(name, { strict })`, the same vault as the GitHub token
   (Keychain/Keystore on native; AES-GCM with a non-extractable WebCrypto key in IndexedDB on web) under its own
   name (`otp`) and its own key. Signing out clears the token vault and the saved cache, never this one.
 - **Store:** `apps/app/src/authenticator/store.ts`: `useOtpAccounts()` (a module-level list shared by every
-  screen, changes run in order and are saved as JSON in the vault; duplicate secrets refused) and `useTotp(account)`
-  (code and seconds left, re-rendered on each new second).
+  screen; duplicate secrets refused) and `useTotp(account)` (code and seconds left, re-rendered on each new second).
+  The vault is strict (a failed save or unreadable data is an error). Every change runs inside a Web Lock
+  (`gitling-otp`, across tabs), re-reads the vault, refuses if anything saved can't be read in full, saves, then
+  updates the list and tells other tabs to re-read over a `BroadcastChannel`.
 - **Screen:** `src/app/authenticator.tsx` (`routes.authenticator`, a row on Account): add from a key or link,
   big code in the design's number style, countdown bar, copy, rename, two-tap remove.
 - Secrets never go into design files, share codes, logs or the query cache. No export in v1.

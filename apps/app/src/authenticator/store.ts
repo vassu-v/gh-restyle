@@ -15,7 +15,6 @@ const MAX_ACCOUNTS = 50;
 const vault = createVault('otp', { strict: true }); // a failed save or read is an error, never a quiet loss
 
 let accounts: OtpAccount[] | null = null; // null until the vault has been read
-let loading: Promise<void> | null = null;
 const listeners = new Set<() => void>();
 let writes: Promise<unknown> = Promise.resolve(); // changes run one at a time, in order
 
@@ -24,7 +23,9 @@ function emit(next: OtpAccount[]) {
   listeners.forEach((l) => l());
 }
 
-const normalSecret = (s: string) => s.toUpperCase().replace(/[\s-]/g, '').replace(/=+$/, '');
+// Checked before upper-casing: some non-ASCII letters (ı, ſ) upper-case into valid base32 letters.
+const BASE32_INPUT = /^[A-Za-z2-7\s=-]*$/;
+const normalSecret = (s: string) => (BASE32_INPUT.test(s) ? s.toUpperCase().replace(/[\s-]/g, '').replace(/=+$/, '') : '');
 
 const validSecret = (s: string) => s.length >= 16 && s.length <= 256 && base32Decode(s) !== null;
 const validFormat = (digits: unknown, period: unknown) =>
@@ -47,25 +48,41 @@ function clean(a: unknown): OtpAccount | null {
   return { id: x.id, issuer, label, secret, digits: x.digits as 6 | 7 | 8, period: x.period as number };
 }
 
-/** Stored JSON → accounts. Anything unreadable becomes an empty list (or is skipped), never a crash. */
-function parse(text: string | null): OtpAccount[] {
-  if (!text) return [];
+/** Stored JSON → accounts, and whether anything stored couldn't be read (`lossy`): then nothing may be saved
+ *  over it, or the unreadable accounts would be gone for good. Never throws. */
+type Read = { list: OtpAccount[]; lossy: boolean };
+function parse(text: string | null): Read {
+  if (!text) return { list: [], lossy: false };
   try {
     const v: unknown = JSON.parse(text);
-    if (!Array.isArray(v)) return [];
-    return v.map(clean).filter((a): a is OtpAccount => a !== null).slice(0, MAX_ACCOUNTS);
-  } catch { return []; }
+    if (!Array.isArray(v)) return { list: [], lossy: true };
+    const list = v.map(clean).filter((a): a is OtpAccount => a !== null);
+    return { list: list.slice(0, MAX_ACCOUNTS), lossy: list.length !== v.length || list.length > MAX_ACCOUNTS };
+  } catch { return { list: [], lossy: true }; }
 }
 
-/** The device's secure storage couldn't be read (not the same as "nothing saved"): changes are refused until a
- *  later read works, so a save can never overwrite accounts we failed to read. */
-let readFailed = false;
+/** Saved accounts couldn't be read at all, or only partly: changes are refused so nothing is overwritten. */
 class ReadFailed extends Error {}
+class PartlyUnreadable extends Error {}
 
+/** Reads the vault now (strict: throws when something is saved but unreadable). */
+const readNow = async (): Promise<Read> => parse(await vault.get());
+
+/** Fills the shared list for display. A failed read shows an empty list and is tried again next time. */
+let loaded: Promise<void> | null = null;
 function load(): Promise<void> {
-  if (readFailed) { readFailed = false; loading = null; } // try again
-  loading ??= vault.get().then(parse, () => { readFailed = true; return []; }).then((list) => { if (accounts === null || !readFailed) emit(list); });
-  return loading;
+  loaded ??= readNow().then(({ list }) => emit(list), () => { loaded = null; if (accounts === null) emit([]); });
+  return loaded;
+}
+
+// Other tabs (web): saves are serialised across tabs with a Web Lock, and every save tells the other tabs to
+// re-read, so a stale tab can't save over an account another tab added.
+const channel: BroadcastChannel | null = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('gitling-otp') : null;
+if (channel) channel.onmessage = () => { loaded = null; void load(); };
+type Locks = { request<T>(name: string, fn: () => Promise<T>): Promise<T> };
+function withLock<T>(fn: () => Promise<T>): Promise<T> {
+  const locks = (globalThis.navigator as { locks?: Locks } | undefined)?.locks;
+  return locks?.request ? locks.request('gitling-otp', fn) : fn();
 }
 
 function newId(): string {
@@ -76,19 +93,25 @@ function newId(): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-/** Runs a change after the list is loaded and after earlier changes, saving the result. */
+/**
+ * Runs a change: inside the cross-tab lock it reads what's saved *now* (never a cached copy), refuses if that
+ * can't be read in full, applies the change and saves it. The list on screen updates only once the save has
+ * reached the device. Changes in this tab also run one at a time, in order.
+ */
 function change<T>(fn: (list: OtpAccount[]) => { next: OtpAccount[] | null; result: T }): Promise<T> {
-  const run = writes.then(async () => {
-    await load();
-    if (readFailed) throw new ReadFailed();
-    const before = accounts ?? [];
-    const { next, result } = fn(before);
+  const run = writes.then(() => withLock(async () => {
+    let read: Read;
+    try { read = await readNow(); } catch { throw new ReadFailed(); }
+    if (read.lossy) throw new PartlyUnreadable();
+    if (JSON.stringify(read.list) !== JSON.stringify(accounts)) emit(read.list); // another tab may have changed it
+    const { next, result } = fn(read.list);
     if (next) {
+      await vault.set(JSON.stringify(next));
       emit(next);
-      try { await vault.set(JSON.stringify(next)); } catch (e) { emit(before); throw e; }
+      channel?.postMessage('changed');
     }
     return result;
-  });
+  }));
   writes = run.catch(() => undefined);
   return run;
 }
@@ -114,6 +137,7 @@ async function add(a: Omit<OtpAccount, 'id'>): Promise<AddResult> {
       return { next: [...list, { id, issuer, label, secret, digits: a.digits, period: a.period }], result: { ok: true, id } };
     });
   } catch (e) {
+    if (e instanceof PartlyUnreadable) return { ok: false, error: "Some accounts saved on this device can't be read, so Gitling won't change the list (that could lose them). Update Gitling and try again." };
     if (e instanceof ReadFailed) return { ok: false, error: "Couldn't read the accounts already saved on this device, so nothing was changed. Close and reopen Gitling, then try again." };
     return { ok: false, error: "Couldn't save this account on this device. Try again." };
   }

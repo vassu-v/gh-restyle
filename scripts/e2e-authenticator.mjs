@@ -3,20 +3,25 @@
 // reload, no plaintext secret in any browser storage, and signing out of GitHub leaves the accounts alone.
 // Run after `npm run build:web`:  npm run e2e:authenticator
 import { createHmac } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
-import { extname, join } from 'node:path';
+import { extname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const dist = fileURLToPath(new URL('../apps/app/dist/', import.meta.url));
 if (!existsSync(join(dist, 'index.html'))) { console.error('Build first: npm run build:web'); process.exit(1); }
 const TYPES = { '.js': 'text/javascript', '.html': 'text/html', '.json': 'application/json', '.png': 'image/png', '.ttf': 'font/ttf', '.ico': 'image/x-icon' };
+// Local only (127.0.0.1), and only files inside dist (no ../ or symlink escapes); anything else gets the app.
+const distReal = realpathSync(dist);
+const inside = (f) => { try { const r = realpathSync(f); return (r === distReal || r.startsWith(distReal + sep)) && statSync(r).isFile() ? r : null; } catch { return null; } };
 const server = createServer((req, res) => {
-  const p = decodeURIComponent(new URL(req.url, 'http://x').pathname); const f = join(dist, p);
-  const target = p !== '/' && existsSync(f) && extname(f) ? f : join(dist, 'index.html');
+  let p; try { p = decodeURIComponent(new URL(req.url, 'http://x').pathname); } catch { res.writeHead(400); return res.end(); }
+  const f = p !== '/' && extname(p) ? inside(resolve(distReal, '.' + p)) : null;
+  const target = f ?? join(distReal, 'index.html');
   res.writeHead(200, { 'Content-Type': TYPES[extname(target)] ?? 'application/octet-stream' }); res.end(readFileSync(target));
-}).listen(0);
+}).listen(0, '127.0.0.1');
+await new Promise((r) => server.once('listening', r));
 const base = `http://127.0.0.1:${server.address().port}`;
 let passed = 0, failed = 0;
 const log = (ok, msg) => { console.log(`${ok ? '✓' : '✗'} ${msg}`); if (ok) passed++; else { failed++; process.exitCode = 1; } };

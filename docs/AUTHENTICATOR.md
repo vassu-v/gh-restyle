@@ -46,6 +46,12 @@ Signing out of Gitling does **not** remove these accounts, because you need them
 - They're kept apart from your GitHub token, with their own key, so signing out never touches them.
 - They never go into design files, share codes, logs or Gitling's saved cache, and nothing is sent over the
   network.
+- A save either reaches the device or shows an error; it never quietly keeps the account only until you close
+  the app.
+- If saved accounts can't be read (in full or in part), Gitling refuses to change the list rather than save over
+  them.
+- With Gitling open in several browser tabs, each change re-reads what's saved, one tab at a time, and the other
+  tabs refresh, so one tab can't erase an account added in another.
 
 ## Not supported (yet)
 

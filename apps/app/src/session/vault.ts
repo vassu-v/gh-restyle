@@ -62,6 +62,8 @@ function webVault(o: { dataKey: string; cryptoKey: string; legacyLocalStorageKey
         const r = fn(t.objectStore(STORE));
         t.oncomplete = () => resolve(r ? r.result : undefined);
         t.onerror = () => reject(t.error);
+        // A commit can fail (quota, disk) with only an abort event; without this the promise would never settle.
+        t.onabort = () => reject(t.error ?? new DOMException('The save was aborted.', 'AbortError'));
       });
     } finally { db.close(); }
   }

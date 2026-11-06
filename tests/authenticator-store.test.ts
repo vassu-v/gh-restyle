@@ -132,4 +132,47 @@ describe('authenticator store', () => {
     await s.add(acct());
     expect(seen).toEqual([0, 1]);
   });
+
+  it('a partly unreadable saved list is never saved over (the unreadable accounts would be lost)', async () => {
+    const good = { id: 'ok', issuer: 'GitHub', label: 'me', secret: KEY, digits: 6, period: 30 };
+    for (const raw of [JSON.stringify([good, { id: 'future', format: 'v2' }]), '{not json', JSON.stringify({ v: 2 })]) {
+      disk.value = raw;
+      const s = await fresh();
+      await s.load();
+      expect(await s.add(acct({ secret: KEY2, label: 'two' }))).toMatchObject({ ok: false, error: expect.stringMatching(/can't be read/) });
+      if (raw.startsWith('[')) await expect(s.remove('ok')).rejects.toThrow();
+      expect(disk.value).toBe(raw);
+    }
+  });
+
+  it('each change reads what is saved now, so a retry racing a failed read cannot save over unread accounts', async () => {
+    disk.value = JSON.stringify([{ id: 'keep', issuer: 'GitHub', label: 'me', secret: KEY, digits: 6, period: 30 }]);
+    disk.failGet = true;
+    const s = await fresh();
+    s.subscribe(() => { void s.load(); }); // a subscriber retrying the read on every notification
+    await s.load();
+    const pending = s.add(acct({ secret: KEY2, label: 'two' }));
+    void s.load();
+    expect(await pending).toMatchObject({ ok: false, error: expect.stringMatching(/Couldn't read/) });
+    expect(saved().map((a) => a.id)).toEqual(['keep']);
+  });
+
+  it('two tabs: a tab with a stale list adds without losing what the other tab added', async () => {
+    const tabA = await fresh(); await tabA.load();
+    const tabB = await fresh(); await tabB.load();
+    expect((await tabA.add(acct({ label: 'from A' }))).ok).toBe(true);
+    expect(tabB.current()).toEqual([]); // B hasn't re-read yet
+    expect((await tabB.add(acct({ secret: KEY2, label: 'from B' }))).ok).toBe(true);
+    expect(saved().map((a) => a.label)).toEqual(['from A', 'from B']);
+    expect(tabB.current()!.map((a) => a.label)).toEqual(['from A', 'from B']);
+    expect(await tabB.add(acct({ label: 'dupe of A' }))).toMatchObject({ ok: false, error: 'GitHub (from A) is already here.' });
+  });
+
+  it('look-alike letters (dotless ı, long ſ) are not turned into key letters', async () => {
+    const s = await fresh();
+    expect(await s.add(acct({ secret: 'ıııı' + KEY.slice(4) }))).toMatchObject({ ok: false });
+    expect(await s.add(acct({ secret: 'ſſſſ' + KEY.slice(4) }))).toMatchObject({ ok: false });
+    expect(disk.value).toBeNull();
+  });
 });
+
