@@ -20,6 +20,15 @@ html.gitling-on [class*="CounterLabel"] {
   letter-spacing: 0;
 }
 
+/* Dot-matrix numbers need size to read as dots: GitHub's 12px counters looked like any other font. */
+html.gitling-on.gitling-num-dot :is(.Counter, [class*="CounterLabel"]) { font-size: 13px; letter-spacing: .06em; line-height: 18px; }
+/* Bigger numbers on repo pages (stars, forks, watchers, commits, branches, tags) in the chosen number style too. */
+html.gitling-on :is(.BorderGrid .Link--muted strong, a[href$="/commits"] strong, a[href$="/branches"] strong, a[href$="/tags"] strong, [class*="Social-count"], .social-count) {
+  font-family: var(--gitling-num-font), var(--fontStack-monospace);
+  font-weight: 800;
+}
+html.gitling-on.gitling-num-dot :is(.BorderGrid .Link--muted strong, a[href$="/commits"] strong, a[href$="/branches"] strong, a[href$="/tags"] strong) { font-size: 1.15em; letter-spacing: .04em; }
+
 /* Repo, file and branch names read better in the mono face. */
 html.gitling-on .branch-name,
 html.gitling-on .commit-ref,
@@ -121,7 +130,11 @@ html.gitling-clean-sales :is(li, [role="menuitem"]):has(> a:is(
 /* Copilot: its buttons, menu entries and prompts. */
 html.gitling-clean-copilot :is(a, button):has(> svg.octicon-copilot),
 html.gitling-clean-copilot :is(li, [role="menuitem"]):has(> a:is([href^="/copilot"], [href^="https://github.com/copilot"], [href*="/features/copilot"])),
-html.gitling-clean-copilot :is(button, a)[aria-label*="Copilot" i] { display: none !important; }
+html.gitling-clean-copilot :is(button, a)[aria-label*="Copilot" i],
+html.gitling-clean-copilot :is(a, button):has(svg.octicon-copilot),
+/* The signed-in home's "Ask anything" Copilot box with its Debug / Agent / Write code buttons. */
+html.gitling-clean-copilot :is(.copilotPreview__container, react-partial[partial-name^="copilot"], [class*="copilotPreview"]),
+html.gitling-clean-copilot :has(> react-partial[partial-name^="copilot"]) { display: none !important; }
 
 /* Footer: the site footer (and the signed-out newsletter strip above it). */
 html.gitling-clean-footer :is(footer.footer, .footer[role="contentinfo"], [class*="NewsletterSignup"], .site-footer) { display: none !important; }

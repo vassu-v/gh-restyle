@@ -20,7 +20,7 @@ const steps = [
     ['e2e: PR review', 'npm run e2e:review'],
     ['e2e: welcome tour + design files', 'npm run e2e:onboarding'],
   ]),
-  ...(noLive ? [] : [['e2e: extension on live github.com', 'npm run e2e:extension']]),
+  ...(noLive ? [] : [['e2e: extension on live github.com', 'npm run e2e:extension'], ['e2e: extension, user spec (written blind)', 'npm run e2e:extension:user']]),
 ];
 
 const results = [];

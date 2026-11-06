@@ -58,6 +58,7 @@ docs/                STATUS, ARCHITECTURE, TESTING (layers + when to run what), 
 | `npm run build:web` | `expo export` + `scripts/pwa.mjs` → `apps/app/dist` (what Vercel/Cloudflare serve) |
 | `npm run build:extension` | → `apps/extension/dist` (load unpacked) |
 | `npm run e2e:extension` | after `build:extension`: the extension end to end on live github.com (popup, design codes, off/on, navigation) |
+| `npm run e2e:extension:user` | after `build:extension`: the extension against what users were promised, written without reading its code (signed-in Copilot box, dot counters, true state on the settings page, live updates after an extension update) |
 | `npm run stress:extension` | extension on 26 live github.com page types × 3 backgrounds: contrast, errors, screenshots → `stress-report/` |
 | `npm run verify` | the local suite in order: check steps, smoke, every e2e (not `test:live`, `test:coverage`, `stress:extension` or `deploy`); keeps going past failures, one summary table (`-- --fast`: types, lint, unit + fuzz only) |
 | `npm run test:fuzz` | property-based fuzz tests (fast-check) in `tests/fuzz`; `FUZZ_SCALE=20` for a deep run (PowerShell: `$env:FUZZ_SCALE = '20'; npm run test:fuzz`) |
@@ -88,6 +89,12 @@ Playwright-based scripts need Chromium (`npx playwright install chromium` if it 
    Personal or account-specific notes go in `docs/local/` (git-ignored), never in tracked files. Never secrets.
 10. Write in plain, friendly English: the result first, then numbered steps for what someone needs to do.
     Never ask anyone to paste tokens or secrets into a chat.
+
+## Writing tests
+
+New tests are written by someone (or a subagent) who hasn't read the code under test, from what the user sees
+and was promised. Tests written next to the code tend to share its blind spots: the extension's own e2e passed
+41/41 while users still saw Copilot on the signed-in home and settings that didn't reach open tabs.
 
 ## Done means
 
