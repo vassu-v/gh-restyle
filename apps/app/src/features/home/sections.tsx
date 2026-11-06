@@ -102,7 +102,7 @@ export function SearchList({ title, q, empty = '✓ nothing here' }: { title: st
   return (
     <>
       <SectionLabel title={title.toLowerCase()} action={r.data?.total_count ? `See all ${r.data.total_count}` : 'See all'}
-        onAction={() => router.push({ pathname: '/search', params: { q, title, kind: 'issues' } })} />
+        onAction={() => router.push({ pathname: '/search', params: { q, title, kind: 'issues', exact: '1' } })} />
       {r.isLoading ? <Loading rows={2} />
         : r.isError ? <Empty title="couldn’t load this search" body={(r.error as Error).message} />
           : r.data?.items.length ? r.data.items.map((it) => <IssueRow key={it.repository_url + it.number} it={it} />) : <Empty title={empty} />}

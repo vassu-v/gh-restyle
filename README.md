@@ -42,7 +42,7 @@ Everything happens on your device. There's no Gitling account and no Gitling dat
 |---|---|
 | Your GitHub token | On your device, encrypted (AES-GCM in IndexedDB on the web) |
 | Your design | On your device; in the extension, in your browser's synced storage |
-| Your GitHub data | Fetched straight from `api.github.com`; a copy is kept on your device for 24 hours so the app opens instantly, and removed when you sign out |
+| Your GitHub data | Fetched straight from `api.github.com`; lists and screens you've opened are kept on your device for 24 hours so the app opens instantly (file contents, PR diffs and review threads aren't), and removed when you sign out |
 | The server | One Cloudflare Worker that serves the app's files and swaps the sign-in code for a token once. It stores nothing. |
 
 Sample mode needs no sign-in at all, and the extension never signs in to anything.

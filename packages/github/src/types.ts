@@ -12,7 +12,7 @@ export type Repo = {
   name: string; full_name: string; owner: User; description: string | null; language: string | null;
   stargazers_count: number; forks_count: number; open_issues_count: number;
   pushed_at: string; updated_at: string; default_branch: string; private: boolean; html_url: string; topics?: string[];
-  fork?: boolean; archived?: boolean; homepage?: string | null; license?: { spdx_id: string | null; name: string } | null;
+  fork?: boolean; archived?: boolean; /** KB on disk; 0 for a repository with no commits. */ size?: number; homepage?: string | null; license?: { spdx_id: string | null; name: string } | null;
   /** Only present when the viewer has push access. */
   permissions?: { admin: boolean; push: boolean; pull: boolean };
   allow_merge_commit?: boolean; allow_squash_merge?: boolean; allow_rebase_merge?: boolean;

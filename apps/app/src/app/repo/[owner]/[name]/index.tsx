@@ -53,7 +53,7 @@ export default function RepoScreen() {
       {/* The files right on the repo screen, as on github.com: the code browser shouldn't need finding. */}
       <SectionLabel title={`code · ${r.default_branch}`} action="Browse code" onAction={() => router.push(routes.tree(owner, name, '', r.default_branch))} />
       <Panel style={{ marginHorizontal: 14, paddingVertical: 4 }}>
-        {files.isLoading ? <Loading rows={3} /> : (files.error as { status?: number } | null)?.status === 404 ? <T v="sub" c="mut" style={{ padding: 14 }}>This repository is empty.</T> : files.error ? <ErrorNote error={files.error} onRetry={() => files.refetch()} /> : (
+        {files.isLoading ? <Loading rows={3} /> : (files.error as { status?: number } | null)?.status === 404 && r.size === 0 ? <T v="sub" c="mut" style={{ padding: 14 }}>This repository is empty.</T> : files.error ? <ErrorNote error={files.error} onRetry={() => { void repo.refetch().then(() => files.refetch()); }} /> : (
           <>
             {[...(files.data ?? [])].sort((a, b) => Number(b.type === 'dir') - Number(a.type === 'dir') || a.name.localeCompare(b.name)).slice(0, FILES_SHOWN).map((it) => (
               <Row key={it.path} mono icon={it.type === 'dir' ? 'folder' : it.type === 'submodule' ? 'package' : 'file'} title={it.name}
