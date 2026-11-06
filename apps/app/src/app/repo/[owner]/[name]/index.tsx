@@ -16,7 +16,8 @@ export default function RepoScreen() {
   const repo = useRepo(owner, name);
   const readme = useReadme(owner, name);
   const star = useStar(`${owner}/${name}`);
-  const files = useDir(owner, name, ''); // default branch
+  // The branch the rows open, so the list and the files they lead to always match (waits for the repo).
+  const files = useDir(owner, name, '', repo.data?.default_branch, !!repo.data?.default_branch);
   const r = repo.data;
 
   const header = <BackHeader title={`${owner}/${name}`} right={r ? <Pressable onPress={() => Linking.openURL(r.html_url)} hitSlop={10} accessibilityLabel="Open on GitHub"><Icon name="arrow-up-right" size={20} color={t.c.mut} /></Pressable> : null} />;

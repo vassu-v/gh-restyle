@@ -139,7 +139,7 @@ function Point({ icon, title, sub }: { icon: string; title: string; sub: string 
   const t = useTokens();
   return (
     <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-      <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: t.c.el2, alignItems: 'center', justifyContent: 'center' }}><Icon name={icon} size={17} color={t.c.acc} /></View>
+      <View style={{ width: 34, height: 34, borderRadius: t.r.md, backgroundColor: t.c.el2, alignItems: 'center', justifyContent: 'center' }}><Icon name={icon} size={17} color={t.c.acc} /></View>
       <View style={{ flex: 1 }}><T v="bodyStrong">{title}</T><T v="sub" c="mut">{sub}</T></View>
     </View>
   );
@@ -253,7 +253,7 @@ function Bring() {
       ) : null}
       <TextInput value={text} onChangeText={(v) => { setText(v); setErr(null); }} placeholder="…or paste a GITLING1 code, share link or file text" placeholderTextColor={t.c.dim}
         autoCapitalize="none" autoCorrect={false} multiline accessibilityLabel="Design code or file text"
-        style={{ minHeight: 70, padding: 12, borderRadius: 13, backgroundColor: t.c.el2, color: t.c.fg, fontFamily: t.font.mono.regular, fontSize: 13 }} />
+        style={{ minHeight: 70, padding: 12, borderRadius: t.r.md, backgroundColor: t.c.el2, color: t.c.fg, fontFamily: t.font.mono.regular, fontSize: t.scale(13) }} />
       {err ? <T v="sub" c="bad">{err}</T> : null}
       {parsed && !parsed.ok ? <T v="sub" c="bad">{parsed.error}</T> : null}
       {parsed && parsed.ok ? (

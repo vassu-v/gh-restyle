@@ -99,9 +99,9 @@ export function useBranches(owner: string, name: string, enabled = true) {
   const { api, k } = useApi();
   return useQuery({ queryKey: [k, 'branches', owner, name], queryFn: () => api.branches(owner, name), enabled, staleTime: 5 * 60e3 });
 }
-export function useDir(owner: string, name: string, path: string, ref?: string) {
+export function useDir(owner: string, name: string, path: string, ref?: string, enabled = true) {
   const { api, k } = useApi();
-  return useQuery({ queryKey: [k, 'dir', owner, name, ref, path], queryFn: () => api.dir(owner, name, path, ref), staleTime: 5 * 60e3 });
+  return useQuery({ queryKey: [k, 'dir', owner, name, ref, path], queryFn: () => api.dir(owner, name, path, ref), staleTime: 5 * 60e3, enabled });
 }
 /** Max bytes shown in the file viewer; bigger files open on GitHub. */
 export const MAX_FILE_BYTES = 512 * 1024;

@@ -116,6 +116,7 @@ export const Design = z.object({
   home: z.object({
     sections: z.array(HomeSection).max(SectionId.options.length + MAX_SEARCH_SECTIONS)
       .refine((s) => new Set(s.map((x) => x.id)).size === s.length, 'Each Home section can appear once')
+      .refine((s) => s.filter(isSearchSection).length <= MAX_SEARCH_SECTIONS, `Up to ${MAX_SEARCH_SECTIONS} search sections`)
       .refine((s) => s.some((x) => x.visible), 'Keep at least one section on Home'),
   }),
   tiles: z.array(Tile).max(24),

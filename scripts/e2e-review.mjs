@@ -169,6 +169,7 @@ await page.getByRole('button', { name: 'Close pull request' }).click();
 await page.getByRole('button', { name: 'Tap again to close the pull request' }).click();
 log(await visible(page.getByRole('button', { name: 'Reopen', exact: true })), 'the second tap closes it (Reopen shows)');
 await page.getByRole('button', { name: 'Reopen', exact: true }).click();
+log(await visible(page.getByRole('button', { name: 'Close pull request' })), 'Reopen opens it again (Close is back)');
 
 log(errors.length === 0, `no page errors${errors.length ? ': ' + errors.join(' | ') : ''}`);
 await browser.close(); server.close();

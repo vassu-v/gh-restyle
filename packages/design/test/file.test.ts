@@ -123,6 +123,13 @@ describe('design file: hostile and odd input (PR #3 QA)', () => {
       expect(r.design.home).toEqual(DEFAULT_DESIGN.home);
     }
   });
+  it('more than 12 search sections is left out (Studio stops at 12, so a file cannot hold more)', () => {
+    const many = Array.from({ length: 13 }, (_, i) => ({ id: `q-${i}`, visible: true, title: `S${i}`, q: 'is:open' }));
+    const r = readDesignText(file({ ...DEFAULT_DESIGN, home: { sections: [{ id: 'status', visible: true }, ...many] } }));
+    expect(r.ok && r.dropped).toEqual(['home']);
+    const twelve = readDesignText(file({ ...DEFAULT_DESIGN, home: { sections: [{ id: 'status', visible: true }, ...many.slice(0, 12)] } }));
+    expect(twelve.ok && twelve.dropped).toEqual([]);
+  });
   it('search sections: any search under your own title, kept in order; bad ones are left out', () => {
     const mine = { id: 'q-abc1', visible: true, title: 'Bugs I’m in', q: 'is:open label:bug involves:@me' };
     const ok = readDesignText(file({ ...DEFAULT_DESIGN, home: { sections: [mine, ...DEFAULT_DESIGN.home.sections] } }));
