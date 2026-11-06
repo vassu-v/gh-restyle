@@ -25,6 +25,7 @@
     "e2e:authenticator": "node scripts/e2e-authenticator.mjs",
     "stress:extension": "npm run build:extension && node scripts/stress-extension.mjs",
     "e2e:extension": "node scripts/e2e-extension.mjs",
+    "e2e:extension:user": "node scripts/e2e-extension-user.mjs",
     "test:fuzz": "vitest run tests/fuzz",
     "test:coverage": "vitest run --coverage",
     "verify": "node scripts/verify.mjs"

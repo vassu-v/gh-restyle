@@ -81,8 +81,10 @@ restarting Chrome. If you're signed in to Chrome with sync turned on, they follo
 
 ## Known limits
 
-- **Signed-in GitHub pages aren't tested yet.** All automated tests run signed out. If something looks off
-  while you're signed in, take a screenshot and send it over.
+- **Signed-in pages are mostly checked by eye.** The automated tests run signed out; the signed-in home's
+  Copilot box is tested with GitHub's real markup as a fixture. If something looks off while you're signed in,
+  take a screenshot and send it over.
+- **After updating the extension,** open GitHub tabs get the new version automatically (no reload needed).
 - **Only Chrome (Chromium) is tested.** Edge and Brave run Chrome extensions and should work, but nobody has
   checked. Firefox isn't tested and may need small changes.
 - **Not on the Chrome Web Store.** It's load-unpacked only for now, so Chrome may remind you about developer
@@ -111,7 +113,11 @@ The code is in `apps/extension`. `build.mjs` bundles `src/` with esbuild and cop
 
 - **`public/manifest.json`** is Manifest V3. It has a content script on `github.com/*` and
   `gist.github.com/*` that runs at `document_start`, the popup, the settings page (`options_ui`, opened in a
-  tab), and the `storage` permission only. There's no background service worker.
+  tab), and the `storage` and `scripting` permissions with host access to the same two sites.
+- **`src/background.ts`** (a tiny service worker) runs only on install and update: Chrome doesn't put new
+  content-script code into tabs that are already open, so it injects it into every open GitHub tab. The old
+  copy notices it's cut off and stops; the new one undoes its work using `data-gitling-orig` and
+  `data-gitling-vars` on `<html>` (both removed when Gitling is off).
 - **`src/content.ts`** (about 6 KB) runs on every GitHub page.
   1. It records GitHub's original `data-color-mode`, `data-light-theme` and `data-dark-theme` on `<html>`.
   2. It loads settings and sets those attributes to match the design's mode. This makes everything we don't

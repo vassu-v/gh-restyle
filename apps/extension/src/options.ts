@@ -33,7 +33,12 @@ function render() {
   $<HTMLInputElement>('scale').value = String(th.textScale);
   $('scale-out').textContent = `${Math.round(th.textScale * 100)}%`;
   for (const i of $('clean').querySelectorAll<HTMLInputElement>('input[data-k]')) i.checked = s.clean[i.dataset.k as keyof Settings['clean']];
-  $<HTMLInputElement>('clean-all').checked = CLEAN_KEYS.every((k) => s.clean[k]);
+  // The master shows on while any part is on (half-filled when only some are), so it never reads off while
+  // GitHub is still being changed; clicking it then turns everything off.
+  const on = CLEAN_KEYS.filter((k) => s.clean[k]).length;
+  const all = $<HTMLInputElement>('clean-all');
+  all.checked = on > 0; all.indeterminate = on > 0 && on < CLEAN_KEYS.length;
+  all.setAttribute('aria-checked', on === 0 ? 'false' : on === CLEAN_KEYS.length ? 'true' : 'mixed');
   const cur = presetOf(s.design)?.id;
   for (const b of $('presets').querySelectorAll<HTMLElement>('.preset')) b.setAttribute('aria-pressed', String(b.dataset.v === cur));
   paint();
@@ -43,6 +48,7 @@ const msg = (text: string, ok: boolean) => { const m = $('msg'); m.textContent =
 async function save(): Promise<boolean> {
   try { await saveSettings(s); } catch (e) { msg(`Couldn't save: ${(e as Error).message}`, false); return false; }
   render();
+  msg('Saved. Open GitHub tabs update right away.', true);
   return true;
 }
 const theme = (patch: Partial<Design['theme']>) => { s.design = { ...s.design, theme: { ...s.design.theme, ...patch } }; return save(); };
@@ -80,7 +86,7 @@ function buildPresets() {
   $<HTMLInputElement>('enabled').addEventListener('change', (e) => { s.enabled = (e.target as HTMLInputElement).checked; save(); });
   $('clean').addEventListener('change', (e) => {
     const i = e.target as HTMLInputElement;
-    if (i.id === 'clean-all') s.clean = Object.fromEntries(CLEAN_KEYS.map((k) => [k, i.checked])) as Settings['clean'];
+    if (i.id === 'clean-all') { const anyOn = CLEAN_KEYS.some((k) => s.clean[k]); s.clean = Object.fromEntries(CLEAN_KEYS.map((k) => [k, !anyOn])) as Settings['clean']; }
     else if (i.dataset.k) s.clean = { ...s.clean, [i.dataset.k]: i.checked };
     save();
   });

@@ -1,10 +1,18 @@
 {
   "manifest_version": 3,
   "name": "Gitling for GitHub",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Restyle github.com with your Gitling design: colors, type and shape. Uses your existing GitHub session, no sign-in.",
   "permissions": [
-    "storage"
+    "storage",
+    "scripting"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "host_permissions": [
+    "https://github.com/*",
+    "https://gist.github.com/*"
   ],
   "action": {
     "default_popup": "popup.html",

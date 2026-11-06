@@ -8,7 +8,7 @@ rmSync(here + 'dist', { recursive: true, force: true });
 mkdirSync(here + 'dist', { recursive: true });
 cpSync(here + 'public', here + 'dist', { recursive: true });
 await build({
-  entryPoints: { content: here + 'src/content.ts', popup: here + 'src/popup.ts', options: here + 'src/options.ts' },
+  entryPoints: { content: here + 'src/content.ts', popup: here + 'src/popup.ts', options: here + 'src/options.ts', background: here + 'src/background.ts' },
   outdir: here + 'dist',
   bundle: true,
   format: 'iife',

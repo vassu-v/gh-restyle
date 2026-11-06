@@ -12,10 +12,20 @@ import { CLEAN_KEYS, loadSettings, onSettingsChange } from './storage';
  */
 const root = document.documentElement;
 const MODE_ATTRS = ['data-color-mode', 'data-light-theme', 'data-dark-theme'] as const;
-const original = Object.fromEntries(MODE_ATTRS.map((a) => [a, root.getAttribute(a)]));
-let applied: string[] = [];
+// While Gitling is on, two attributes on <html> remember what it changed, so a fresh copy of this script
+// (injected into open tabs after an extension update, see background.ts) can undo the old copy's work:
+// GitHub's own mode attributes, and the names of the CSS variables set. Both are removed when it's off.
+const ORIG = 'data-gitling-orig';
+const VARS = 'data-gitling-vars';
+// Which copy of this script owns the page now (see the end of this file).
+const OWNER = 'data-gitling-owner';
+const me = Math.random().toString(36).slice(2);
+const readJson = <T,>(a: string, fallback: T): T => { try { const v = root.getAttribute(a); return v ? JSON.parse(v) as T : fallback; } catch { return fallback; } };
+let original: Record<string, string | null> = readJson(ORIG, Object.fromEntries(MODE_ATTRS.map((a) => [a, root.getAttribute(a)])));
+const NUM_CLASSES = ['gitling-num-dot', 'gitling-num-mono', 'gitling-num-sans'];
+let applied: string[] = readJson<string[]>(VARS, []);
 let wantMode: Record<string, string> | null = null;
-let cleanClasses: string[] = [];
+let ourClasses: string[] = [];
 
 function setModeAttrs() {
   if (!wantMode) return;
@@ -25,10 +35,13 @@ function setModeAttrs() {
 function clear() {
   for (const k of applied) root.style.removeProperty(k);
   applied = [];
-  root.classList.remove('gitling-on', ...CLEAN_KEYS.map((k) => `gitling-clean-${k}`));
+  root.classList.remove('gitling-on', ...NUM_CLASSES, ...CLEAN_KEYS.map((k) => `gitling-clean-${k}`));
   wantMode = null;
-  cleanClasses = [];
+  ourClasses = [];
   for (const a of MODE_ATTRS) { const v = original[a]; if (v === null) root.removeAttribute(a); else root.setAttribute(a, v); }
+  root.removeAttribute(ORIG); root.removeAttribute(VARS); root.removeAttribute(OWNER);
+  if (!root.getAttribute('style')) root.removeAttribute('style');
+  if (!root.getAttribute('class')) root.removeAttribute('class');
 }
 
 async function apply() {
@@ -37,20 +50,38 @@ async function apply() {
   if (!s.enabled) return;
   const mode = BACKGROUNDS[s.design.theme.background].mode;
   wantMode = { 'data-color-mode': mode, 'data-light-theme': 'light', 'data-dark-theme': 'dark' };
+  // Re-read GitHub's own values: clear() just put them back, and GitHub may have changed them while we were off.
+  original = Object.fromEntries(MODE_ATTRS.map((a) => [a, root.getAttribute(a)]));
+  root.setAttribute(ORIG, JSON.stringify(original));
+  root.setAttribute(OWNER, me);
   setModeAttrs();
   const vars = primerVars(s.design);
   for (const [k, v] of Object.entries(vars)) { root.style.setProperty(k, v, 'important'); applied.push(k); }
+  root.setAttribute(VARS, JSON.stringify(applied));
   root.classList.add('gitling-on');
-  // Developer mode: each part is a class on <html> that content.css acts on.
-  cleanClasses = CLEAN_KEYS.filter((k) => s.clean[k]).map((k) => `gitling-clean-${k}`);
-  root.classList.add(...cleanClasses);
+  // Our classes on <html>, which content.css acts on: the number style (so it can size the dot-matrix face up,
+  // unreadable at GitHub's 12px) and one per developer-mode part that's on.
+  ourClasses = [`gitling-num-${s.design.theme.numbers}`, ...CLEAN_KEYS.filter((k) => s.clean[k]).map((k) => `gitling-clean-${k}`)];
+  root.classList.add(...ourClasses);
 }
 
 apply();
 onSettingsChange(apply);
 // GitHub rewrites <html> attributes on theme changes and some navigations; put ours back.
-new MutationObserver(() => {
+// After the extension is reloaded or updated, this copy is cut off from settings (no live changes) while a fresh
+// copy takes over; it must stop re-adding its own classes, or it would undo the new copy's changes.
+const alive = () => { try { return !!(globalThis as unknown as { chrome?: { runtime?: { id?: string } } }).chrome?.runtime?.id; } catch { return false; } };
+const watcher = new MutationObserver(() => {
+  if (!alive()) return retire();
   if (!applied.length) return;
-  for (const c of ['gitling-on', ...cleanClasses]) if (!root.classList.contains(c)) root.classList.add(c);
+  for (const c of ['gitling-on', ...ourClasses]) if (!root.classList.contains(c)) root.classList.add(c);
   setModeAttrs();
-}).observe(root, { attributes: true, attributeFilter: ['class', ...MODE_ATTRS] });
+});
+watcher.observe(root, { attributes: true, attributeFilter: ['class', ...MODE_ATTRS] });
+// If the extension is turned off or removed in chrome://extensions, no new copy comes: put GitHub back ourselves,
+// unless a newer copy has taken the page over (it marks itself as the owner).
+function retire() {
+  watcher.disconnect(); clearInterval(heartbeat);
+  if (root.getAttribute(OWNER) === me) clear();
+}
+const heartbeat = setInterval(() => { if (!alive()) setTimeout(retire, 1500); }, 2000);
