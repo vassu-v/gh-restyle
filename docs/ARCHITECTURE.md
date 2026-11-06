@@ -109,7 +109,8 @@ Dependency direction is one way: screens → hooks → `api` → `client` → ne
 | `/search?q&kind&title` | Search issues/PRs/repos |
 | `/tile/[id]` | Tile editor |
 | `/ask` | "Ask" tile prompt |
-| `/account` | Sign in/out, install app |
+| `/account` | Sign in/out, install app, Authenticator row |
+| `/authenticator` | Two-factor codes for GitHub (local only; works signed out) |
 | `/auth/callback` | OAuth return (web) |
 
 Build hrefs with `routes.*` from `src/lib/links.ts`.
@@ -149,6 +150,29 @@ tokenStore.set(token); GET /user to validate
   - `services/edge/test` covers the allowlist, redirect, exchange, CORS and errors.
   - `packages/github/test/auth.test.ts` covers PKCE, state and exchange.
   - `scripts/e2e-signin.mjs` runs the whole browser flow with GitHub faked.
+
+## Authenticator (two-factor codes)
+
+Gitling makes the TOTP codes (RFC 6238) GitHub asks for at sign-in, so people don't need a second app.
+Plan and decisions: `docs/plans/authenticator.md`; how to use it: `docs/AUTHENTICATOR.md`.
+
+- **Local only.** Codes are computed on the device; nothing goes over the network, and it works signed out.
+- **Math:** `packages/github/src/totp.ts`: base32, SHA-1/HMAC and TOTP in plain TypeScript (Hermes has no
+  `crypto.subtle`), and `parseOtpInput()` for a pasted setup key or `otpauth://totp/…` link. Only SHA-1, 6–8
+  digits and 10–300 s periods; anything else is refused with a sentence.
+- **Storage:** `apps/app/src/session/vault.ts` `createVault(name, { strict })`, the same vault as the GitHub token
+  (Keychain/Keystore on native; AES-GCM with a non-extractable WebCrypto key in IndexedDB on web) under its own
+  name (`otp`) and its own key. Signing out clears the token vault and the saved cache, never this one.
+- **Store:** `apps/app/src/authenticator/store.ts`: `useOtpAccounts()` (a module-level list shared by every
+  screen; duplicate secrets refused) and `useTotp(account)` (code and seconds left, re-rendered on each new second).
+  The vault is strict (a failed save or unreadable data is an error). Every change runs inside a Web Lock
+  (`gitling-otp`, across tabs), re-reads the vault, refuses if anything saved can't be read in full, saves, then
+  updates the list and tells other tabs to re-read over a `BroadcastChannel`.
+- **Screen:** `src/app/authenticator.tsx` (`routes.authenticator`, a row on Account): add from a key or link,
+  big code in the design's number style, countdown bar, copy, rename, two-tap remove.
+- Secrets never go into design files, share codes, logs or the query cache. No export in v1.
+- **Tests:** `packages/github/test/totp.test.ts` (RFC vectors, parsing, refusals); `scripts/e2e-authenticator.mjs`
+  checks codes against `node:crypto` with a fixed clock, and searches all browser storage for the plaintext secret.
 
 ## PWA
 

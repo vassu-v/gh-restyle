@@ -3,9 +3,10 @@ import { useState } from 'react';
 import { Linking, Pressable, TextInput, View } from 'react-native';
 import { useTokens } from '@/design/DesignProvider';
 import { useMe } from '@/data/queries';
+import { routes } from '@/lib/links';
 import { useInstall } from '@/pwa/useInstall';
 import { useSession } from '@/session/SessionProvider';
-import { Avatar, BackHeader, Button, Panel, Screen, T } from '@/ui/primitives';
+import { Avatar, BackHeader, Button, Panel, Row, Screen, T } from '@/ui/primitives';
 
 const TOKEN_URL = 'https://github.com/settings/tokens/new?scopes=repo,notifications,read:user&description=Gitling';
 const APPS_URL = 'https://github.com/settings/applications';
@@ -67,6 +68,10 @@ export default function Account() {
           <Pressable onPress={() => Linking.openURL(APPS_URL)} style={{ paddingHorizontal: 4 }}><T v="sub" c="acc">{"Revoke Gitling's access on GitHub ↗"}</T></Pressable>
         </View>
       )}
+
+      <Panel style={{ marginHorizontal: 14, marginTop: 14 }}>
+        <Row icon="lock" title="Authenticator" sub="Two-factor codes for GitHub" onPress={() => router.push(routes.authenticator)} />
+      </Panel>
 
       {install.state !== 'unavailable' ? (
         <Panel style={{ marginHorizontal: 14, marginTop: 14, padding: 16, gap: 10 }}>

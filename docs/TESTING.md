@@ -42,6 +42,9 @@ CI runs `check`, smoke and the three app e2e suites on **Ubuntu and Windows**, p
    - `e2e:studio`, `e2e:review` and `e2e:onboarding` drive real user flows. Onboarding covers the welcome tour
      and design files, including a real download and the browser's file picker. Screen tests start as a
      returning user (`gitling.onboarded.v1` set), so only `e2e:onboarding` sees the tour
+   - `e2e:authenticator` fixes the page clock and checks the codes on screen against `node:crypto`, and searches
+     every kind of browser storage for the secret in plain text. Its unit tests (`totp.test.ts`,
+     `tests/authenticator-store.test.ts`) use the RFC test vectors and a stand-in vault that can be told to fail
 5. **Live checks:**
    - `e2e:extension` and `stress:extension` run the extension on real github.com; the stress test compares text
      contrast with and without the extension

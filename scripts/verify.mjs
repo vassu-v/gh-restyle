@@ -19,6 +19,7 @@ const steps = [
     ['e2e: studio', 'npm run e2e:studio'],
     ['e2e: PR review', 'npm run e2e:review'],
     ['e2e: welcome tour + design files', 'npm run e2e:onboarding'],
+    ['e2e: authenticator', 'npm run e2e:authenticator'],
   ]),
   ...(noLive ? [] : [['e2e: extension on live github.com', 'npm run e2e:extension']]),
 ];

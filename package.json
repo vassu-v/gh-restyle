@@ -22,6 +22,7 @@
     "e2e:studio": "node scripts/e2e-studio.mjs",
     "e2e:review": "node scripts/e2e-review.mjs",
     "e2e:onboarding": "node scripts/e2e-onboarding.mjs",
+    "e2e:authenticator": "node scripts/e2e-authenticator.mjs",
     "stress:extension": "npm run build:extension && node scripts/stress-extension.mjs",
     "e2e:extension": "node scripts/e2e-extension.mjs",
     "test:fuzz": "vitest run tests/fuzz",
