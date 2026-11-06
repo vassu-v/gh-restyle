@@ -56,3 +56,76 @@ html.gitling-on .HeaderMktg .header-search-button { background-color: var(--gitl
 html.gitling-on .Header { background-color: var(--gitling-bg) !important; border-bottom: 1px solid var(--gitling-line); }
 html.gitling-on .Header .Header-link,
 html.gitling-on .Header .Header-item { color: var(--gitling-fg) !important; }
+
+/* ── Gitling look on every page: the app's type and shapes, applied to GitHub's own components ──
+   Primer React components keep a stable "prc-<Component>-" class prefix, so these survive GitHub's hashed
+   class names changing. Colors still come only from variables (primer.ts). */
+
+/* Section labels, like the app's "shortcuts" / "needs you": small, lowercase, mono, muted. */
+html.gitling-on h2[class*="sectionHeading"],
+html.gitling-on .BorderGrid-cell > h2.h4,
+html.gitling-on .Layout-sidebar h2.h4,
+html.gitling-on .discussion-sidebar-heading {
+  font-family: var(--fontStack-monospace) !important;
+  font-size: .75rem !important;
+  font-weight: 500 !important;
+  text-transform: lowercase;
+  letter-spacing: .02em;
+  color: var(--gitling-mut) !important;
+}
+
+/* Titles: Geist set tight, as in the app. */
+html.gitling-on :is(h1, .markdown-body h2, [class*="prc-PageHeader-Title"]) { letter-spacing: -0.02em; }
+
+/* Metadata (times, counts, labels, topics) in mono, like the app's sub-lines. */
+html.gitling-on relative-time { font-family: var(--fontStack-monospace); font-size: .86em; }
+html.gitling-on :is([class*="prc-TopicTag-TopicTag-"], .topic-tag) {
+  font-family: var(--fontStack-monospace); font-weight: 500; border-radius: 999px;
+}
+html.gitling-on :is([class*="prc-Label-Label-"], .Label, .IssueLabel) { border-radius: 999px; }
+html.gitling-on :is([class*="prc-CounterLabel-CounterLabel-"], .Counter) {
+  border-radius: 999px; background-color: var(--gitling-el2);
+}
+
+/* Pill buttons and search fields (not buttons joined into a group, not multi-line text boxes). */
+html.gitling-on :is([class*="prc-Button-ButtonBase-"], .btn):not(:is([class*="prc-ButtonGroup-"], [class*="prc-SegmentedControl-"], .BtnGroup) *):not(.BtnGroup-item) {
+  border-radius: 999px;
+}
+html.gitling-on :is([class*="prc-components-TextInputWrapper-"], input.form-control, .FormControl-input-wrap input) {
+  border-radius: 999px;
+}
+
+/* Code blocks and panels: the app's rounder corners. */
+html.gitling-on :is(.markdown-body pre, .markdown-body .highlight pre, .snippet-clipboard-content pre) {
+  border-radius: var(--borderRadius-large);
+}
+
+/* Small things that make it feel like one app: selection, focus ring, scrollbars. */
+html.gitling-on ::selection { background-color: var(--gitling-acc-soft); }
+html.gitling-on :focus-visible { outline-color: var(--gitling-acc); }
+html.gitling-on, html.gitling-on * { scrollbar-color: var(--gitling-line2) transparent; }
+
+/* ── Developer mode (settings page): parts of GitHub people can leave out ──
+   Matched by where links point (/enterprise, /pricing, /features/copilot…), which GitHub rarely changes,
+   rather than by its hashed class names. Each part is its own class on <html> (content.ts). */
+
+/* Sales menus: the signed-out header's Products / Solutions / Resources / Pricing, and any menu item that sells. */
+html.gitling-clean-sales .HeaderMktg nav[aria-label="Global"],
+html.gitling-clean-sales :is(li, [role="menuitem"]):has(> a:is(
+  [href^="/enterprise"], [href^="https://github.com/enterprise"], [href^="/pricing"], [href^="https://github.com/pricing"],
+  [href^="/marketplace"], [href^="https://github.com/marketplace"], [href^="/solutions"], [href^="https://github.com/solutions"],
+  [href^="/features"], [href^="https://github.com/features"], [href^="/customer-stories"], [href^="https://github.com/customer-stories"],
+  [href^="/partners"], [href^="https://github.com/partners"], [href^="https://resources.github.com"], [href="/team"], [href="https://github.com/team"]
+)) { display: none !important; }
+
+/* Copilot: its buttons, menu entries and prompts. */
+html.gitling-clean-copilot :is(a, button):has(> svg.octicon-copilot),
+html.gitling-clean-copilot :is(li, [role="menuitem"]):has(> a:is([href^="/copilot"], [href^="https://github.com/copilot"], [href*="/features/copilot"])),
+html.gitling-clean-copilot :is(button, a)[aria-label*="Copilot" i] { display: none !important; }
+
+/* Footer: the site footer (and the signed-out newsletter strip above it). */
+html.gitling-clean-footer :is(footer.footer, .footer[role="contentinfo"], [class*="NewsletterSignup"], .site-footer) { display: none !important; }
+
+/* Wide layout: use the whole window instead of GitHub's fixed reading width. */
+html.gitling-clean-wide :is(.container-xl, .container-lg, .container-md) { max-width: none !important; }
+html.gitling-clean-wide :is([class*="prc-PageLayout-ContentWrapper-"], [class*="prc-PageLayout-Content-"]) { max-width: none !important; }
