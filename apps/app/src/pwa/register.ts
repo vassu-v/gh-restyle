@@ -17,13 +17,17 @@ export const pwa = {
   subscribe(l: () => void) { listeners.add(l); return () => { listeners.delete(l); }; },
   canPrompt: () => !!deferred,
   installed: () => installed,
-  async prompt() {
+  /** Shows the browser's install dialog. An install event can only prompt once, so it's used up either way. */
+  async prompt(): Promise<'accepted' | 'dismissed' | 'unavailable'> {
     const e = deferred;
-    if (!e) return;
+    if (!e) return 'unavailable';
     deferred = null; emit();
-    await e.prompt();
-    const { outcome } = await e.userChoice;
-    if (outcome === 'accepted') { installed = true; emit(); }
+    try {
+      await e.prompt();
+      const { outcome } = await e.userChoice;
+      if (outcome === 'accepted') { installed = true; emit(); }
+      return outcome;
+    } catch { return 'unavailable'; } // e.g. InvalidStateError: the browser no longer allows it
   },
 };
 

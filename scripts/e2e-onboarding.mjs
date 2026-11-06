@@ -205,11 +205,11 @@ const next = (page) => page.getByRole('button', { name: 'Next', exact: true }).c
   };
   const a = await phone('Pixel 7', fakePrompt);
   await a.page.goto(base + '/', { waitUntil: 'networkidle' });
-  log(await visible(a.page.getByText('Install Gitling on this phone'), 6000), 'Android phone: the install sheet appears on Home');
+  log(await visible(a.page.getByText('Add Gitling to your home screen'), 6000), 'Android phone: the install sheet appears on Home');
   await a.page.getByRole('button', { name: 'Install', exact: true }).click();
   await a.page.waitForTimeout(300);
   log(await a.page.evaluate(() => window.__prompted) === 1, '"Install" opens the browser\'s own install dialog');
-  log(!(await visible(a.page.getByText('Install Gitling on this phone'), 800)), 'and the sheet goes away');
+  log(!(await visible(a.page.getByText('Add Gitling to your home screen'), 800)), 'and the sheet goes away');
   await a.ctx.close();
 
   const i = await phone('iPhone 14');
@@ -218,27 +218,45 @@ const next = (page) => page.getByRole('button', { name: 'Next', exact: true }).c
   await i.page.getByRole('button', { name: 'Got it' }).click();
   await i.page.reload({ waitUntil: 'networkidle' });
   await i.page.waitForTimeout(2500);
-  log(!(await visible(i.page.getByText('Install Gitling on this phone'), 500)), 'after dismissing, it stays away on the next visit');
+  log(!(await visible(i.page.getByText('Add Gitling to your home screen'), 500)), 'after dismissing, it stays away on the next visit');
   await i.ctx.close();
 
   const tour = await browser.newContext({ ...devices['iPhone 14'], defaultBrowserType: undefined });
   const tp = await tour.newPage();
   await tp.goto(base + '/', { waitUntil: 'networkidle' });
   await tp.waitForTimeout(2500);
-  log(tp.url().endsWith('/welcome') && !(await visible(tp.getByText('Install Gitling on this phone'), 500)), 'never on top of the welcome tour');
+  log(tp.url().endsWith('/welcome') && !(await visible(tp.getByText('Add Gitling to your home screen'), 500)), 'never on top of the welcome tour');
   await tour.close();
 
   const desk = await fresh();
   await desk.page.addInitScript(() => localStorage.setItem('gitling.onboarded.v1', 'e2e'));
   await desk.page.goto(base + '/', { waitUntil: 'networkidle' });
   await desk.page.waitForTimeout(2500);
-  log(!(await visible(desk.page.getByText('Install Gitling on this phone'), 500)), 'desktop browsers never see it');
+  log(!(await visible(desk.page.getByText('Add Gitling to your home screen'), 500)), 'desktop browsers never see it');
   await desk.ctx.close();
+
+  // Only on the main tabs, and never over a text field someone is typing into.
+  const th = await phone('iPhone 14');
+  await th.page.goto(base + '/thread/you/trail-notes/45', { waitUntil: 'networkidle' });
+  await th.page.waitForTimeout(2500);
+  log(!(await visible(th.page.getByText('Add Gitling to your home screen'), 500)), 'not over a pull request (only on the main tabs)');
+  await th.page.goto(base + '/search', { waitUntil: 'networkidle' });
+  await th.page.waitForTimeout(2500);
+  log(!(await visible(th.page.getByText('Add Gitling to your home screen'), 500)), 'not over Search while typing');
+  await th.ctx.close();
+
+  // In-app browsers can't install: the sheet says to open the page in the real browser.
+  const ig = await browser.newContext({ ...devices['iPhone 14'], defaultBrowserType: undefined, userAgent: devices['iPhone 14'].userAgent + ' Instagram 300.0.0.0' });
+  await ig.addInitScript(() => localStorage.setItem('gitling.onboarded.v1', 'e2e'));
+  const igp = await ig.newPage();
+  await igp.goto(base + '/', { waitUntil: 'networkidle' });
+  log(await visible(igp.getByText('Open in Safari', { exact: false }), 6000), 'in-app browser: says to open in Safari instead of Safari steps');
+  await ig.close();
 
   const inst = await phone('Pixel 7', () => { const mm = window.matchMedia.bind(window); window.matchMedia = (q) => (q.includes('standalone') ? { matches: true, addEventListener() {}, removeEventListener() {} } : mm(q)); });
   await inst.page.goto(base + '/', { waitUntil: 'networkidle' });
   await inst.page.waitForTimeout(2500);
-  log(!(await visible(inst.page.getByText('Install Gitling on this phone'), 500)), 'not inside the installed app');
+  log(!(await visible(inst.page.getByText('Add Gitling to your home screen'), 500)), 'not inside the installed app');
   await inst.ctx.close();
 }
 

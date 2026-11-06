@@ -49,7 +49,8 @@ export type ReadResult =
  * Parts a newer/older schema rejects are left out and named in `dropped` (same salvage as stored designs).
  */
 export function readDesignText(text: string): ReadResult {
-  if (text.length > DESIGN_FILE_MAX_BYTES) return { ok: false, error: 'That file is too big to be a Gitling design.' };
+  // Bytes, like the file picker's limit (a character can be up to 4 bytes).
+  if (text.length > DESIGN_FILE_MAX_BYTES || new TextEncoder().encode(text).length > DESIGN_FILE_MAX_BYTES) return { ok: false, error: 'That file is too big to be a Gitling design.' };
   const raw = text.replace(/^﻿/, '').trim();
   if (!raw) return { ok: false, error: 'That file is empty.' };
 
@@ -58,8 +59,9 @@ export function readDesignText(text: string): ReadResult {
     let code = raw;
     const m = /[?&]import=([^&\s#]+)/.exec(raw);
     if (m) { try { code = decodeURIComponent(m[1]); } catch { code = m[1]; } }
+    else if (!/^GITLING\d/i.test(raw)) return { ok: false, error: "That isn't a Gitling design file, code or share link." };
     const r = decodeDesign(code);
-    return r.ok ? { ok: true, design: r.design, dropped: [] } : { ok: false, error: r.error };
+    return r.ok ? { ok: true, design: r.design, dropped: r.dropped } : { ok: false, error: r.error };
   }
 
   let json: unknown;
@@ -81,5 +83,8 @@ export function readDesignText(text: string): ReadResult {
 
   const got = salvageDesign(body, DEFAULT_DESIGN);
   if (!got) return { ok: false, error: "That file's design couldn't be read." };
+  // Nothing in it was usable (no valid look, tab bar, Home or tile): applying it would only swap in the default.
+  const hadTiles = Array.isArray((body as { tiles?: unknown } | null)?.tiles) && got.design.tiles.length > 0;
+  if ((['theme', 'nav', 'home'] as const).every((k) => got.dropped.includes(k)) && !hadTiles) return { ok: false, error: "Nothing in that file is a valid Gitling design." };
   return { ok: true, design: got.design, name, dropped: got.dropped };
 }

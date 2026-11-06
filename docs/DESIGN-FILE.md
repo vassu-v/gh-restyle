@@ -6,8 +6,8 @@ or in the desktop extension.
 
 - **Save one:** Studio → Share → **Save as file**. On a phone (the web app or a native build) it opens the share
   sheet, so you can pick Save to Files, Drive, AirDrop and so on. On a computer it downloads the file.
-- **Load one:** Studio → Share → **Open a design file**, or step 5 of the welcome tour. On a phone, paste the
-  file's text into the box instead. In the desktop extension, paste the text into the popup.
+- **Load one:** Studio → Share → **Open a design file**, or step 5 of the welcome tour (phone browsers too). In
+  a native build, paste the file's text into the box instead. In the desktop extension, paste the text into the popup.
 - **Every box that takes a design reads all four forms:** a design file, a bare design object, a `GITLING1.…`
   code, or a share link.
 
@@ -81,7 +81,9 @@ Links may not use schemes that run code in the page (`javascript:`, `data:`, `bl
 
 `apps/app/public/design.schema.json` is published with the app at
 `https://gitling.truckcoding.workers.dev/design.schema.json`. A unit test keeps it in step with the zod schema
-(`packages/design/test/file.test.ts`). After changing the schema, regenerate it:
+(`packages/design/test/file.test.ts`). It checks the shape (types, allowed values, Studio in the tab bar, each
+tab once); the app checks more when it loads a file (for example it leaves out links that could run code), so a
+file an editor accepts can still have parts the app leaves out, and the app says which. After changing the schema, regenerate it:
 
 ```bash
 UPDATE_DESIGN_SCHEMA=1 npx vitest run packages/design/test/file.test.ts

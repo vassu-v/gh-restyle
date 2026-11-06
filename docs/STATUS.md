@@ -12,7 +12,7 @@ deployed. Keep this file true: update it in the same change that finishes, break
 | M2 | Sign in with GitHub (OAuth App + PKCE + worker), secure token storage, PAT fallback | ✅ built and tested; a real account signed in through the live Worker on 2026-11-05 (the client secret is set as a Secret). The loop fix is deployed; a real one-tap sign-in on the deployed site (owner's phone) is still to do |
 | M3 | Core GitHub: feed, inbox triage, repos, code browser (syntax colors, branch picker), issues, PRs (diff, checks, merge, reviews with line comments / approve / request changes), search, profiles, markdown | ✅ done (see gaps below) |
 | M4 | Studio: presets gallery, theme, drag-to-reorder tabs/sections/tiles, tile editor, share codes + share links with live preview | ✅ done |
-| M5.1 | Install sheet on phones: Install button (Android/Chrome), Safari Add to Home Screen steps (iPhone), menu steps elsewhere; snoozes 14 days | ✅ built, tested with iPhone/Pixel emulation (`e2e:onboarding`); Chrome reports the preview installable with 0 errors on a Pixel profile. Not yet tried on a real phone |
+| M5.1 | Install sheet on phones: Install button (Android/Chrome), Add to Home Screen steps (Safari, or the address bar in Chrome/Firefox/Edge on iPhone), "open in your browser" for in-app browsers, menu steps elsewhere; only on the main tabs and never while typing; snoozes 14 days | ✅ built, tested with iPhone/Pixel emulation (`e2e:onboarding`); Chrome reports the preview installable with 0 errors on a Pixel profile. Not yet tried on a real phone |
 | M4.1 | Welcome tour on first launch (look, home, tab bar, bring a design, how-it-works tips) + design files (`.gitling.json`: save, open, load in the app and the extension) | ✅ built and tested in Chromium (`feat/onboarding`); not yet tried on a real phone. Opening a file on native isn't wired up (paste the text instead) |
 | M5 | Ship the PWA: installable, offline shell, icons; hosted on one Cloudflare Worker with sign-in (`npm run deploy`) | ✅ live at https://gitling.truckcoding.workers.dev |
 | P2 | Push notifications, design sync via gist, native store builds | not started |
@@ -25,7 +25,7 @@ deployed. Keep this file true: update it in the same change that finishes, break
 | Lint | `npm run lint` | clean |
 | Unit + property-based fuzz tests: client, api × sample data, PKCE/state, worker, design + presets, suggestions, diffs, extension storage | `npm test` (`npm run verify` runs everything) | 151/151 |
 | Every screen in Chromium at phone size, plus PWA files, service worker and offline launch | `npm run smoke` | 17/17 screens (incl. `/welcome`), SW registers, opens offline |
-| Welcome tour + design files: first launch, every step saves, skip/finish, mid-tour reload, returning users, deep links, applying a shared design ends the tour, replay returns to Studio, Search opens pasted github.com links, Studio download + file picker (under the real CSP), pasted file, install sheet on iPhone/Android emulation (shows, installs, snoozes, never on desktop, in the tour or the installed app) | `npm run e2e:onboarding` | 40/40 |
+| Welcome tour + design files: first launch, every step saves, skip/finish, mid-tour reload, returning users, deep links, applying a shared design ends the tour, replay returns to Studio, Search opens pasted github.com links, Studio download + file picker (under the real CSP), pasted file, install sheet on iPhone/Android emulation (shows, installs, snoozes, never on desktop, in the tour, over a PR or Search, or in the installed app; in-app browsers told to open Safari) | `npm run e2e:onboarding` | 43/43 |
 | Full sign-in flow, GitHub simulated, real worker code | `npm run e2e:signin` | 12/12 |
 | Studio: presets, mouse drag reorder, share link preview/apply | `npm run e2e:studio` | 12/12 |
 | PR reviews: line comments, verdicts, timeline, own-PR rules, replies, resolve/unresolve, multi-line ranges, suggestions (apply, batch, blocked reasons), file changed in the code browser | `npm run e2e:review` | 47/47 |
@@ -34,6 +34,22 @@ deployed. Keep this file true: update it in the same change that finishes, break
 | Live site: every screen, service worker, offline launch, Chrome installability | `SMOKE_URL=https://gitling.truckcoding.workers.dev npm run smoke` + CDP installability check | 16/16, SW active, opens offline, 0 installability errors; re-run after the PR #2 deploy: all screens ok under the CSP |
 | Extension end to end on live github.com: popup controls, design codes, share links and design files, off/on restore, persistence, in-site navigation | `npm run e2e:extension` | 35/35 |
 | Extension | `npm run build:extension` | builds; restyle verified on live github.com during M1 |
+
+## PR #3 QA pass (2026-11-06)
+
+Three test agents (tour and design files; install sheet on phone emulation; regression and security against the
+live site), each in its own browser with the real CSP. Fixed from it:
+- Two crashes that blanked the app: a design file whose tile label isn't text, and a share link with `import` twice.
+  A root error screen (Try again / Go to Home) now replaces any blank page.
+- Designs can't repeat a tab or a Home section; missing sections come back switched off. A file with nothing valid
+  is refused. Share codes are salvaged like files (an unsafe tile is left out and named, not the whole code).
+- Home taken out of the tab bar: the app opens the first tab. A replayed tour returns to Studio after a reload.
+- Install sheet: only on the main tabs, never over a text field; per-browser instructions; cancelling the install
+  dialog doesn't snooze; a failing prompt doesn't throw; iPad gets Account help; side margins.
+- "Saved." no longer shows when the share sheet was cancelled. JSON Schema requires Studio and unique tabs.
+  `deploy --preview` takes the last/space-separated name. Search ignores `.`/`..` path segments.
+Left as known: reloading mid-tour starts at step 1; Android browsers without an install prompt get no Account
+help; on iPhone SE with text size XL the PR screen is too wide (not from this PR).
 
 ## Not verified yet (be honest about these)
 

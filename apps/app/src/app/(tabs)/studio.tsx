@@ -25,7 +25,10 @@ export default function Studio() {
   // Someone who arrived with a share link and applied it has set Gitling up: no tour on their first Home.
   const onboarding = useOnboarding();
   const appliedDesign = () => { if (onboarding.needed) onboarding.finish(); };
-  const params = useLocalSearchParams<{ tab?: string; import?: string }>();
+  // A link can repeat a parameter (?import=a&import=b), which arrives as an array: use the first.
+  const raw = useLocalSearchParams<{ tab?: string | string[]; import?: string | string[] }>();
+  const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+  const params = { tab: first(raw.tab), import: first(raw.import) };
   const [tab, setTab] = useState<Tab>('look');
   const [code, setCode] = useState('');
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -118,7 +121,7 @@ export default function Studio() {
           <Button kind="quiet" label="Copy design code" icon="copy" onPress={async () => { await Clipboard.setStringAsync(encodeDesign(design)); flash(true, 'Code copied.'); }} />
           <Button kind="quiet" label={Platform.OS === 'web' ? 'Save as file' : 'Share design'} icon="download" onPress={async () => {
             const name = active?.name;
-            try { await saveDesignFile(designToFile(design, { name }), designFileName(name)); flash(true, 'Saved. Open it later here or in Welcome to bring this setup back.'); }
+            try { if (await saveDesignFile(designToFile(design, { name }), designFileName(name))) flash(true, 'Saved. Open it later here or in Welcome to bring this setup back.'); }
             catch { flash(false, "Couldn't save the file."); }
           }} />
 
@@ -138,7 +141,7 @@ export default function Studio() {
             return (
               <View style={{ gap: 10 }}>
                 <DesignPreview design={parsed.design} />
-                <T v="monoS" c="mut">{parsed.name ? `${parsed.name} · ` : ''}{describeDesign(parsed.design)}</T>
+                <T v="monoS" c="mut">{parsed.name && !describeDesign(parsed.design).startsWith(parsed.name) ? `${parsed.name} · ` : ''}{describeDesign(parsed.design)}</T>
                 {parsed.dropped.length ? <T v="sub" c="wait">{`Left out (not valid in this version): ${parsed.dropped.join(', ')}`}</T> : null}
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   <Button style={{ flex: 1 }} label="Apply this design" onPress={() => { replace(parsed.design); appliedDesign(); setCode(''); flash(true, 'Design applied. Undo is available.'); if (params.import) router.setParams({ import: '' }); }} />

@@ -6,6 +6,23 @@ import { DEFAULT_DESIGN, Design, designFileName, designToFile, encodeDesign, PRE
 
 const now = new Date('2026-11-05T12:00:00Z');
 
+/**
+ * zod's refinements don't reach JSON Schema. Add the ones an editor can check (Studio in the tab bar, each tab once)
+ * and drop zod's non-standard "includes" format. The app's own checks (e.g. unsafe link schemes) stay stricter.
+ */
+function tighten(s: unknown): never {
+  const walk = (n: unknown): unknown => {
+    if (Array.isArray(n)) return n.map(walk);
+    if (!n || typeof n !== 'object') return n;
+    const o: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(n)) if (!(k === 'format' && v === 'includes')) o[k] = walk(v);
+    return o;
+  };
+  const out = walk(s) as { properties: { nav: { properties: { tabs: Record<string, unknown> } } } };
+  Object.assign(out.properties.nav.properties.tabs, { uniqueItems: true, contains: { const: 'studio' } });
+  return out as never;
+}
+
 describe('design file', () => {
   it('round-trips a design through the file format', () => {
     const d = applyPreset(DEFAULT_DESIGN, PRESETS[2]);
@@ -68,12 +85,45 @@ describe('design file', () => {
         formatVersion: { const: 1 },
         name: { type: 'string', maxLength: 80 },
         exportedAt: { type: 'string', format: 'date-time' },
-        design: z.toJSONSchema(Design, { unrepresentable: 'any', target: 'draft-2020-12', io: 'input' }) // what a file may contain: defaults may be left out,
+        design: tighten(z.toJSONSchema(Design, { unrepresentable: 'any', target: 'draft-2020-12', io: 'input' })) // what a file may contain: defaults may be left out,
       },
     };
     const text = JSON.stringify(schema, null, 2) + '\n';
     if (process.env.UPDATE_DESIGN_SCHEMA || !existsSync(path)) writeFileSync(path, text);
     // Line endings aside: Windows checkouts turn LF into CRLF.
     expect(readFileSync(path, 'utf8').replace(/\r\n/g, '\n')).toBe(text);
+  });
+});
+
+describe('design file: hostile and odd input (PR #3 QA)', () => {
+  const file = (design: unknown) => JSON.stringify({ format: 'gitling.design', formatVersion: 1, design });
+  it('a tile label that is an object never throws', () => {
+    const r = readDesignText(file({ ...DEFAULT_DESIGN, theme: 5, tiles: [{ label: { toString: 1, valueOf: 1 } }] }));
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.dropped).toContain('tile “?”');
+  });
+  it('duplicate tabs or sections are left out, and missing sections come back switched off', () => {
+    const r = readDesignText(file({ ...DEFAULT_DESIGN, nav: { tabs: ['studio', 'studio'] }, home: { sections: [] } }));
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.dropped).toContain('nav');
+    expect(new Set(r.design.nav.tabs).size).toBe(r.design.nav.tabs.length);
+    expect(r.design.home.sections.map((s) => s.id).sort()).toEqual(DEFAULT_DESIGN.home.sections.map((s) => s.id).sort());
+    expect(r.design.home.sections.every((s) => !s.visible)).toBe(true);
+  });
+  it('refuses input where nothing is valid instead of offering the default design', () => {
+    expect(readDesignText('{"theme":1}').ok).toBe(false);
+    expect(readDesignText(file({})).ok).toBe(false);
+  });
+  it('a share code with an unsafe tile is salvaged, like a file', () => {
+    const code = 'GITLING1.' + Buffer.from(JSON.stringify({ ...DEFAULT_DESIGN, tiles: [{ ...DEFAULT_DESIGN.tiles[0], target: { type: 'link', url: 'javascript:alert(1)' } }] })).toString('base64url');
+    const r = readDesignText(code);
+    expect(r.ok).toBe(true);
+    if (r.ok) { expect(r.design.tiles).toHaveLength(0); expect(r.dropped.length).toBe(1); }
+  });
+  it('non-JSON text that is not a code or link gets a message for files, and size counts bytes', () => {
+    const r = readDesignText('\u0000\u0001binary junk');
+    expect(r).toEqual({ ok: false, error: "That isn't a Gitling design file, code or share link." });
+    expect(readDesignText('😀'.repeat(70_000)).ok).toBe(false); // 140k chars, 280 KB
   });
 });

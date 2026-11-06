@@ -105,6 +105,10 @@
                   "repos",
                   "studio"
                 ]
+              },
+              "uniqueItems": true,
+              "contains": {
+                "const": "studio"
               }
             }
           },
@@ -317,7 +321,6 @@
                       },
                       "template": {
                         "type": "string",
-                        "format": "includes",
                         "pattern": "\\{query\\}"
                       },
                       "dest": {

@@ -61,7 +61,9 @@ export const designArb: fc.Arbitrary<Design> = fc.record({
   }),
   nav: fc.record({ tabs }),
   home: fc.record({
-    sections: fc.array(fc.record({ id: fc.constantFrom('status', 'shortcuts', 'needs', 'feed', 'inbox', 'recent'), visible: fc.boolean() }), { maxLength: 8 }),
+    // Every section once, in any order and on/off (the schema refuses duplicates; loading adds missing ones).
+    sections: fc.tuple(fc.shuffledSubarray(['status', 'shortcuts', 'needs', 'feed', 'inbox', 'recent'] as const, { minLength: 6, maxLength: 6 }), fc.array(fc.boolean(), { minLength: 6, maxLength: 6 }))
+      .map(([ids, on]) => ids.map((id, i) => ({ id, visible: on[i] }))),
   }),
   tiles: fc.array(tile, { maxLength: 24 }),
 }) as fc.Arbitrary<Design>;

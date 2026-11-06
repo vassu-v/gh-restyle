@@ -91,10 +91,12 @@ export const Design = z.object({
     textScale: z.number().min(0.85).max(1.3),
   }),
   nav: z.object({
-    tabs: z.array(TabId).min(2).max(5).refine((t) => t.includes('studio'), 'Studio must stay in the tab bar'),
+    tabs: z.array(TabId).min(2).max(5).refine((t) => t.includes('studio'), 'Studio must stay in the tab bar')
+      .refine((t) => new Set(t).size === t.length, 'Each tab can be in the tab bar once'),
   }),
   home: z.object({
-    sections: z.array(z.object({ id: SectionId, visible: z.boolean() })),
+    sections: z.array(z.object({ id: SectionId, visible: z.boolean() }))
+      .refine((s) => new Set(s.map((x) => x.id)).size === s.length, 'Each Home section can appear once'),
   }),
   tiles: z.array(Tile).max(24),
 });
@@ -105,9 +107,22 @@ export type Design = z.infer<typeof Design>;
  * tile or a section a newer schema rejects; dropping the whole design for that would wipe someone's setup.
  * Keeps every part that validates, falls back to `fallback` for the parts that don't, and says what was dropped.
  */
+/**
+ * Every Home section exactly once: sections a design leaves out are added at the end, switched off, so Studio can
+ * still switch them on (it only lists the sections in the design).
+ */
+export function withAllSections(d: Design): Design {
+  const have = new Set(d.home.sections.map((s) => s.id));
+  const missing = SectionId.options.filter((id) => !have.has(id));
+  return missing.length ? { ...d, home: { sections: [...d.home.sections, ...missing.map((id) => ({ id, visible: false }))] } } : d;
+}
+
+/** A tile's label for "left out" messages. It comes from untrusted JSON, so only a string is used. */
+const labelOf = (t: unknown) => { const l = (t as { label?: unknown } | null)?.label; return typeof l === 'string' && l ? l.slice(0, 40) : '?'; };
+
 export function salvageDesign(input: unknown, fallback: Design): { design: Design; dropped: string[] } | null {
   const whole = Design.safeParse(input);
-  if (whole.success) return { design: whole.data, dropped: [] };
+  if (whole.success) return { design: withAllSections(whole.data), dropped: [] };
   if (!input || typeof input !== 'object') return null;
   const src = input as Record<string, unknown>;
   const dropped: string[] = [];
@@ -118,10 +133,10 @@ export function salvageDesign(input: unknown, fallback: Design): { design: Desig
     return fallback[k];
   };
   const tiles = Array.isArray(src.tiles)
-    ? src.tiles.flatMap((t) => { const r = Tile.safeParse(t); if (r.success) return [r.data]; dropped.push(`tile “${(t as { label?: unknown })?.label ?? '?'}”`); return []; })
+    ? src.tiles.flatMap((t) => { const r = Tile.safeParse(t); if (r.success) return [r.data]; dropped.push(`tile “${labelOf(t)}”`); return []; })
     : (dropped.push('tiles'), fallback.tiles);
   if (tiles.length > 24) dropped.push(`${tiles.length - 24} tile${tiles.length - 24 === 1 ? '' : 's'} over the 24-tile limit`);
   tiles.splice(24);
   const out = Design.safeParse({ ...fallback, theme: part('theme'), nav: part('nav'), home: part('home'), tiles });
-  return out.success ? { design: out.data, dropped } : null;
+  return out.success ? { design: withAllSections(out.data), dropped } : null;
 }

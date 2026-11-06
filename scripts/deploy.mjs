@@ -24,7 +24,10 @@ if (!clientId) console.warn('! GITHUB_CLIENT_ID is empty: the app builds without
 const env = { ...process.env, EXPO_PUBLIC_AUTH_URL: clientId && origin ? origin : '', EXPO_PUBLIC_GITHUB_CLIENT_ID: clientId && origin ? clientId : '' };
 const run = (cmd, cwd = root) => execSync(cmd, { cwd, env, stdio: 'inherit' });
 
-const previewArg = process.argv.find((a) => a === '--preview' || a.startsWith('--preview='));
+// The last --preview wins (`npm run deploy:preview -- --preview=x` passes both); `--preview x` takes the next word too.
+const pi = process.argv.findLastIndex((a) => a === '--preview' || a.startsWith('--preview='));
+const nextWord = pi >= 0 && process.argv[pi] === '--preview' && process.argv[pi + 1] && !process.argv[pi + 1].startsWith('--') ? process.argv[pi + 1] : '';
+const previewArg = pi >= 0 ? (nextWord ? `--preview=${nextWord}` : process.argv[pi]) : undefined;
 const dryRun = process.argv.includes('--dry-run');
 // The current branch, or null on a detached checkout (CI, worktrees): those must name their alias, or two of them
 // would share and overwrite one preview address.

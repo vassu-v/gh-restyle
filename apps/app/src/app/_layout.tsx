@@ -8,9 +8,10 @@ import { GeistMono_400Regular } from '@expo-google-fonts/geist-mono/400Regular';
 import { GeistMono_500Medium } from '@expo-google-fonts/geist-mono/500Medium';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { router, Stack, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DesignProvider, useDesign } from '@/design/DesignProvider';
 import { OnboardingProvider } from '@/onboarding/OnboardingProvider';
@@ -32,6 +33,24 @@ function Shell() {
       </Stack>
       <InstallSheet />
     </>
+  );
+}
+
+/**
+ * Last line of defence: an error while rendering any screen shows this instead of a blank page. It renders outside
+ * the providers (they may be what failed), so it uses fixed colors (the app shell's own background) and system fonts.
+ */
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  const btn = { paddingHorizontal: 18, paddingVertical: 12, borderRadius: 22, borderWidth: 1, borderColor: '#3A3D44' } as const;
+  return (
+    <View style={{ flex: 1, backgroundColor: '#0E0F11', padding: 28, justifyContent: 'center', gap: 14 }}>
+      <Text style={{ color: '#ECECEE', fontSize: 20, fontWeight: '600' }}>Something went wrong on this screen</Text>
+      <Text style={{ color: '#9A9CA3', fontSize: 14 }}>{error?.message || 'Unknown error'}</Text>
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        <Pressable onPress={retry} accessibilityRole="button" style={btn}><Text style={{ color: '#ECECEE' }}>Try again</Text></Pressable>
+        <Pressable onPress={() => { try { router.replace('/'); } catch { /* the router may be what failed */ } retry(); }} accessibilityRole="button" style={btn}><Text style={{ color: '#ECECEE' }}>Go to Home</Text></Pressable>
+      </View>
+    </View>
   );
 }
 

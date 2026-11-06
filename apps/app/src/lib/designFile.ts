@@ -13,24 +13,26 @@ import { isMobileBrowser } from '@/pwa/InstallSheet';
 /** True where "Open a file" works. */
 export const canOpenFiles = Platform.OS === 'web';
 
-export async function saveDesignFile(text: string, fileName: string): Promise<void> {
+/** Resolves true once the file was handed over (download or share sheet), false if the person cancelled. */
+export async function saveDesignFile(text: string, fileName: string): Promise<boolean> {
   if (Platform.OS === 'web') {
     // Phone browsers: hand the file to the share sheet (Save to Files, Drive, a chat…) instead of a download that
     // lands somewhere hard to find. Desktop browsers and older phones fall back to a normal download.
     const file = typeof File !== 'undefined' ? new File([text], fileName, { type: 'application/json' }) : null;
     const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
     if (file && isMobileBrowser() && nav.share && nav.canShare?.({ files: [file] })) {
-      try { await nav.share({ files: [file], title: fileName }); return; }
-      catch (e) { if ((e as Error).name === 'AbortError') return; /* the share sheet failed: download instead */ }
+      try { await nav.share({ files: [file], title: fileName }); return true; }
+      catch (e) { if ((e as Error).name === 'AbortError') return false; /* the share sheet failed: download instead */ }
     }
     const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
     const a = document.createElement('a');
     a.href = url; a.download = fileName; a.rel = 'noopener';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10_000);
-    return;
+    return true;
   }
-  await Share.share({ title: fileName, message: text });
+  const r = await Share.share({ title: fileName, message: text });
+  return r.action !== Share.dismissedAction;
 }
 
 /** Opens the file picker and resolves with the chosen file's text, or null if nothing was picked. */

@@ -33,7 +33,11 @@ export default function Welcome() {
   const last = i === STEPS.length - 1;
   // A replay (Studio → Share) goes back to Studio; the first-launch tour lands on Home.
   const { replay } = useLocalSearchParams<{ replay?: string }>();
-  const done = (to: '/' | '/account' = '/') => { finish(); if (replay && to === '/' && router.canGoBack()) router.back(); else router.replace(to); };
+  const done = (to: '/' | '/account' = '/') => {
+    finish();
+    if (replay && to === '/') { if (router.canGoBack()) router.back(); else router.replace({ pathname: '/studio', params: { tab: 'share' } }); } // after a reload there's no history
+    else router.replace(to);
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: t.c.bg, paddingTop: insets.top }}>
@@ -159,7 +163,7 @@ function Bring({ onLoaded }: { onLoaded: () => void }) {
         {parsed && parsed.ok ? (
           <View style={{ gap: 10 }}>
             <DesignPreview design={parsed.design} />
-            <T v="monoS" c="mut">{parsed.name ? `${parsed.name} · ` : ''}{describeDesign(parsed.design)}</T>
+            <T v="monoS" c="mut">{parsed.name && !describeDesign(parsed.design).startsWith(parsed.name) ? `${parsed.name} · ` : ''}{describeDesign(parsed.design)}</T>
             {parsed.dropped.length ? <T v="sub" c="wait">{`Left out (not valid in this version): ${parsed.dropped.join(', ')}`}</T> : null}
             <Button label="Use this design" onPress={() => use(parsed.design)} />
           </View>

@@ -53,11 +53,14 @@ describe('presets', () => {
     for (const bad of ['javascript:alert(1)', ' JavaScript:alert(1)', 'java	script:alert(1)', 'data:text/html,<b>', 'vbscript:x', 'blob:https://x.y/1', 'file:///etc/passwd', 'about:blank', 'not a url', 'javascript:alert({query})'])
       expect(isSafeLink(bad), bad).toBe(false);
   });
-  it('share codes carrying javascript: link or ask tiles are rejected', () => {
+  it('share codes never carry javascript: link or ask tiles (the tile is left out and named; the rest loads)', () => {
     const tile = (target: unknown) => ({ ...DEFAULT_DESIGN, tiles: [{ ...DEFAULT_DESIGN.tiles[0], id: 'x', target }] }) as unknown as Design;
-    expect(decodeDesign(encodeDesign(tile({ type: 'link', url: 'javascript:alert(1)' }))).ok).toBe(false);
-    expect(decodeDesign(encodeDesign(tile({ type: 'ask', prompt: 'p', template: 'javascript:x({query})', dest: 'link' }))).ok).toBe(false);
-    expect(decodeDesign(encodeDesign(tile({ type: 'link', url: 'https://github.com' }))).ok).toBe(true);
+    for (const bad of [{ type: 'link', url: 'javascript:alert(1)' }, { type: 'ask', prompt: 'p', template: 'javascript:x({query})', dest: 'link' }]) {
+      const r = decodeDesign(encodeDesign(tile(bad)));
+      expect(r.ok && r.design.tiles.length === 0 && r.dropped.length === 1, JSON.stringify(bad)).toBe(true);
+    }
+    const ok = decodeDesign(encodeDesign(tile({ type: 'link', url: 'https://github.com' })));
+    expect(ok.ok && ok.design.tiles.length === 1 && ok.dropped.length === 0).toBe(true);
   });
   it('ask templates must spell out their scheme before {query}', async () => {
     const { isSafeTemplate } = await import('../src');
