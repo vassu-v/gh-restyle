@@ -217,7 +217,7 @@ untested, because they need the owner's own browser.
    multi-line ranges are still untried with a real account. Applying a suggestion takes ~8 s of sequential git API
    calls; some could run in parallel.
 5. **Housekeeping:** the owner can delete `vassu-v/gitling-test` when done with it.
-6. **Extension:** optionally slim the popup (zod).
+6. **Extension:** a Gitling layout for GitHub's signed-in home page (the owner wants it; needs that page's HTML, since every automated test runs signed out). The popup is now slim (switch + settings page).
 7. **Phase 2:** design sync through a private gist; native builds with EAS.
 8. **Optional:** GitHub Developer Program application, and a custom domain in place of `workers.dev`.
 9. **Small product gaps the owner was offered (2026-11-05):**

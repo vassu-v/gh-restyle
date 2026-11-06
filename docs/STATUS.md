@@ -13,6 +13,7 @@ deployed. Keep this file true: update it in the same change that finishes, break
 | M3 | Core GitHub: feed, inbox triage, repos, code browser (syntax colors, branch picker), issues, PRs (diff, checks, merge, reviews with line comments / approve / request changes), search, profiles, markdown | ✅ done (see gaps below) |
 | M4 | Studio: presets gallery, theme, drag-to-reorder tabs/sections/tiles, tile editor, share codes + share links with live preview | ✅ done |
 | M5.1 | Install sheet on phones: Install button (Android/Chrome), Add to Home Screen steps (Safari, or the address bar in Chrome/Firefox/Edge on iPhone), "open in your browser" for in-app browsers, menu steps elsewhere; only on the main tabs and never while typing; snoozes 14 days | ✅ built, tested with iPhone/Pixel emulation (`e2e:onboarding`); Chrome reports the preview installable with 0 errors on a Pixel profile. Not yet tried on a real phone |
+| Ext 0.3 | Extension: popup is just on/off; a settings page (presets, background, accent, counters, corners, text size, design files in and out); the Gitling look on every GitHub page (section labels, mono times, pills); developer mode (hide sales menus, Copilot, footer; wide layout) | ✅ built, `e2e:extension` 41/41 and `stress:extension --quick` 0 new low-contrast on live github.com, signed out. Signed-in pages and the signed-in home page not tested |
 | M4.1 | Welcome tour on first launch (look, home, tab bar, bring a design, how-it-works tips) + design files (`.gitling.json`: save, open, load in the app and the extension) | ✅ built and tested in Chromium (`feat/onboarding`); not yet tried on a real phone. Opening a file on native isn't wired up (paste the text instead) |
 | M5 | Ship the PWA: installable, offline shell, icons; hosted on one Cloudflare Worker with sign-in (`npm run deploy`) | ✅ live at https://gitling.truckcoding.workers.dev |
 | P2 | Push notifications, design sync via gist, native store builds | not started |
@@ -32,7 +33,7 @@ deployed. Keep this file true: update it in the same change that finishes, break
 | Extension stress test on live github.com: 26 page types × 3 backgrounds vs a no-extension baseline, signed out | `npm run stress:extension` (report in `stress-report/`, git-ignored) | 0 new low-contrast text in ~15,000 checks, 0 extension errors, content script 6.3 KB |
 | Read endpoints against the real api.github.com | `LIVE_REPO=vassu-v/gh-restyle LIVE_REPO_ONLY=1 npm run test:live` | pass (repo, readme, tree, file, issues, pulls, thread, files, checks) |
 | Live site: every screen, service worker, offline launch, Chrome installability | `SMOKE_URL=https://gitling.truckcoding.workers.dev npm run smoke` + CDP installability check | 16/16, SW active, opens offline, 0 installability errors; re-run after the PR #2 deploy: all screens ok under the CSP |
-| Extension end to end on live github.com: popup controls, design codes, share links and design files, off/on restore, persistence, in-site navigation | `npm run e2e:extension` | 35/35 |
+| Extension end to end on live github.com: settings page and popup, popup switch, text size, developer mode, design codes, share links and design files, off/on restore, persistence, in-site navigation | `npm run e2e:extension` | 41/41 |
 | Extension | `npm run build:extension` | builds; restyle verified on live github.com during M1 |
 
 ## PR #3 QA pass (2026-11-06)
@@ -183,7 +184,7 @@ That check found, and this change fixes:
   account (2026-11-05). Threads showed Resolve, so the GraphQL `databaseId` = REST `id` join works live. Replies,
   resolve and multi-line ranges are tested in sample mode only.
 - No commits list. The repo tile's "commits" tab opens github.com.
-- **Extension (v0.2.0):** not tested signed in, in Firefox/Edge, or with GitHub's dim/high-contrast settings; not in the Chrome Web Store. The popup still bundles zod (about 450 KB, loads only when opened); the content script is 5.9 KB.
+- **Extension (v0.3.0):** not tested signed in, in Firefox/Edge, or with GitHub's dim/high-contrast settings; not in the Chrome Web Store. GitHub's signed-in home page gets the theme but not its own Gitling layout yet (needs the signed-in page's markup). The popup is about 6 KB; the settings page bundles zod (about 460 KB, only loads when opened); the content script is about 7 KB.
 - Studio: drag-to-reorder not yet tried on a real touchscreen (mouse-tested in Chromium). Ideas: user-saved presets, custom accent color picker.
 - `@expo-google-fonts` must be imported per weight. Importing a family's index ships every weight (6 MB) on
   web.

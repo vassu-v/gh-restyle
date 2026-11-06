@@ -87,7 +87,7 @@ async function run(withExt, theme) {
   });
   if (withExt) {
     const pop = await ctx.newPage();
-    await pop.goto(`chrome-extension://${extId}/popup.html`);
+    await pop.goto(`chrome-extension://${extId}/options.html`);
     await pop.click(`#bg button[data-v="${theme}"]`);
     await pop.close();
   }
