@@ -55,6 +55,12 @@ export const DEFAULT_DESIGN: Design = {
       { id: 'feed', visible: false },
       { id: 'inbox', visible: false },
       { id: 'recent', visible: true },
+      { id: 'reviews', visible: false },
+      { id: 'my-prs', visible: false },
+      { id: 'assigned', visible: false },
+      { id: 'mentions', visible: false },
+      { id: 'starred', visible: false },
+      { id: 'checks', visible: false },
     ],
   },
   tiles: [

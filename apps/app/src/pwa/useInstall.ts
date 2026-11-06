@@ -9,6 +9,18 @@ import { pwa } from './register';
  *  ios-other   — Chrome, Firefox, Edge on iPhone/iPad: Share (in the address bar or menu) → Add to Home Screen
  *  other       — everything else (Android/desktop browsers: their own install prompt or menu)
  */
+/** A phone or tablet browser (not a desktop window made narrow). iPadOS reports itself as a Mac with touch. */
+export function isMobileBrowser(): boolean {
+  if (Platform.OS !== 'web' || typeof navigator === 'undefined') return false;
+  const uaData = (navigator as { userAgentData?: { mobile?: boolean } }).userAgentData;
+  if (uaData?.mobile) return true;
+  const ua = navigator.userAgent;
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+}
+
+/** When the install card was last closed (ms since epoch): it stays away for 14 days after. */
+export const INSTALL_DISMISSED_KEY = 'gitling.install.dismissed';
+
 export type BrowserKind = 'inapp' | 'ios-safari' | 'ios-other' | 'other';
 export function browserKind(): BrowserKind {
   if (Platform.OS !== 'web' || typeof navigator === 'undefined') return 'other';

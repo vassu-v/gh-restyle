@@ -120,27 +120,77 @@
           "type": "object",
           "properties": {
             "sections": {
+              "maxItems": 24,
               "type": "array",
               "items": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string",
-                    "enum": [
-                      "status",
-                      "shortcuts",
-                      "needs",
-                      "feed",
-                      "inbox",
-                      "recent"
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "enum": [
+                          "status",
+                          "shortcuts",
+                          "needs",
+                          "feed",
+                          "inbox",
+                          "recent",
+                          "reviews",
+                          "my-prs",
+                          "assigned",
+                          "mentions",
+                          "starred",
+                          "checks"
+                        ]
+                      },
+                      "visible": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "visible"
                     ]
                   },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^q-[a-z0-9]{1,16}$"
+                      },
+                      "visible": {
+                        "type": "boolean"
+                      },
+                      "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 40
+                      },
+                      "q": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 256
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "visible",
+                      "title",
+                      "q"
+                    ]
+                  }
+                ]
+              },
+              "contains": {
+                "type": "object",
+                "properties": {
                   "visible": {
-                    "type": "boolean"
+                    "const": true
                   }
                 },
                 "required": [
-                  "id",
                   "visible"
                 ]
               }

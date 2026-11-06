@@ -2,7 +2,7 @@
 
 A GitHub client for your phone whose interface you design yourself.
 
-> Current state: `docs/STATUS.md`. Story and owner context: `docs/CONTEXT.md`. How it works: `docs/ARCHITECTURE.md`. Why: `docs/decisions/`. Agents: `AGENTS.md`.
+> Current state: `docs/STATUS.md`. How it works: `docs/ARCHITECTURE.md`. Why: `docs/decisions/`. Agents: `AGENTS.md`.
 
 ## 1. Decisions
 

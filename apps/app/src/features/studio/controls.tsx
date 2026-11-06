@@ -1,19 +1,19 @@
-import { applyPreset, presetOf, resolveTokens, ACCENTS, BACKGROUNDS, PRESETS, type Background, type Design, type SectionId, type TabId } from '@gitling/design';
-import { useMemo } from 'react';
-import { Pressable, ScrollView, Switch, View } from 'react-native';
+import { applyPreset, isSearchSection, presetOf, resolveTokens, ACCENTS, BACKGROUNDS, MAX_SEARCH_SECTIONS, PRESETS, SearchSection, type Background, type Design, type TabId } from '@gitling/design';
+import { useMemo, useState } from 'react';
+import { Pressable, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
 import { TokensScope, useDesign, useTokens } from '@/design/DesignProvider';
+import { SEARCH_IDEAS, SECTION_ORDER, SECTIONS, sectionName } from '@/features/home/sections';
 import { TileView } from '@/features/tiles/TileView';
 import { pad2 } from '@/lib/format';
 import { Icon } from '@/ui/Icon';
 import { moveItem, ReorderList } from '@/ui/Reorder';
-import { Num, Panel, Seg, T, Ticks } from '@/ui/primitives';
+import { Button, Num, Panel, Seg, T, Ticks } from '@/ui/primitives';
 
 /**
  * The design controls shared by Studio and the welcome tour (src/app/welcome.tsx), so both edit the Design the
  * same way. Each control edits the live design through useDesign().update, which keeps undo working.
  */
 
-export const SECTION_NAME: Record<SectionId, string> = { status: 'Status instrument', shortcuts: 'Shortcuts', needs: 'Needs you', feed: 'From your feed', inbox: 'Inbox preview', recent: 'Recent repositories' };
 export const TAB_NAME: Record<TabId, string> = { home: 'Home', feed: 'Feed', inbox: 'Inbox', repos: 'Repositories', studio: 'Studio' };
 const ALL_TABS: TabId[] = ['home', 'feed', 'inbox', 'repos', 'studio'];
 
@@ -53,30 +53,33 @@ export function DesignPreview({ design, width = 272, tiles = true }: { design: D
   );
 }
 
-/** Horizontal gallery of presets; tapping one applies its look (tabs, home and tiles stay). */
+/**
+ * Presets; tapping one applies its look (tabs, home and tiles stay). A sideways-scrolling row on phones; a wrapping
+ * grid on wide screens, where a mouse can't scroll sideways and the last presets would be out of reach.
+ */
 export function PresetGallery() {
   const { design, update } = useDesign();
   const t = useTokens();
   const active = presetOf(design);
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 14, gap: 10, paddingBottom: 16 }}>
-      {PRESETS.map((p) => {
-        const on = active?.id === p.id;
-        return (
-          <Pressable key={p.id} onPress={() => update((d) => { d.theme = { ...p.theme }; })} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={`${p.name} preset. ${p.blurb}`}
-            style={({ pressed }) => ({ width: 168, gap: 8, opacity: pressed ? 0.75 : 1 })}>
-            <View style={{ borderRadius: 26, borderWidth: 2, borderColor: on ? t.c.acc : 'transparent' }}>
-              <DesignPreview design={applyPreset(design, p)} width={140} tiles={false} />
-            </View>
-            <View style={{ paddingHorizontal: 4, gap: 2 }}>
-              <T v="bodyStrong">{p.name}</T>
-              <T v="monoS" c="mut" lines={2}>{p.blurb}</T>
-            </View>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
-  );
+  const wide = useWindowDimensions().width >= 600;
+  const cards = PRESETS.map((p) => {
+    const on = active?.id === p.id;
+    return (
+      <Pressable key={p.id} onPress={() => update((d) => { d.theme = { ...p.theme }; })} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={`${p.name} preset. ${p.blurb}`}
+        style={({ pressed }) => ({ width: 168, gap: 8, opacity: pressed ? 0.75 : 1 })}>
+        <View style={{ borderRadius: 26, borderWidth: 2, borderColor: on ? t.c.acc : 'transparent' }}>
+          <DesignPreview design={applyPreset(design, p)} width={140} tiles={false} />
+        </View>
+        <View style={{ paddingHorizontal: 4, gap: 2 }}>
+          <T v="bodyStrong">{p.name}</T>
+          <T v="monoS" c="mut" lines={2}>{p.blurb}</T>
+        </View>
+      </Pressable>
+    );
+  });
+  return wide
+    ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, gap: 10, paddingBottom: 16 }}>{cards}</View>
+    : <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 14, gap: 10, paddingBottom: 16 }}>{cards}</ScrollView>;
 }
 
 /** Accent, background, numbers, tiles, density, text size. `compact` shows only accent and background (welcome tour). */
@@ -111,19 +114,101 @@ export function LookRows({ compact }: { compact?: boolean }) {
   );
 }
 
-/** Which Home sections show, in what order (drag the grip). */
-export function HomeSectionsEditor() {
+/**
+ * Home's sections: what's on Home (drag to reorder, remove) and everything that can be added, built-in sections
+ * plus your own searches. Home always keeps at least one section.
+ */
+export function HomeSectionsEditor({ compact }: { compact?: boolean }) {
   const { design, update } = useDesign();
   const t = useTokens();
+  const all = design.home.sections;
+  const shown = all.filter((s) => s.visible);
+  const hidden = SECTION_ORDER.filter((id) => all.some((s) => s.id === id && !s.visible));
+  const searches = all.filter(isSearchSection).length;
+  const last = shown.length <= 1;
   return (
-    <ReorderList items={design.home.sections} keyOf={(s) => s.id} label={(s) => SECTION_NAME[s.id]}
-      onMove={(from, to) => update((d) => moveItem(d.home.sections, from, to))}
-      render={(s, i) => (
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, gap: 10 }}>
-          <T v="body" c={s.visible ? 'fg' : 'mut'} style={{ flex: 1 }}>{SECTION_NAME[s.id]}</T>
-          <Switch value={s.visible} onValueChange={(v) => update((d) => { d.home.sections[i].visible = v; })} trackColor={{ true: t.c.acc, false: t.c.line2 }} thumbColor="#fff" {...({ activeThumbColor: '#fff' } as object)} accessibilityLabel={`Show ${SECTION_NAME[s.id]}`} />
-        </View>
-      )} />
+    <View>
+      <T v="label" c="mut" style={{ paddingHorizontal: 18, paddingBottom: 6 }}>on home · {shown.length}</T>
+      <ReorderList items={shown} keyOf={(s) => s.id} label={sectionName}
+        onMove={(from, to) => update((d) => {
+          const vis = d.home.sections.filter((s) => s.visible);
+          moveItem(vis, from, to);
+          d.home.sections = [...vis, ...d.home.sections.filter((s) => !s.visible)];
+        })}
+        render={(s) => (
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 18, gap: 10 }}>
+            <Icon name={isSearchSection(s) ? 'search' : SECTIONS[s.id].icon} size={16} color={t.c.acc} />
+            <View style={{ flex: 1 }}>
+              <T v="body" lines={1}>{sectionName(s)}</T>
+              {isSearchSection(s) ? <T v="monoS" c="mut" lines={1}>{s.q}</T> : null}
+            </View>
+            <Pressable disabled={last} hitSlop={6} accessibilityRole="button" accessibilityLabel={`Remove ${sectionName(s)} from Home`} style={{ padding: 6, opacity: last ? 0.25 : 1 }}
+              onPress={() => update((d) => {
+                if (d.home.sections.filter((x) => x.visible).length <= 1) return;
+                d.home.sections = isSearchSection(s) ? d.home.sections.filter((x) => x.id !== s.id) : d.home.sections.map((x) => (x.id === s.id ? { ...x, visible: false } : x));
+              })}>
+              <Icon name="x" size={17} color={t.c.mut} />
+            </Pressable>
+          </View>
+        )} />
+      {last ? <T v="monoS" c="mut" style={{ paddingHorizontal: 18, paddingTop: 6 }}>Home keeps at least one section.</T> : null}
+
+      <T v="label" c="mut" style={{ paddingHorizontal: 18, paddingTop: 22, paddingBottom: 6 }}>add to home</T>
+      {hidden.length ? hidden.map((id) => (
+        <Pressable key={id} accessibilityRole="button" accessibilityLabel={`Add ${SECTIONS[id].name}`}
+          onPress={() => update((d) => {
+            const sec = d.home.sections.find((x) => x.id === id);
+            if (!sec) return;
+            d.home.sections = [...d.home.sections.filter((x) => x.visible), { ...sec, visible: true }, ...d.home.sections.filter((x) => !x.visible && x.id !== id)];
+          })}
+          style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, paddingVertical: 10, opacity: pressed ? 0.6 : 1 })}>
+          <View style={{ width: 32, height: 32, borderRadius: 9, backgroundColor: t.c.el2, alignItems: 'center', justifyContent: 'center' }}><Icon name={SECTIONS[id].icon} size={16} color={t.c.mut} /></View>
+          <View style={{ flex: 1 }}>
+            <T v="body">{SECTIONS[id].name}</T>
+            {compact ? null : <T v="sub" c="mut" lines={1}>{SECTIONS[id].blurb}</T>}
+          </View>
+          <Icon name="plus" size={18} color={t.c.acc} />
+        </Pressable>
+      )) : <T v="sub" c="mut" style={{ paddingHorizontal: 18 }}>Every built-in section is on Home.</T>}
+
+      <SearchSectionForm full={searches >= MAX_SEARCH_SECTIONS} />
+    </View>
+  );
+}
+
+/** Add a section that lists any GitHub issue/PR search, under your own title. */
+function SearchSectionForm({ full }: { full: boolean }) {
+  const { update } = useDesign();
+  const t = useTokens();
+  const [title, setTitle] = useState('');
+  const [q, setQ] = useState('');
+  const fields = { visible: true, title: title.trim(), q: q.trim() };
+  const ok = !full && SearchSection.safeParse({ id: 'q-check', ...fields }).success;
+  const input = { padding: 11, borderRadius: 12, backgroundColor: t.c.el2, color: t.c.fg, fontSize: 14 } as const;
+  const add = () => {
+    if (!ok) return;
+    const sec = { id: `q-${Date.now().toString(36)}`, ...fields };
+    update((d) => { d.home.sections = [...d.home.sections.filter((x) => x.visible), sec, ...d.home.sections.filter((x) => !x.visible)]; });
+    setTitle(''); setQ('');
+  };
+  return (
+    <View style={{ paddingHorizontal: 18, paddingTop: 22, gap: 8 }}>
+      <T v="label" c="mut">your own search</T>
+      <T v="sub" c="mut">Any GitHub search can be a Home section: a label you watch, a repo’s open PRs, your drafts.</T>
+      <TextInput value={title} onChangeText={setTitle} placeholder="Title, e.g. Bugs I’m in" placeholderTextColor={t.c.dim} maxLength={40} accessibilityLabel="Section title"
+        style={[input, { fontFamily: t.font.ui.regular }]} />
+      <TextInput value={q} onChangeText={setQ} placeholder="Search, e.g. is:open label:bug repo:owner/name" placeholderTextColor={t.c.dim} maxLength={256} autoCapitalize="none" autoCorrect={false}
+        accessibilityLabel="Search query" onSubmitEditing={add} style={[input, { fontFamily: t.font.mono.regular, fontSize: 13 }]} />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+        {SEARCH_IDEAS.map((idea) => (
+          <Pressable key={idea.title} onPress={() => { setTitle(idea.title); setQ(idea.q); }} accessibilityRole="button" accessibilityLabel={`Use idea: ${idea.title}`}
+            style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, backgroundColor: t.c.el2 }}>
+            <T v="sub">{idea.title}</T>
+          </Pressable>
+        ))}
+      </ScrollView>
+      <Button kind="quiet" icon="plus" label={full ? `Up to ${MAX_SEARCH_SECTIONS} searches` : 'Add search to Home'} disabled={!ok} onPress={add} />
+    </View>
   );
 }
 

@@ -98,7 +98,7 @@ apps/app
 2. Multi-line range selection.
 3. `suggest.ts` + Suggestion card (read-only rendering first).
 4. Apply (single, then batch) with all the guards, and e2e.
-5. Docs: ARCHITECTURE, STATUS, CONTEXT.
+5. Docs: ARCHITECTURE, STATUS.
 
 ## Risks
 

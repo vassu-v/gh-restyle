@@ -12,3 +12,6 @@ coverage/
 stress-report/
 # wrangler dev's local secrets (GITHUB_CLIENT_SECRET)
 .dev.vars*
+
+# Maintainer's private notes (history, deploy facts, how they work). Kept on their machine only.
+docs/local/

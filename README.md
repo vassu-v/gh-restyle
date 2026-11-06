@@ -75,7 +75,6 @@ scripts/           PWA post-build, smoke and end-to-end runs, deploy
 | | |
 |---|---|
 | [`AGENTS.md`](AGENTS.md) | Start here if you're contributing or you're an AI agent: rules and every command |
-| [`docs/CONTEXT.md`](docs/CONTEXT.md) | The story so far, deploy facts, environment quirks |
 | [`docs/STATUS.md`](docs/STATUS.md) | What's done, how it was verified, and what isn't yet |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | How it fits together; [`docs/decisions/`](docs/decisions/) explains why |
 | [`docs/TESTING.md`](docs/TESTING.md) | Test layers and when to run what |

@@ -1,6 +1,6 @@
 import type { TabId } from '@gitling/design';
 import { router } from 'expo-router';
-import { Pressable, View } from 'react-native';
+import { Platform, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDesign } from '@/design/DesignProvider';
 import { useNotifications } from '@/data/queries';
@@ -19,8 +19,14 @@ export function TabBar({ state, navigateToTab }: Props) {
   const insets = useSafeAreaInsets();
   const unread = useNotifications(false).data?.length ?? 0;
   const current = state.routes[state.index]?.name;
+  const bottom = Math.max(insets.bottom, 12) + 4;
   return (
-    <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, bottom: Math.max(insets.bottom, 12) + 4, alignItems: 'center' }}>
+    <>
+    {/* Web: rows scrolling under the floating bar fade out behind it instead of sitting half-covered beneath it. */}
+    {Platform.OS === 'web' ? (
+      <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: bottom + 58 + 26, ...({ backgroundImage: `linear-gradient(to bottom, ${t.c.bg}00, ${t.c.bg}E6 55%, ${t.c.bg})` } as object) }} />
+    ) : null}
+    <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, bottom, alignItems: 'center' }}>
       <View style={{ flexDirection: 'row', gap: 10, width: '100%', maxWidth: 520, paddingHorizontal: 16 }}>
         <View style={[{ flex: 1, height: 58, borderRadius: 29, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingHorizontal: 6 }, glass(t)]}>
           {design.nav.tabs.map((id) => {
@@ -40,5 +46,6 @@ export function TabBar({ state, navigateToTab }: Props) {
         </Pressable>
       </View>
     </View>
+    </>
   );
 }

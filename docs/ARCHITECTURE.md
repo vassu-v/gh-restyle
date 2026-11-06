@@ -94,7 +94,7 @@ Dependency direction is one way: screens → hooks → `api` → `client` → ne
 | `/inbox` | Notifications with swipe triage |
 | `/repos` | Your repos / starred |
 | `/studio` | Design editor (theme, tabs, sections, tiles, share codes, save/open design files, replay the tour) |
-| `/welcome` | Welcome tour: shown once on first launch, from `/` only (see Design system) |
+| `/welcome` | First run from `/` only: install (phone browsers) → sign in → setup tour; `?replay=1` is the tour alone (see Design system) |
 | `/repo/[owner]/[name]` | Repo home: stats, star, Code/Issues/PRs, README |
 | `/repo/[owner]/[name]/tree?path&ref` | Directory listing, branch picker |
 | `/repo/[owner]/[name]/blob?path&ref` | File viewer (syntax colors, line numbers; markdown preview), branch picker |
@@ -151,6 +151,13 @@ tokenStore.set(token); GET /user to validate
   - It adds manifest, icon, theme and `viewport-fit=cover` tags to `index.html`. Expo's `single` output has no
     HTML template.
   - It writes `sw.js`. Its cache name is the hash of the build's files, and it precaches the build.
+  - It preloads the 7 font files and adds an HTML splash (`#gitling-splash`, plain HTML and CSS, no script) that
+    shows from the first paint; `src/app/_layout.tsx` fades it out once the app has drawn (or the error screen has).
+- **One bundle on web** (`app.json`: `["expo-router", { "asyncRoutes": { "web": false } }]`). Expo Router's
+  default splits every screen into its own file, fetched on first visit after the layout files: the live site
+  showed ~3 s of black at startup and a wait on each new screen. One ~590 KB (gzip) bundle loads with the fonts
+  in parallel instead. `npm run smoke` checks: splash removed, fonts preloaded, no code fetched when changing
+  screens.
 - **Service worker behaviour:**
   - Navigations are network-first, falling back to the cached shell.
   - Same-origin static files are cache-first, looked up across the current build's cache and the two
@@ -196,12 +203,19 @@ tokenStore.set(token); GET /user to validate
   same Design document with `format`/`formatVersion`. `readDesignText` is the one reader for every box that takes
   a design: a file, a bare design, a code or a link. It salvages partly invalid files and names what it dropped.
   `apps/app/src/lib/designFile.ts` handles download and file picker on web, and the share sheet on native.
-- **Welcome tour** (`src/app/welcome.tsx`, `src/onboarding/OnboardingProvider.tsx`). The steps are look → home →
-  tab bar → bring a design → tips. They use the same controls as Studio (`src/features/studio/controls.tsx`) and
-  edit the live design, so there's no separate "apply" step.
-  - Someone sees it on `/` when they haven't finished or skipped it (`gitling.onboarded.v1`) and have no saved
-    design. People from before the tour have a saved design and skip it.
-  - A mid-tour reload brings it back (`gitling.onboarding.pending`).
+- **First run** (`src/app/welcome.tsx`, `src/onboarding/OnboardingProvider.tsx`, `useFirstRun()`), in order:
+  1. **Install** (phone browsers only, not inside the installed app): the browser's install dialog or the steps for
+     that browser. First because on iPhone the installed app has its own storage, so signing in before installing
+     means signing in twice. "Continue in the browser" passes it (`gitling.onboarding.install`) and also snoozes
+     the install card.
+  2. **Sign in** with GitHub, or "Look around first" (`gitling.onboarding.signin-skipped`): sample data, and the
+     tour waits until they sign in.
+  3. **Tour**, once signed in: look (with "Already have a setup?" to load a file or code) → Home sections → tab
+     bar with a few tips. Same controls as Studio (`src/features/studio/controls.tsx`), editing the live design, so
+     there's no separate "apply" step. Studio → Share → Replay opens it alone.
+  - Someone is "new" on `/` when they haven't finished or skipped the tour (`gitling.onboarded.v1`) and have no
+    saved design. People from before the tour have a saved design and skip all of it.
+  - A reload mid-way brings it back (`gitling.onboarding.pending`).
   - The provider sits outside DesignProvider so it reads storage before the default design is first saved.
   - Tests that check screens set `gitling.onboarded.v1` first.
 - New skins add palettes in `packages/design` and keep the same token names.

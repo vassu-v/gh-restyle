@@ -2,7 +2,7 @@ import type { Design } from './schema';
 
 /**
  * Curated looks for the Studio gallery. A preset only changes `theme`; the person's tabs, home layout and
- * tiles stay as they are. All presets are Signal-skin variations (see docs/CONTEXT.md § Design taste).
+ * tiles stay as they are. All presets are Signal-skin variations.
  */
 export type Preset = { id: string; name: string; blurb: string; theme: Design['theme'] };
 
