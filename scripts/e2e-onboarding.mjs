@@ -14,11 +14,13 @@ import { build } from 'esbuild';
 const root = fileURLToPath(new URL('..', import.meta.url));
 const dist = join(root, 'apps/app/dist');
 if (!existsSync(join(dist, 'index.html'))) { console.error('Build first: npm run build:web'); process.exit(1); }
+// The same Content-Security-Policy (with Trusted Types) Cloudflare serves, so file save/open are tested under it.
+const CSP = (() => { try { return /Content-Security-Policy: (.+)/.exec(readFileSync(join(dist, '_headers'), 'utf8'))?.[1]; } catch { return undefined; } })();
 const TYPES = { '.js': 'text/javascript', '.html': 'text/html', '.json': 'application/json', '.png': 'image/png', '.ttf': 'font/ttf', '.ico': 'image/x-icon' };
 const server = createServer((req, res) => {
   const p = decodeURIComponent(new URL(req.url, 'http://x').pathname); const f = join(dist, p);
   const target = p !== '/' && existsSync(f) && extname(f) ? f : join(dist, 'index.html');
-  res.writeHead(200, { 'Content-Type': TYPES[extname(target)] ?? 'application/octet-stream' }); res.end(readFileSync(target));
+  res.writeHead(200, { 'Content-Type': TYPES[extname(target)] ?? 'application/octet-stream', ...(CSP && extname(target) === '.html' ? { 'Content-Security-Policy': CSP } : {}) }); res.end(readFileSync(target));
 }).listen(0);
 const base = `http://127.0.0.1:${server.address().port}`;
 const log = (ok, msg) => { console.log(`${ok ? '✓' : '✗'} ${msg}`); if (!ok) process.exitCode = 1; };
@@ -113,7 +115,7 @@ const next = (page) => page.getByRole('button', { name: 'Next', exact: true }).c
   await page.getByRole('button', { name: 'Replay the welcome tour' }).click();
   log(await visible(page.getByText('01 / 06 · hello')), 'Studio → "Replay the welcome tour" opens it again');
   await page.getByRole('button', { name: 'Skip setup' }).click();
-  log(await visible(page.getByText('need you')), 'Skip goes to Home');
+  log(await visible(page.getByRole('button', { name: 'Replay the welcome tour' })), 'Skip on a replay goes back to Studio');
   await ctx.close();
 }
 
@@ -154,6 +156,29 @@ const next = (page) => page.getByRole('button', { name: 'Next', exact: true }).c
   await b.page.goto(base + '/repo/you/trail-notes', { waitUntil: 'networkidle' });
   log(await visible(b.page.getByText('README')), 'a deep link on first launch opens that screen, not the tour');
   await b.ctx.close();
+}
+
+// 7. A share-link recipient who applies the design has set Gitling up: no tour on their first Home.
+{
+  const { ctx, page } = await fresh();
+  await page.goto(base + '/studio?tab=share', { waitUntil: 'networkidle' });
+  await page.getByPlaceholder(/Paste a GITLING1/).fill(designToFile(applyPreset(DEFAULT_DESIGN, PRESETS[1]), { name: 'Shared' }));
+  await page.getByRole('button', { name: 'Apply this design' }).click();
+  await page.goto(base + '/', { waitUntil: 'networkidle' });
+  log(!page.url().endsWith('/welcome') && await visible(page.getByText('need you')), 'applying a shared design ends the tour (first Home is Home)');
+  await ctx.close();
+}
+
+// 8. The tour's tip is true: a github.com link pasted into Search opens its Gitling screen.
+{
+  const { ctx, page } = await fresh();
+  await page.addInitScript((d) => { localStorage.setItem('gitling.design.v1', d); }, JSON.stringify(DEFAULT_DESIGN));
+  await page.goto(base + '/search', { waitUntil: 'networkidle' });
+  await page.getByPlaceholder('Search GitHub').fill('github.com/you/trail-notes/issues/42');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(800);
+  log(page.url().includes('/thread/you/trail-notes/42'), 'Search opens a pasted github.com link as a Gitling screen');
+  await ctx.close();
 }
 
 log(errors.length === 0, `no page errors${errors.length ? ': ' + errors.join(' | ') : ''}`);

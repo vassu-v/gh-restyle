@@ -1,5 +1,5 @@
 import { describeDesign, readDesignText, type Design } from '@gitling/design';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,7 +31,9 @@ export default function Welcome() {
   const [i, setI] = useState(0);
   const step = STEPS[i];
   const last = i === STEPS.length - 1;
-  const done = (to: '/' | '/account' = '/') => { finish(); router.replace(to); };
+  // A replay (Studio → Share) goes back to Studio; the first-launch tour lands on Home.
+  const { replay } = useLocalSearchParams<{ replay?: string }>();
+  const done = (to: '/' | '/account' = '/') => { finish(); if (replay && to === '/' && router.canGoBack()) router.back(); else router.replace(to); };
 
   return (
     <View style={{ flex: 1, backgroundColor: t.c.bg, paddingTop: insets.top }}>
@@ -169,6 +171,7 @@ function Bring({ onLoaded }: { onLoaded: () => void }) {
 
 /** The short walkthrough: the few gestures and places that aren't obvious. */
 function Tips({ onSignIn }: { onSignIn: () => void }) {
+  const t = useTokens();
   const { isSample, canOAuth } = useSession();
   const tips: [string, string, ReactNode][] = [
     ['sparkles', 'Shortcuts are yours', 'Long-press a tile on Home to change what it opens: a search, a repo, a file, an inbox filter or any link.'],
@@ -180,16 +183,17 @@ function Tips({ onSignIn }: { onSignIn: () => void }) {
   return (
     <View>
       <Head title="A few things worth knowing" body="That’s the setup done. Here’s how to get around." />
+      {/* Sign-in first: it's the step that matters most for someone new, so it mustn't sit below the fold. */}
+      {isSample ? (
+        <Panel style={{ marginHorizontal: 14, marginBottom: 12, padding: 14, gap: 10 }} tint={t.c.acc}>
+          <T v="bodyStrong">You’re looking at sample data</T>
+          <T v="sub" c="mut">{canOAuth ? 'Sign in with GitHub to see your own reviews, inbox and repos. Your token stays on this device.' : 'Connect a GitHub token from Account to see your own data.'}</T>
+          <Button icon="key-round" label={canOAuth ? 'Sign in with GitHub' : 'Connect GitHub'} onPress={onSignIn} />
+        </Panel>
+      ) : null}
       <View style={{ paddingHorizontal: 14, gap: 10 }}>
         {tips.map(([icon, title, body]) => <Tip key={title as string} icon={icon} title={title} body={body} />)}
       </View>
-      {isSample ? (
-        <Panel style={{ marginHorizontal: 14, marginTop: 16, padding: 14, gap: 10 }}>
-          <T v="bodyStrong">You’re looking at sample data</T>
-          <T v="sub" c="mut">{canOAuth ? 'Sign in with GitHub to see your own reviews, inbox and repos. Your token stays on this device.' : 'Connect a GitHub token from Account to see your own data.'}</T>
-          <Button kind="quiet" icon="key-round" label={canOAuth ? 'Sign in with GitHub' : 'Connect GitHub'} onPress={onSignIn} />
-        </Panel>
-      ) : null}
     </View>
   );
 }

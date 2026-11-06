@@ -7,6 +7,7 @@ import { appUrl } from '@/config';
 import { useDesign } from '@/design/DesignProvider';
 import { DesignPreview, HomeSectionsEditor, LookRows, PresetGallery, TabBarEditor } from '@/features/studio/controls';
 import { canOpenFiles, openDesignFile, saveDesignFile } from '@/lib/designFile';
+import { useOnboarding } from '@/onboarding/OnboardingProvider';
 import { Icon } from '@/ui/Icon';
 import { moveItem, ReorderList } from '@/ui/Reorder';
 import { Button, Chips, Screen, T } from '@/ui/primitives';
@@ -21,6 +22,9 @@ const shareLink = (code: string) => {
 
 export default function Studio() {
   const { design, tokens: t, update, undo, canUndo, replace, reset, dropped, dismissDropped } = useDesign();
+  // Someone who arrived with a share link and applied it has set Gitling up: no tour on their first Home.
+  const onboarding = useOnboarding();
+  const appliedDesign = () => { if (onboarding.needed) onboarding.finish(); };
   const params = useLocalSearchParams<{ tab?: string; import?: string }>();
   const [tab, setTab] = useState<Tab>('look');
   const [code, setCode] = useState('');
@@ -112,7 +116,7 @@ export default function Studio() {
             <Button label="Copy share link" icon="link" onPress={async () => { await Clipboard.setStringAsync(shareLink(encodeDesign(design))); flash(true, 'Link copied. Anyone with Gitling can preview and apply it.'); }} />
           ) : null}
           <Button kind="quiet" label="Copy design code" icon="copy" onPress={async () => { await Clipboard.setStringAsync(encodeDesign(design)); flash(true, 'Code copied.'); }} />
-          <Button kind="quiet" label={Platform.OS === 'web' ? 'Save as file' : 'Share as file'} icon="download" onPress={async () => {
+          <Button kind="quiet" label={Platform.OS === 'web' ? 'Save as file' : 'Share design'} icon="download" onPress={async () => {
             const name = active?.name;
             try { await saveDesignFile(designToFile(design, { name }), designFileName(name)); flash(true, 'Saved. Open it later here or in Welcome to bring this setup back.'); }
             catch { flash(false, "Couldn't save the file."); }
@@ -137,14 +141,14 @@ export default function Studio() {
                 <T v="monoS" c="mut">{parsed.name ? `${parsed.name} · ` : ''}{describeDesign(parsed.design)}</T>
                 {parsed.dropped.length ? <T v="sub" c="wait">{`Left out (not valid in this version): ${parsed.dropped.join(', ')}`}</T> : null}
                 <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <Button style={{ flex: 1 }} label="Apply this design" onPress={() => { replace(parsed.design); setCode(''); flash(true, 'Design applied. Undo is available.'); if (params.import) router.setParams({ import: '' }); }} />
-                  <Button kind="quiet" label="Only the look" onPress={() => { update((d) => { d.theme = { ...parsed.design.theme }; }); setCode(''); flash(true, 'Look applied; your tabs and shortcuts stayed. Undo is available.'); if (params.import) router.setParams({ import: '' }); }} />
+                  <Button style={{ flex: 1 }} label="Apply this design" onPress={() => { replace(parsed.design); appliedDesign(); setCode(''); flash(true, 'Design applied. Undo is available.'); if (params.import) router.setParams({ import: '' }); }} />
+                  <Button kind="quiet" label="Only the look" onPress={() => { update((d) => { d.theme = { ...parsed.design.theme }; }); appliedDesign(); setCode(''); flash(true, 'Look applied; your tabs and shortcuts stayed. Undo is available.'); if (params.import) router.setParams({ import: '' }); }} />
                 </View>
               </View>
             );
           })()}
           {msg ? <T v="sub" c={msg.ok ? 'ok' : 'bad'}>{msg.text}</T> : null}
-          <Button kind="quiet" label="Replay the welcome tour" icon="sparkles" style={{ marginTop: 18 }} onPress={() => router.push('/welcome')} />
+          <Button kind="quiet" label="Replay the welcome tour" icon="sparkles" style={{ marginTop: 18 }} onPress={() => router.push({ pathname: '/welcome', params: { replay: '1' } })} />
           <Button kind="danger" label={armReset ? 'Tap again to reset' : 'Reset to default'} onPress={() => { if (!armReset) { setArmReset(true); setTimeout(() => setArmReset(false), 3500); return; } reset(); setArmReset(false); flash(true, 'Reset. Undo is available.'); }} />
         </View>
       ) : null}

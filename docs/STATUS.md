@@ -24,7 +24,7 @@ deployed. Keep this file true: update it in the same change that finishes, break
 | Lint | `npm run lint` | clean |
 | Unit + property-based fuzz tests: client, api × sample data, PKCE/state, worker, design + presets, suggestions, diffs, extension storage | `npm test` (`npm run verify` runs everything) | 151/151 |
 | Every screen in Chromium at phone size, plus PWA files, service worker and offline launch | `npm run smoke` | 17/17 screens (incl. `/welcome`), SW registers, opens offline |
-| Welcome tour + design files: first launch, every step saves, skip/finish, mid-tour reload, returning users, deep links, Studio download + file picker, pasted file | `npm run e2e:onboarding` | 30/30 |
+| Welcome tour + design files: first launch, every step saves, skip/finish, mid-tour reload, returning users, deep links, applying a shared design ends the tour, replay returns to Studio, Search opens pasted github.com links, Studio download + file picker (under the real CSP), pasted file | `npm run e2e:onboarding` | 32/32 |
 | Full sign-in flow, GitHub simulated, real worker code | `npm run e2e:signin` | 12/12 |
 | Studio: presets, mouse drag reorder, share link preview/apply | `npm run e2e:studio` | 12/12 |
 | PR reviews: line comments, verdicts, timeline, own-PR rules, replies, resolve/unresolve, multi-line ranges, suggestions (apply, batch, blocked reasons), file changed in the code browser | `npm run e2e:review` | 47/47 |

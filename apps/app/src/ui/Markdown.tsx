@@ -5,10 +5,10 @@ import { useTokens } from '@/design/DesignProvider';
 import { openUrl, routes } from '@/lib/links';
 import { CodeLines, languageForFence } from './Code';
 import { ALERT_LABEL, alertOf, lexAlertBody } from './alerts';
+import { router } from 'expo-router';
 
 /** The document's reference-link definitions, for blocks lexed on their own (alert bodies). */
 const DocLinks = createContext<Links | undefined>(undefined);
-import { router } from 'expo-router';
 
 /**
  * GitHub-flavoured markdown → React Native views. Works the same on web, iOS and Android.
