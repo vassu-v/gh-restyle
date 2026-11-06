@@ -32,6 +32,15 @@ export default function Thread() {
   // One disarm timer at a time: an older timer must not disarm a button re-armed (or a method picked) since.
   const disarm = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(disarm.current), []);
+  // Closing also takes two taps (a lone ✕ next to Merge was easy to hit by accident): "Close", then "Tap again to close".
+  const [closeArmed, setCloseArmed] = useState(false);
+  const closeDisarm = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(closeDisarm.current), []);
+  const close = () => {
+    clearTimeout(closeDisarm.current);
+    if (!closeArmed) { setArmed(false); setCloseArmed(true); closeDisarm.current = setTimeout(() => setCloseArmed(false), 6000); return; }
+    setCloseArmed(false); actions.setState.mutate('closed');
+  };
   const review = useReviews(owner, repo, n, isPr);
   const threads = useReviewThreads(owner, repo, n, isPr && seg === 'files');
   // Suggestions collected for one commit, and the note after a commit (kept here: applied threads re-mount as outdated).
@@ -208,16 +217,19 @@ export default function Thread() {
             <Button kind="quiet" icon="list-checks" style={[glass(t), canWrite ? {} : { flex: 1 }]} label={`Review${drafts.length ? ` · ${drafts.length}` : ''}`}
               onPress={() => { setSeg('conv'); setReviewing(true); setReviewDone(null); }} />
           ) : null}
-          {p && open && canWrite ? (
+          {p && open && canWrite && !closeArmed ? (
             <Button style={{ flex: 1 }} icon="git-merge" disabled={p.mergeable === false || p.draft || actions.merge.isPending}
               label={actions.merge.isPending ? 'Merging…' : armed ? `Tap again to ${MERGE_VERB[chosen]}` : 'Merge'}
-              onPress={() => { clearTimeout(disarm.current); if (!armed) { setArmed(true); disarm.current = setTimeout(() => setArmed(false), 6000); return; } setArmed(false); actions.merge.mutate(chosen); }} />
+              onPress={() => { clearTimeout(disarm.current); setCloseArmed(false); if (!armed) { setArmed(true); disarm.current = setTimeout(() => setArmed(false), 6000); return; } setArmed(false); actions.merge.mutate(chosen); }} />
           ) : !p && canWrite ? (
-            <Button style={{ flex: 1 }} kind="quiet" label={open ? 'Close issue' : 'Reopen'} disabled={actions.setState.isPending} onPress={() => actions.setState.mutate(open ? 'closed' : 'open')} />
+            <Button style={{ flex: 1 }} kind={open && closeArmed ? 'danger' : 'quiet'} label={open ? (closeArmed ? 'Tap again to close' : 'Close issue') : 'Reopen'} disabled={actions.setState.isPending} onPress={() => (open ? close() : actions.setState.mutate('open'))} />
           ) : p && !open && canWrite && !p.merged ? (
             <Button style={{ flex: 1 }} kind="quiet" label="Reopen" disabled={actions.setState.isPending} onPress={() => actions.setState.mutate('open')} />
           ) : !(p && open) ? <View style={{ flex: 1 }} /> : null}
-          {p && open && canWrite ? <Button kind="quiet" icon="x" style={glass(t)} onPress={() => actions.setState.mutate('closed')} accessibilityLabel="Close pull request" /> : null}
+          {p && open && canWrite && !armed ? (
+            <Button kind={closeArmed ? 'danger' : 'quiet'} icon="x" style={[glass(t), closeArmed ? { flex: 1 } : {}]} disabled={actions.setState.isPending}
+              label={closeArmed ? 'Tap again to close' : 'Close'} accessibilityLabel={closeArmed ? 'Tap again to close the pull request' : 'Close pull request'} onPress={close} />
+          ) : null}
         </View>
         {[actions.merge.error, actions.setState.error].filter(Boolean).slice(0, 1).map((e) => <T key="e" v="sub" c="bad" style={{ marginTop: 6 }}>{(e as Error).message}</T>)}
       </View>

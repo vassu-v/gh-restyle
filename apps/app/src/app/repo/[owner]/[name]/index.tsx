@@ -1,20 +1,22 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { Linking, Pressable, View } from 'react-native';
 import { useTokens } from '@/design/DesignProvider';
-import { useReadme, useRepo, useStar } from '@/data/queries';
+import { useDir, useReadme, useRepo, useStar } from '@/data/queries';
 import { LANG, rel, short } from '@/lib/format';
 import { routes } from '@/lib/links';
 import { Icon } from '@/ui/Icon';
 import { Markdown } from '@/ui/Markdown';
-import { BackHeader, ErrorNote, Loading, Panel, Row, Screen, T } from '@/ui/primitives';
+import { BackHeader, ErrorNote, Loading, Panel, Row, Screen, SectionLabel, T } from '@/ui/primitives';
 
-/** Repository home: header, stats, Code / Issues / Pull requests, README. */
+/** Repository home: header, stats, the top-level files (like github.com), Issues / Pull requests, README. */
+const FILES_SHOWN = 8;
 export default function RepoScreen() {
   const t = useTokens();
   const { owner, name } = useLocalSearchParams<{ owner: string; name: string }>();
   const repo = useRepo(owner, name);
   const readme = useReadme(owner, name);
   const star = useStar(`${owner}/${name}`);
+  const files = useDir(owner, name, ''); // default branch
   const r = repo.data;
 
   const header = <BackHeader title={`${owner}/${name}`} right={r ? <Pressable onPress={() => Linking.openURL(r.html_url)} hitSlop={10} accessibilityLabel="Open on GitHub"><Icon name="arrow-up-right" size={20} color={t.c.mut} /></Pressable> : null} />;
@@ -47,8 +49,23 @@ export default function RepoScreen() {
         {star.error ? <T v="sub" c="bad">{(star.error as Error).message}</T> : null}
       </View>
 
-      <Panel style={{ marginHorizontal: 14, marginTop: 16, paddingVertical: 4 }}>
-        <Row icon="code" title="Code" sub={r.default_branch} onPress={() => router.push(routes.tree(owner, name, '', r.default_branch))} />
+      {/* The files right on the repo screen, as on github.com: the code browser shouldn't need finding. */}
+      <SectionLabel title={`code · ${r.default_branch}`} action="Browse code" onAction={() => router.push(routes.tree(owner, name, '', r.default_branch))} />
+      <Panel style={{ marginHorizontal: 14, paddingVertical: 4 }}>
+        {files.isLoading ? <Loading rows={3} /> : (files.error as { status?: number } | null)?.status === 404 ? <T v="sub" c="mut" style={{ padding: 14 }}>This repository is empty.</T> : files.error ? <ErrorNote error={files.error} onRetry={() => files.refetch()} /> : (
+          <>
+            {[...(files.data ?? [])].sort((a, b) => Number(b.type === 'dir') - Number(a.type === 'dir') || a.name.localeCompare(b.name)).slice(0, FILES_SHOWN).map((it) => (
+              <Row key={it.path} mono icon={it.type === 'dir' ? 'folder' : it.type === 'submodule' ? 'package' : 'file'} title={it.name}
+                onPress={it.type === 'dir' ? () => router.push(routes.tree(owner, name, it.path, r.default_branch)) : it.type === 'file' ? () => router.push(routes.blob(owner, name, it.path, r.default_branch)) : undefined} />
+            ))}
+            {(files.data?.length ?? 0) > FILES_SHOWN ? (
+              <Row icon="folder-open" title={`All ${files.data!.length} files and folders`} onPress={() => router.push(routes.tree(owner, name, '', r.default_branch))} />
+            ) : !files.data?.length ? <T v="sub" c="mut" style={{ padding: 14 }}>This repository is empty.</T> : null}
+          </>
+        )}
+      </Panel>
+
+      <Panel style={{ marginHorizontal: 14, marginTop: 12, paddingVertical: 4 }}>
         <Row icon="circle-dot" iconColor={t.c.ok} title="Issues" onPress={() => router.push(routes.list(owner, name, 'issues'))} />
         <Row icon="git-pull-request" iconColor={t.c.ok} title="Pull requests" onPress={() => router.push(routes.list(owner, name, 'pulls'))} />
       </Panel>

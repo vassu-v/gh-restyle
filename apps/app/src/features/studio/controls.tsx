@@ -1,6 +1,6 @@
 import { applyPreset, isSearchSection, presetOf, resolveTokens, ACCENTS, BACKGROUNDS, MAX_SEARCH_SECTIONS, PRESETS, SearchSection, type Background, type Design, type TabId } from '@gitling/design';
 import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
 import { TokensScope, useDesign, useTokens } from '@/design/DesignProvider';
 import { SEARCH_IDEAS, SECTION_ORDER, SECTIONS, sectionName } from '@/features/home/sections';
 import { TileView } from '@/features/tiles/TileView';
@@ -53,30 +53,33 @@ export function DesignPreview({ design, width = 272, tiles = true }: { design: D
   );
 }
 
-/** Horizontal gallery of presets; tapping one applies its look (tabs, home and tiles stay). */
+/**
+ * Presets; tapping one applies its look (tabs, home and tiles stay). A sideways-scrolling row on phones; a wrapping
+ * grid on wide screens, where a mouse can't scroll sideways and the last presets would be out of reach.
+ */
 export function PresetGallery() {
   const { design, update } = useDesign();
   const t = useTokens();
   const active = presetOf(design);
-  return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 14, gap: 10, paddingBottom: 16 }}>
-      {PRESETS.map((p) => {
-        const on = active?.id === p.id;
-        return (
-          <Pressable key={p.id} onPress={() => update((d) => { d.theme = { ...p.theme }; })} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={`${p.name} preset. ${p.blurb}`}
-            style={({ pressed }) => ({ width: 168, gap: 8, opacity: pressed ? 0.75 : 1 })}>
-            <View style={{ borderRadius: 26, borderWidth: 2, borderColor: on ? t.c.acc : 'transparent' }}>
-              <DesignPreview design={applyPreset(design, p)} width={140} tiles={false} />
-            </View>
-            <View style={{ paddingHorizontal: 4, gap: 2 }}>
-              <T v="bodyStrong">{p.name}</T>
-              <T v="monoS" c="mut" lines={2}>{p.blurb}</T>
-            </View>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
-  );
+  const wide = useWindowDimensions().width >= 600;
+  const cards = PRESETS.map((p) => {
+    const on = active?.id === p.id;
+    return (
+      <Pressable key={p.id} onPress={() => update((d) => { d.theme = { ...p.theme }; })} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={`${p.name} preset. ${p.blurb}`}
+        style={({ pressed }) => ({ width: 168, gap: 8, opacity: pressed ? 0.75 : 1 })}>
+        <View style={{ borderRadius: 26, borderWidth: 2, borderColor: on ? t.c.acc : 'transparent' }}>
+          <DesignPreview design={applyPreset(design, p)} width={140} tiles={false} />
+        </View>
+        <View style={{ paddingHorizontal: 4, gap: 2 }}>
+          <T v="bodyStrong">{p.name}</T>
+          <T v="monoS" c="mut" lines={2}>{p.blurb}</T>
+        </View>
+      </Pressable>
+    );
+  });
+  return wide
+    ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 14, gap: 10, paddingBottom: 16 }}>{cards}</View>
+    : <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 14, gap: 10, paddingBottom: 16 }}>{cards}</ScrollView>;
 }
 
 /** Accent, background, numbers, tiles, density, text size. `compact` shows only accent and background (welcome tour). */

@@ -151,6 +151,13 @@ tokenStore.set(token); GET /user to validate
   - It adds manifest, icon, theme and `viewport-fit=cover` tags to `index.html`. Expo's `single` output has no
     HTML template.
   - It writes `sw.js`. Its cache name is the hash of the build's files, and it precaches the build.
+  - It preloads the 7 font files and adds an HTML splash (`#gitling-splash`, plain HTML and CSS, no script) that
+    shows from the first paint; `src/app/_layout.tsx` fades it out once the app has drawn (or the error screen has).
+- **One bundle on web** (`app.json`: `["expo-router", { "asyncRoutes": { "web": false } }]`). Expo Router's
+  default splits every screen into its own file, fetched on first visit after the layout files: the live site
+  showed ~3 s of black at startup and a wait on each new screen. One ~590 KB (gzip) bundle loads with the fonts
+  in parallel instead. `npm run smoke` checks: splash removed, fonts preloaded, no code fetched when changing
+  screens.
 - **Service worker behaviour:**
   - Navigations are network-first, falling back to the cached shell.
   - Same-origin static files are cache-first, looked up across the current build's cache and the two

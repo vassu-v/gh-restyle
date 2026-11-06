@@ -52,6 +52,22 @@ live site), each in its own browser with the real CSP. Fixed from it:
 Left as known: reloading mid-tour starts at step 1; Android browsers without an install prompt get no Account
 help; on iPhone SE with text size XL the PR screen is too wide (not from this PR).
 
+## Fixes from outside feedback (2026-11-06)
+
+A tester's notes on the live site, all fixed on `feat/first-run-and-home-sections`:
+- **Seconds of black before every screen.** Measured on the live site: nothing drawn for ~3 s, because the code
+  loaded in a chain (main bundle → layout files → fonts → the screen's own file), and each new screen fetched its
+  own file. Now one bundle, fonts preloaded alongside it, and a Gitling splash from the first paint. Locally:
+  code and fonts in by ~0.5 s; no code fetched when changing screens (`npm run smoke` checks it).
+- **"No code browser."** It existed behind a "Code" row that read like a branch name. The repo screen now lists
+  the top-level files (folders first) with "Browse code" and "All N files and folders", like github.com.
+- **Close PR was a bare ✕ next to Merge** and closed on one tap. Now a labelled "Close" that asks for a second tap
+  ("Tap again to close", resets after 6 s), like Merge; closing an issue works the same way (`e2e:review`).
+- **Desktop:** Studio's presets are a wrapping grid on wide screens (a mouse couldn't scroll the row to Calm and
+  Ink). Rows scrolling under the floating tab bar now fade out behind it. At 800×616 and 1280×720 the last row
+  already ended above the bar once scrolled to the end; the fade is for rows passing under it.
+- Not yet checked on the live site (not deployed) or a real phone.
+
 ## Not verified yet (be honest about these)
 
 - **Real OAuth against github.com:** done 2026-11-05 end to end (approve on GitHub, code exchange in the live
