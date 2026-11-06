@@ -73,6 +73,7 @@ describe('design file', () => {
     };
     const text = JSON.stringify(schema, null, 2) + '\n';
     if (process.env.UPDATE_DESIGN_SCHEMA || !existsSync(path)) writeFileSync(path, text);
-    expect(readFileSync(path, 'utf8')).toBe(text);
+    // Line endings aside: Windows checkouts turn LF into CRLF.
+    expect(readFileSync(path, 'utf8').replace(/\r\n/g, '\n')).toBe(text);
   });
 });
