@@ -5,10 +5,12 @@
 # Gitling
 
 **The GitHub client you design yourself.**<br>
-A phone app for your repos, inbox and pull requests, and a browser extension that puts the same look on github.com.
+A phone app for your repos, inbox and pull requests, and a browser extension that puts the same look on github.com.<br>
+Local-first: it runs on your device and talks to GitHub directly.
 
 [![CI](https://github.com/vassu-v/gh-restyle/actions/workflows/ci.yml/badge.svg)](https://github.com/vassu-v/gh-restyle/actions/workflows/ci.yml)
 [![Live](https://img.shields.io/badge/live-gitling.truckcoding.workers.dev-A8B8FF?style=flat-square)](https://gitling.truckcoding.workers.dev)
+![Local-first](https://img.shields.io/badge/local--first-no_server_storage-5BD69A?style=flat-square)
 ![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?style=flat-square)
 ![Extension](https://img.shields.io/badge/extension-Chrome_MV3-4285F4?style=flat-square&logo=googlechrome&logoColor=white)
 
@@ -25,47 +27,64 @@ A phone app for your repos, inbox and pull requests, and a browser extension tha
 
 ## What you get
 
-- **Your layout, not ours.** Studio lets you pick a preset (Signal, Terminal, Paper, Dense, Calm, Ink), then change the accent, background, number style, density, text size, tab bar, Home sections and shortcut tiles that open any search, repo or link. Undo included.
-- **Designs you can share.** Send a `GITLING1.` code, a share link that previews before applying, or a readable [`.gitling.json` file](docs/DESIGN-FILE.md).
-- **Real GitHub work on a phone.** Feed, inbox triage, repos and a code browser with syntax colors, issues, and pull requests with diffs, checks, merge and full reviews (line comments, suggestions, approve or request changes).
-- **Feels like an app.** Install it to your home screen, open it offline, and land on your saved data instead of a spinner. A short welcome tour sets up your look on first launch.
-- **The same look on desktop.** The extension restyles github.com and gist.github.com with your design. It uses your existing GitHub session and needs no sign-in.
-- **Private by default.** Sign in with GitHub (OAuth + PKCE) or paste a token. The token stays on your device, encrypted on the web, and only goes to api.github.com. The Worker stores nothing.
+- **Your layout, not ours.** Pick a preset (Signal, Terminal, Paper, Dense, Calm, Ink), then tune the accent, background, numbers, density and text size. Undo works everywhere.
+- **A Home that shows what you care about.** Add or remove sections: review requests, your PRs, mentions, inbox, feed, starred repos, recent checks, or any GitHub search under your own title. Shortcut tiles open any search, repo, file or link.
+- **Real GitHub work on a phone.** Feed, inbox triage, a code browser with syntax colors, issues, and pull requests with diffs, checks, merge and full reviews (line comments, suggestions, approve or request changes).
+- **Feels like an app.** Install it to your home screen, open it offline, and land on your last data instead of a spinner. First launch walks you through install, sign-in and a short setup.
+- **Designs you can share.** A `GITLING1.` code, a link that previews before applying, or a readable [`.gitling.json` file](docs/DESIGN-FILE.md).
+- **The same look on desktop.** The extension restyles github.com with your design, and can hide the sales menus, Copilot prompts and footer. It uses your existing GitHub session.
 
-## Quick start
+## Local-first
+
+Everything happens on your device. There's no Gitling account and no Gitling database.
+
+| What | Where it lives |
+|---|---|
+| Your GitHub token | On your device, encrypted (AES-GCM in IndexedDB on the web) |
+| Your design | On your device; in the extension, in your browser's synced storage |
+| Your GitHub data | Fetched straight from `api.github.com`; a copy is kept on your device for 24 hours so the app opens instantly, and removed when you sign out |
+| The server | One Cloudflare Worker that serves the app's files and swaps the sign-in code for a token once. It stores nothing. |
+
+Sample mode needs no sign-in at all, and the extension never signs in to anything.
+
+## Use it
+
+**On your phone:** open [gitling.truckcoding.workers.dev](https://gitling.truckcoding.workers.dev). It offers to install itself (Android: **Install**; iPhone: Share → **Add to Home Screen**), then to sign in, or you can look around with sample data first.
+
+**On your desktop browser** (not on the Chrome Web Store yet):
+1. `npm install`, then `npm run build:extension`.
+2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and pick `apps/extension/dist`.
+3. Open github.com. The toolbar button turns Gitling on or off; **Settings** has presets, colors, text size, design files and developer mode.
+
+Only Chrome is tested so far. Every control and the known limits are in [`docs/EXTENSION.md`](docs/EXTENSION.md).
+
+<!-- Screenshot to add: a github.com repo page with the extension on, Paper (light) and Graphite (dark) side by side, plus the settings page. -->
+
+## Develop
 
 Needs Node.js 20+.
 
 ```bash
 npm install
-npm run web      # dev server with sample data, every screen works signed out
+npm run web      # dev server with sample data; every screen works signed out
 ```
 
-To use your own account: set up one-tap sign-in once with [`docs/SETUP-SIGNIN.md`](docs/SETUP-SIGNIN.md), or go to avatar → Account → **Use a personal access token instead** (classic token with `repo`, `notifications`, `read:user`). On a phone during development, scan the QR code from `npx expo start` in `apps/app` with Expo Go.
+| Command | What it does |
+|---|---|
+| `npm run check` | Types, lint, unit tests and both builds. Run it before calling anything done. |
+| `npm run verify` | The whole local suite: `check`, a smoke test of every screen, and every end-to-end run |
+| `npm run deploy` | Builds the app and ships the one Cloudflare Worker ([`docs/DEPLOY.md`](docs/DEPLOY.md)) |
+| `npm run deploy:preview` | Uploads this branch to its own URL without touching the live site |
 
-Before calling anything done, run `npm run check` (types, lint, unit tests, both builds). `npm run verify` runs the whole local suite: smoke test of every screen plus the sign-in, Studio, review and onboarding end-to-end runs.
-
-## Desktop extension
-
-1. `npm run build:extension`
-2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and pick `apps/extension/dist`.
-3. Open github.com. Use the Gitling icon to switch background or counter style, or paste a design from the app (Studio → Share).
-
-<!-- Screenshot to add: github.com repo page with the extension on, side by side in Paper (light) and Graphite (dark), plus the popup. -->
-
-It isn't on the Chrome Web Store yet. Only Chrome is tested; see [`docs/EXTENSION.md`](docs/EXTENSION.md) for every control and the known limits.
-
-## Deploy
-
-`npm run deploy` builds the app and ships one Cloudflare Worker that serves both the app and the sign-in routes ([`docs/DEPLOY.md`](docs/DEPLOY.md)). `npm run deploy:preview` uploads a branch preview without touching the live site. On the phone, open the URL and use Account → **Install app** (Android, Chrome) or Share → **Add to Home Screen** (iPhone).
+To use your own account locally, set up one-tap sign-in with [`docs/SETUP-SIGNIN.md`](docs/SETUP-SIGNIN.md), or use avatar → Account → **Use a personal access token instead** (classic token with `repo`, `notifications`, `read:user`). On a phone during development, scan the QR code from `npx expo start` in `apps/app` with Expo Go.
 
 ## How it's built
 
 ```
 apps/app/          Expo Router + React Native Web: the app and the PWA
-apps/extension/    Manifest V3 extension that restyles github.com
+apps/extension/    Manifest V3 extension: popup, settings page, content script
 packages/github/   typed GitHub REST client, OAuth/PKCE, sample data
-packages/design/   design schema, presets, share codes, contrast fitting
+packages/design/   design schema, presets, share codes and files, contrast fitting
 services/edge/     Cloudflare Worker: static app + OAuth code exchange
 scripts/           PWA post-build, smoke and end-to-end runs, deploy
 ```
@@ -74,7 +93,7 @@ scripts/           PWA post-build, smoke and end-to-end runs, deploy
 
 | | |
 |---|---|
-| [`AGENTS.md`](AGENTS.md) | Start here if you're contributing or you're an AI agent: rules and every command |
+| [`AGENTS.md`](AGENTS.md) | Start here if you're contributing (or you're an AI agent): rules and every command |
 | [`docs/STATUS.md`](docs/STATUS.md) | What's done, how it was verified, and what isn't yet |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | How it fits together; [`docs/decisions/`](docs/decisions/) explains why |
 | [`docs/TESTING.md`](docs/TESTING.md) | Test layers and when to run what |

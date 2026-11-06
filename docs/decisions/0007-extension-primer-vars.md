@@ -1,4 +1,4 @@
-# 0007 — Desktop extension styles GitHub through Primer CSS variables
+# 0007: Desktop extension styles GitHub through Primer CSS variables
 
 **Decision.** Override GitHub's Primer design tokens (`--bgColor-*`, `--fgColor-*`, `--fontStack-*`)
 through CSSOM `setProperty` on `<html>`, plus a small static `content.css` (fonts, counters, pill buttons).

@@ -1,4 +1,4 @@
-# 0006 — PWA via a post-export script
+# 0006: PWA via a post-export script
 
 **Context.** Expo's `web.output: "single"` has no HTML template hook (`+html.tsx` is for static output).
 Static output would need every dynamic route pre-rendered.

@@ -1,4 +1,4 @@
-# 0008 — Host the app and sign-in on one Cloudflare Worker
+# 0008: Host the app and sign-in on one Cloudflare Worker
 
 **Context.** The PWA needs a static host and sign-in needs a small server. With two hosts (Vercel plus a
 Worker) the maintainer manages two accounts, and the app makes cross-origin calls.

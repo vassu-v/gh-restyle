@@ -1,4 +1,4 @@
-# 0005 — Token storage
+# 0005: Token storage
 
 **Decision.**
 - **Native:** the token goes in the iOS Keychain or Android Keystore through `expo-secure-store`.

@@ -1,4 +1,4 @@
-# 0003 — All GitHub access through one typed api module
+# 0003: All GitHub access through one typed api module
 
 **Context.** Every screen also has to work in sample mode, and paths spread across screens drift from the
 mock data.

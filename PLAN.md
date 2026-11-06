@@ -1,4 +1,4 @@
-# Gitling — plan
+# Gitling: plan
 
 A GitHub client for your phone whose interface you design yourself.
 
@@ -91,12 +91,12 @@ Design = {
 
 ## 8. Milestones
 
-1. **M0 — Design direction. ✅ Done.** Reference research → 3 directions as mockups → Signal chosen.
-2. **M1 — Skeleton. ✅ Done.** Monorepo, Expo app, design token engine, five-tab nav, sample-data mode, desktop extension v0.
-3. **M2 — Sign-in. ✅ Code done and tested.** OAuth App + PKCE, auth worker, encrypted token storage, PAT fallback. Goes live after the one-time setup in `docs/SETUP-SIGNIN.md`.
-4. **M3 — Core GitHub. ✅ Done.** Feed, inbox triage, repo home, code browser, issue/PR lists, threads (markdown, diff, checks, merge methods, approve), profiles, in-app link routing.
-5. **M4 — Studio. ✅ Done.** Preset gallery, drag-to-reorder (tabs, home sections, tiles), share links with live preview.
-6. **M5 — Ship the PWA. ✅ Build ready.** Installable manifest + icons, offline shell service worker, hosted with sign-in on one Cloudflare Worker (`npm run deploy`, `docs/DEPLOY.md`).
+1. **M0: Design direction. ✅ Done.** Reference research → 3 directions as mockups → Signal chosen.
+2. **M1: Skeleton. ✅ Done.** Monorepo, Expo app, design token engine, five-tab nav, sample-data mode, desktop extension v0.
+3. **M2: Sign-in. ✅ Code done and tested.** OAuth App + PKCE, auth worker, encrypted token storage, PAT fallback. Goes live after the one-time setup in `docs/SETUP-SIGNIN.md`.
+4. **M3: Core GitHub. ✅ Done.** Feed, inbox triage, repo home, code browser, issue/PR lists, threads (markdown, diff, checks, merge methods, approve), profiles, in-app link routing.
+5. **M4: Studio. ✅ Done.** Preset gallery, drag-to-reorder (tabs, home sections, tiles), share links with live preview.
+6. **M5: Ship the PWA. ✅ Build ready.** Installable manifest + icons, offline shell service worker, hosted with sign-in on one Cloudflare Worker (`npm run deploy`, `docs/DEPLOY.md`).
 7. **Phase 2.** Push notifications, gist sync, native builds (Android APK; iOS through TestFlight once there's an Apple developer account).
 
 ## 9. What you'll need to do (once)
