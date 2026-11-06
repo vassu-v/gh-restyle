@@ -6,13 +6,15 @@ import { Geist_600SemiBold } from '@expo-google-fonts/geist/600SemiBold';
 import { Geist_700Bold } from '@expo-google-fonts/geist/700Bold';
 import { GeistMono_400Regular } from '@expo-google-fonts/geist-mono/400Regular';
 import { GeistMono_500Medium } from '@expo-google-fonts/geist-mono/500Medium';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient } from '@tanstack/react-query';
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { useFonts } from 'expo-font';
 import { router, Stack, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { MAX_AGE, persister, shouldSave } from '@/data/persist';
 import { DesignProvider, useDesign } from '@/design/DesignProvider';
 import { OnboardingProvider } from '@/onboarding/OnboardingProvider';
 import { InstallSheet } from '@/pwa/InstallSheet';
@@ -56,11 +58,13 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({ Geist_400Regular, Geist_500Medium, Geist_600SemiBold, Geist_700Bold, GeistMono_400Regular, GeistMono_500Medium, Doto_800ExtraBold });
-  const [qc] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: true } } }));
+  // gcTime as long as the saved cache lives, or data would be dropped from memory (and the save) before it's reused.
+  const [qc] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: true, gcTime: MAX_AGE } } }));
   if (!fontsLoaded) return null;
   return (
     <SafeAreaProvider>
-      <QueryClientProvider client={qc}>
+      {/* Saved cache (src/data/persist.ts): last session's lists show at once on open, then refresh. */}
+      <PersistQueryClientProvider client={qc} persistOptions={{ persister, maxAge: MAX_AGE, buster: 'v1', dehydrateOptions: { shouldDehydrateQuery: shouldSave } }}>
         {/* Outside DesignProvider: it must read storage before DesignProvider saves the default design. */}
         <OnboardingProvider>
           <DesignProvider>
@@ -69,7 +73,7 @@ export default function RootLayout() {
             </SessionProvider>
           </DesignProvider>
         </OnboardingProvider>
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </SafeAreaProvider>
   );
 }

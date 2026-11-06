@@ -129,6 +129,20 @@ From the CodeRabbit review of PR #2, fixed:
 - A bad `FUZZ_SCALE` now fails instead of running zero cases. Coverage runs in CI after earlier failures. Docs give
   PowerShell forms for env-var commands and describe what `verify` covers.
 
+## Signed-in check on the live site (2026-11-06)
+
+A real one-tap sign-in on the deployed site worked: there was no loop, and the GitHub code was cleaned from the
+URL. Your counts matched GitHub exactly: needs-you 19, mentions 7, unread 8, starred 22. A comment posted from the
+live site. No token in readable storage. Only the app and api.github.com were contacted.
+
+That check found, and this change fixes:
+- **Repos → Yours showed only the 50 most recently pushed repos** under a count of "50" (the owner has 61). Your
+  repos and stars now follow every page, up to 1,000.
+- **Nothing was kept between visits.** Every open started empty, about 1.5 s to Home's data on desktop, and a big PR's
+  Files took 3.7 s. Signed-in lists and screens are now saved on the device for a day and shown at once on open
+  (see ARCHITECTURE.md § Data). `e2e:signin` checks that the data is saved, that it shows before GitHub answers,
+  and that sign-out removes it.
+
 ## Known gaps / next up
 
 - Also fixed from the 2026-11-05 review (each has a test; see `docs/TESTING.md`):

@@ -2,6 +2,7 @@ import { createApi, createClient, GitHubError, missingScopes, type Api, type Git
 import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { oauthConfigured } from '@/config';
+import { clearSavedCache } from '@/data/persist';
 import { completeSignIn, forgetSignIn, startSignIn } from './oauth';
 import { tokenStore } from './tokenStore';
 
@@ -51,6 +52,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     forgetSignIn();
     await tokenStore.clear();
     qc.clear();
+    await clearSavedCache(); // the saved copy of your data goes too (src/data/persist.ts)
     setToken(null);
     setNotice(msg ?? null);
   }, [qc]);

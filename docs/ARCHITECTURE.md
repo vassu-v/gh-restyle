@@ -37,6 +37,13 @@ Dependency direction is one way: screens → hooks → `api` → `client` → ne
   endpoint against the sample data.
 - **Caching:** TanStack Query caches in memory per screen. The client also keeps an ETag cache (an LRU of
   300 entries), so refetches that come back 304 don't count against GitHub's rate limit.
+- **Saved cache** (`src/data/persist.ts`, rules in `src/data/cachePolicy.ts`): signed-in lists and screens are also
+  saved on the device (IndexedDB on web, AsyncStorage on phones) for 24 hours, so a reopened app shows them at once
+  and refreshes in the background.
+  - It never saves sample data, file contents, PR diffs or review threads.
+  - It's removed on sign-out.
+  - It isn't encrypted (only the token is), so it's private repo data at rest on the device.
+  - Change the `buster` in `_layout.tsx` when a saved data shape changes.
 - **Polling:** notifications refetch at GitHub's `X-Poll-Interval` (usually 60 s).
 - **Pagination:** list endpoints return `{items, next}` from the `Link` header (`useInfiniteQuery`).
   Comments and PR files follow up to 5 and 3 pages.
