@@ -194,8 +194,12 @@ untested, because they need the owner's own browser.
 
 ## Environment quirks (local Windows sessions)
 
-- **Line endings:** git has `core.autocrlf=true`, so checkouts come out CRLF. Scripted find-and-replace must
-  allow for `\r\n`. When seeding test files whose bytes matter, clone with `-c core.autocrlf=false`.
+- **Line endings:** `.gitattributes` stores and checks out text as LF on every OS (`.editorconfig` matches), even
+  though this machine's git has `core.autocrlf=true`. Files checked out before it was added may still be CRLF
+  until they're touched, so scripted find-and-replace should still allow for `\r\n`. When seeding test files
+  whose bytes matter, clone with `-c core.autocrlf=false`.
+- **Repo hygiene:** GitHub deletes a PR's branch when it's merged; delete the local one after pulling `main`.
+  New PRs start from `.github/pull_request_template.md` (what changes · verified · not verified).
 - **Local sign-in:** `ALLOWED_RETURN` only lists the live site, so a local build can't do one-tap sign-in.
   Paste a token, or test sign-in on the live site.
 - **Testing with the owner's account:** use Claude in Chrome (their Chrome, already signed in to GitHub) against a
