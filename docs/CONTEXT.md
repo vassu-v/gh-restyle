@@ -90,6 +90,14 @@ environment's quirks. **No secrets live in this repo.**
    - CodeRabbit's review comments were all fixed.
    - Afterwards the test sign-in was removed: signed out, and the OAuth grant revoked.
 
+10. **Welcome tour + design files (2026-11-06, PR #3, branch `feat/onboarding`):**
+    - A first-launch tour (look, Home, tab bar, bring a design, tips).
+    - `.gitling.json` design files: save and open in Studio, load in the tour and the extension.
+      Format in `docs/DESIGN-FILE.md`.
+    - `npm run deploy:preview` for branch previews. The owner asked to work in a branch, preview on Cloudflare,
+      open a PR, and **commit only at the end** (each commit asks for their approval).
+    - Preview: https://feat-onboarding-gitling.truckcoding.workers.dev
+
 ## Live setup (non-secret facts)
 
 | Thing | Value |
@@ -200,6 +208,7 @@ untested, because they need the owner's own browser.
 
 ## Open to-dos (most useful next)
 
+0. **PR #3 (welcome tour, design files):** owner tries the preview on their phone, then merge and `npm run deploy`.
 1. **Owner tries the live site on their phone:** one-tap sign-in (confirms the loop fix), install, offline, the
    Files tab with the keyboard open. Then send screenshots of anything off.
 2. **Studio follow-ups:** saved custom presets, custom accent picker. Studio polish (M4) shipped: presets, drag reorder, share links.
