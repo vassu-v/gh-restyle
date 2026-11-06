@@ -41,7 +41,8 @@ over (next section).
 ## Bring your phone design over
 
 1. In the Gitling app, open **Studio** and set things up the way you like.
-2. Tap **Copy design code** (gives a code starting with `GITLING1.`) or **Copy share link**. Either works.
+2. Tap **Copy design code** (gives a code starting with `GITLING1.`) or **Copy share link**. Or tap **Save as
+   file** and open the `.gitling.json` file on your computer to copy its text. Any of these works.
 3. Get it to your computer: message it to yourself, email it, anything.
 4. Open the extension popup, paste it in the box, and click **Apply design**.
 5. You'll see "Applied". Your GitHub tabs change straight away.

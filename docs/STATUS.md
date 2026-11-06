@@ -12,6 +12,7 @@ deployed. Keep this file true: update it in the same change that finishes, break
 | M2 | Sign in with GitHub (OAuth App + PKCE + worker), secure token storage, PAT fallback | ✅ built and tested; a real account signed in through the live Worker on 2026-11-05 (the client secret is set as a Secret). The loop fix is deployed; a real one-tap sign-in on the deployed site (owner's phone) is still to do |
 | M3 | Core GitHub: feed, inbox triage, repos, code browser (syntax colors, branch picker), issues, PRs (diff, checks, merge, reviews with line comments / approve / request changes), search, profiles, markdown | ✅ done (see gaps below) |
 | M4 | Studio: presets gallery, theme, drag-to-reorder tabs/sections/tiles, tile editor, share codes + share links with live preview | ✅ done |
+| M4.1 | Welcome tour on first launch (look, home, tab bar, bring a design, how-it-works tips) + design files (`.gitling.json`: save, open, load in the app and the extension) | ✅ built and tested in Chromium (`feat/onboarding`); not yet tried on a real phone. Opening a file on native isn't wired up (paste the text instead) |
 | M5 | Ship the PWA: installable, offline shell, icons; hosted on one Cloudflare Worker with sign-in (`npm run deploy`) | ✅ live at https://gitling.truckcoding.workers.dev |
 | P2 | Push notifications, design sync via gist, native store builds | not started |
 
@@ -22,14 +23,15 @@ deployed. Keep this file true: update it in the same change that finishes, break
 | Types (app + worker) | `npm run typecheck` | clean |
 | Lint | `npm run lint` | clean |
 | Unit + property-based fuzz tests: client, api × sample data, PKCE/state, worker, design + presets, suggestions, diffs, extension storage | `npm test` (`npm run verify` runs everything) | 151/151 |
-| Every screen in Chromium at phone size, plus PWA files, service worker and offline launch | `npm run smoke` | 16/16 screens, SW registers, opens offline |
+| Every screen in Chromium at phone size, plus PWA files, service worker and offline launch | `npm run smoke` | 17/17 screens (incl. `/welcome`), SW registers, opens offline |
+| Welcome tour + design files: first launch, every step saves, skip/finish, mid-tour reload, returning users, deep links, Studio download + file picker, pasted file | `npm run e2e:onboarding` | 30/30 |
 | Full sign-in flow, GitHub simulated, real worker code | `npm run e2e:signin` | 12/12 |
 | Studio: presets, mouse drag reorder, share link preview/apply | `npm run e2e:studio` | 12/12 |
 | PR reviews: line comments, verdicts, timeline, own-PR rules, replies, resolve/unresolve, multi-line ranges, suggestions (apply, batch, blocked reasons), file changed in the code browser | `npm run e2e:review` | 47/47 |
 | Extension stress test on live github.com: 26 page types × 3 backgrounds vs a no-extension baseline, signed out | `npm run stress:extension` (report in `stress-report/`, git-ignored) | 0 new low-contrast text in ~15,000 checks, 0 extension errors, content script 6.3 KB |
 | Read endpoints against the real api.github.com | `LIVE_REPO=vassu-v/gh-restyle LIVE_REPO_ONLY=1 npm run test:live` | pass (repo, readme, tree, file, issues, pulls, thread, files, checks) |
 | Live site: every screen, service worker, offline launch, Chrome installability | `SMOKE_URL=https://gitling.truckcoding.workers.dev npm run smoke` + CDP installability check | 16/16, SW active, opens offline, 0 installability errors; re-run after the PR #2 deploy: all screens ok under the CSP |
-| Extension end to end on live github.com: popup controls, design codes and share links, off/on restore, persistence, in-site navigation | `npm run e2e:extension` | 34/34 |
+| Extension end to end on live github.com: popup controls, design codes, share links and design files, off/on restore, persistence, in-site navigation | `npm run e2e:extension` | 35/35 |
 | Extension | `npm run build:extension` | builds; restyle verified on live github.com during M1 |
 
 ## Not verified yet (be honest about these)

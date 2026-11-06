@@ -86,7 +86,8 @@ Dependency direction is one way: screens → hooks → `api` → `client` → ne
 | `/feed` | Feed (`received_events`, or your own events) |
 | `/inbox` | Notifications with swipe triage |
 | `/repos` | Your repos / starred |
-| `/studio` | Design editor (theme, tabs, sections, tiles, share codes) |
+| `/studio` | Design editor (theme, tabs, sections, tiles, share codes, save/open design files, replay the tour) |
+| `/welcome` | Welcome tour: shown once on first launch, from `/` only (see Design system) |
 | `/repo/[owner]/[name]` | Repo home: stats, star, Code/Issues/PRs, README |
 | `/repo/[owner]/[name]/tree?path&ref` | Directory listing, branch picker |
 | `/repo/[owner]/[name]/blob?path&ref` | File viewer (syntax colors, line numbers; markdown preview), branch picker |
@@ -175,6 +176,18 @@ tokenStore.set(token); GET /user to validate
   preset cards and share previews draw.
 - **Reordering** (tiles, home sections, tabs) uses `src/ui/Reorder.tsx`: a drag grip that works with touch
   and mouse. Screen readers get Move up / Move down actions instead.
+- **Design files** (`*.gitling.json`, `packages/design/src/file.ts`, reference in `docs/DESIGN-FILE.md`) wrap the
+  same Design document with `format`/`formatVersion`. `readDesignText` is the one reader for every box that takes
+  a design: a file, a bare design, a code or a link. It salvages partly invalid files and names what it dropped.
+  `apps/app/src/lib/designFile.ts` handles download and file picker on web, and the share sheet on native.
+- **Welcome tour** (`src/app/welcome.tsx`, `src/onboarding/OnboardingProvider.tsx`). The steps are look → home →
+  tab bar → bring a design → tips. They use the same controls as Studio (`src/features/studio/controls.tsx`) and
+  edit the live design, so there's no separate "apply" step.
+  - Someone sees it on `/` when they haven't finished or skipped it (`gitling.onboarded.v1`) and have no saved
+    design. People from before the tour have a saved design and skip it.
+  - A mid-tour reload brings it back (`gitling.onboarding.pending`).
+  - The provider sits outside DesignProvider so it reads storage before the default design is first saved.
+  - Tests that check screens set `gitling.onboarded.v1` first.
 - New skins add palettes in `packages/design` and keep the same token names.
 
 ## Desktop extension

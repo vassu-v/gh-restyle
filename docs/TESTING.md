@@ -39,7 +39,9 @@ CI runs `check`, smoke and the three app e2e suites on **Ubuntu and Windows**, p
    - `smoke` opens every screen at phone size under the production Content-Security-Policy, checks the
      service worker and offline start, and fails on any page error or console error, CSP violations included
    - `e2e:signin` runs the whole OAuth flow with the real Worker code, with GitHub faked
-   - `e2e:studio` and `e2e:review` drive real user flows
+   - `e2e:studio`, `e2e:review` and `e2e:onboarding` drive real user flows. Onboarding covers the welcome tour
+     and design files, including a real download and the browser's file picker. Screen tests start as a
+     returning user (`gitling.onboarded.v1` set), so only `e2e:onboarding` sees the tour
 5. **Live checks:**
    - `e2e:extension` and `stress:extension` run the extension on real github.com; the stress test compares text
      contrast with and without the extension
