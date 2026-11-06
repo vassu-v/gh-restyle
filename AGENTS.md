@@ -60,6 +60,7 @@ docs/                CONTEXT, STATUS, ARCHITECTURE, WORKFLOW (how we work), TEST
 | `npm run verify` | the local suite in order: check steps, smoke, every e2e (not `test:live`, `test:coverage`, `stress:extension` or `deploy`); keeps going past failures, one summary table (`-- --fast`: types, lint, unit + fuzz only) |
 | `npm run test:fuzz` | property-based fuzz tests (fast-check) in `tests/fuzz`; `FUZZ_SCALE=20` for a deep run (PowerShell: `$env:FUZZ_SCALE = '20'; npm run test:fuzz`) |
 | `npm run test:coverage` | unit + fuzz with coverage → `coverage/index.html` |
+| `npm run deploy:preview` | upload this branch as a preview at `https://<branch>-gitling.truckcoding.workers.dev` without touching the live site |
 | `npm run deploy` | build the app with settings from `services/edge/wrangler.toml` and deploy the Worker (needs Cloudflare auth; see docs/DEPLOY.md) |
 
 Playwright-based scripts need Chromium (`npx playwright install chromium` if it isn't on the machine).
