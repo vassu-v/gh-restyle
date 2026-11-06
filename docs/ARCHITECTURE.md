@@ -37,6 +37,13 @@ Dependency direction is one way: screens → hooks → `api` → `client` → ne
   endpoint against the sample data.
 - **Caching:** TanStack Query caches in memory per screen. The client also keeps an ETag cache (an LRU of
   300 entries), so refetches that come back 304 don't count against GitHub's rate limit.
+- **Saved cache** (`src/data/persist.ts`, rules in `src/data/cachePolicy.ts`): signed-in lists and screens are also
+  saved on the device (IndexedDB on web, AsyncStorage on phones) for 24 hours, so a reopened app shows them at once
+  and refreshes in the background.
+  - It never saves sample data, file contents, PR diffs or review threads.
+  - It's removed on sign-out.
+  - It isn't encrypted (only the token is), so it's private repo data at rest on the device.
+  - Change the `buster` in `_layout.tsx` when a saved data shape changes.
 - **Polling:** notifications refetch at GitHub's `X-Poll-Interval` (usually 60 s).
 - **Pagination:** list endpoints return `{items, next}` from the `Link` header (`useInfiniteQuery`).
   Comments and PR files follow up to 5 and 3 pages.
@@ -86,7 +93,8 @@ Dependency direction is one way: screens → hooks → `api` → `client` → ne
 | `/feed` | Feed (`received_events`, or your own events) |
 | `/inbox` | Notifications with swipe triage |
 | `/repos` | Your repos / starred |
-| `/studio` | Design editor (theme, tabs, sections, tiles, share codes) |
+| `/studio` | Design editor (theme, tabs, sections, tiles, share codes, save/open design files, replay the tour) |
+| `/welcome` | Welcome tour: shown once on first launch, from `/` only (see Design system) |
 | `/repo/[owner]/[name]` | Repo home: stats, star, Code/Issues/PRs, README |
 | `/repo/[owner]/[name]/tree?path&ref` | Directory listing, branch picker |
 | `/repo/[owner]/[name]/blob?path&ref` | File viewer (syntax colors, line numbers; markdown preview), branch picker |
@@ -156,6 +164,15 @@ tokenStore.set(token); GET /user to validate
   - `vercel.json` is kept as an alternative host.
 
   See `docs/DEPLOY.md`.
+- **Install sheet** (`src/pwa/InstallSheet.tsx`, rendered once in the root layout) asks phone browsers to install
+  Gitling:
+  - Android/Chrome/Edge: an **Install** button that opens the browser's own dialog (the saved
+    `beforeinstallprompt`).
+  - iPhone/iPad: the two Safari taps, Share → Add to Home Screen.
+  - Other phone browsers: where the menu keeps "Install app".
+  - It never shows on desktop, inside the installed app, during the welcome tour or sign-in, or for 14 days after
+    "Not now" (`gitling.install.dismissed`). Account → Install app is always there.
+  - Tested in `e2e:onboarding` with iPhone and Pixel emulation.
 
 ## Design system
 
@@ -175,6 +192,18 @@ tokenStore.set(token); GET /user to validate
   preset cards and share previews draw.
 - **Reordering** (tiles, home sections, tabs) uses `src/ui/Reorder.tsx`: a drag grip that works with touch
   and mouse. Screen readers get Move up / Move down actions instead.
+- **Design files** (`*.gitling.json`, `packages/design/src/file.ts`, reference in `docs/DESIGN-FILE.md`) wrap the
+  same Design document with `format`/`formatVersion`. `readDesignText` is the one reader for every box that takes
+  a design: a file, a bare design, a code or a link. It salvages partly invalid files and names what it dropped.
+  `apps/app/src/lib/designFile.ts` handles download and file picker on web, and the share sheet on native.
+- **Welcome tour** (`src/app/welcome.tsx`, `src/onboarding/OnboardingProvider.tsx`). The steps are look → home →
+  tab bar → bring a design → tips. They use the same controls as Studio (`src/features/studio/controls.tsx`) and
+  edit the live design, so there's no separate "apply" step.
+  - Someone sees it on `/` when they haven't finished or skipped it (`gitling.onboarded.v1`) and have no saved
+    design. People from before the tour have a saved design and skip it.
+  - A mid-tour reload brings it back (`gitling.onboarding.pending`).
+  - The provider sits outside DesignProvider so it reads storage before the default design is first saved.
+  - Tests that check screens set `gitling.onboarded.v1` first.
 - New skins add palettes in `packages/design` and keep the same token names.
 
 ## Desktop extension

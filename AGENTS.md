@@ -28,14 +28,15 @@ apps/app/            Expo app (Expo Router, React Native, react-native-web). Has
   src/ui/            primitives (T, Panel, Row, Button, Screen, BackHeader…), Markdown, Code (syntax colors), Icon, Reorder
   src/features/      shared rows, tiles, inbox swipe, tab bar, repo/BranchPicker, thread/DiffFile + ReviewPanel
   src/lib/           links.ts (in-app routes + github.com URL → route), format.ts
+  src/onboarding/    first-run state for the welcome tour (src/app/welcome.tsx)
   src/pwa/           service-worker registration + install prompt
   public/            copied into the web build: manifest, icons, _headers
 apps/extension/      Manifest V3 extension; restyles github.com via Primer CSS variables
 packages/github/     typed GitHub REST: client.ts (transport), api.ts (every endpoint), auth.ts (OAuth/PKCE), diff.ts (patch → line numbers), mock.ts (sample data)
 packages/design/     Design schema (zod), Signal skin, token resolver, contrast fitting, share codes
 services/edge/       Cloudflare Worker "gitling": serves the web app (static assets) + sign-in routes (phase 2: push)
-scripts/             pwa.mjs (post-build), smoke.mjs (every screen), e2e-signin/studio/review/extension.mjs, deploy.mjs
-docs/                CONTEXT, STATUS, ARCHITECTURE, WORKFLOW (how we work), TESTING (layers + when to run what), SETUP-SIGNIN, DEPLOY, EXTENSION (how to use it), decisions/, plans/ (next features)
+scripts/             pwa.mjs (post-build), smoke.mjs (every screen), e2e-signin/studio/review/onboarding/extension.mjs, deploy.mjs
+docs/                CONTEXT, STATUS, ARCHITECTURE, WORKFLOW (how we work), TESTING (layers + when to run what), DESIGN-FILE (the .gitling.json format), SETUP-SIGNIN, DEPLOY, EXTENSION (how to use it), decisions/, plans/ (next features)
 ```
 
 ## Commands (from the repo root)
@@ -49,6 +50,7 @@ docs/                CONTEXT, STATUS, ARCHITECTURE, WORKFLOW (how we work), TEST
 | `npm run smoke` | after `build:web`: opens every screen in Chromium at phone size, fails on errors |
 | `npm run e2e:signin` | full "Sign in with GitHub" flow in a browser with GitHub simulated (real worker code) |
 | `npm run e2e:studio` | after `build:web`: Studio presets, drag-to-reorder, share links in a browser |
+| `npm run e2e:onboarding` | after `build:web`: the welcome tour (first launch, skip/finish, returning users) and design files (save, open, load) |
 | `npm run e2e:review` | after `build:web`: PR reviews in a browser: line comments, verdicts, replies, resolve, multi-line, suggestions (apply + batch) |
 | `npm run test:live` | read-only tests against the real api.github.com (`LIVE_REPO=owner/name`, optional `GITHUB_TOKEN`) |
 | `npm run build:web` | `expo export` + `scripts/pwa.mjs` → `apps/app/dist` (what Vercel/Cloudflare serve) |
@@ -58,6 +60,7 @@ docs/                CONTEXT, STATUS, ARCHITECTURE, WORKFLOW (how we work), TEST
 | `npm run verify` | the local suite in order: check steps, smoke, every e2e (not `test:live`, `test:coverage`, `stress:extension` or `deploy`); keeps going past failures, one summary table (`-- --fast`: types, lint, unit + fuzz only) |
 | `npm run test:fuzz` | property-based fuzz tests (fast-check) in `tests/fuzz`; `FUZZ_SCALE=20` for a deep run (PowerShell: `$env:FUZZ_SCALE = '20'; npm run test:fuzz`) |
 | `npm run test:coverage` | unit + fuzz with coverage → `coverage/index.html` |
+| `npm run deploy:preview` | upload this branch as a preview at `https://<branch>-gitling.truckcoding.workers.dev` without touching the live site |
 | `npm run deploy` | build the app with settings from `services/edge/wrangler.toml` and deploy the Worker (needs Cloudflare auth; see docs/DEPLOY.md) |
 
 Playwright-based scripts need Chromium (`npx playwright install chromium` if it isn't on the machine).

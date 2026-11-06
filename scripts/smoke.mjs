@@ -34,10 +34,13 @@ const SCREENS = [
   ['/repo/you/trail-notes', 'README'], ['/repo/you/trail-notes/tree?path=src', 'sync'], ['/repo/you/trail-notes/blob?path=src%2Ftypes.ts', 'export type Entry'],
   ['/repo/you/trail-notes/blob?path=README.md', 'Install'], ['/repo/you/trail-notes/list?kind=issues', 'Issues'], ['/repo/you/trail-notes/list?kind=pulls', 'Pull requests'],
   ['/thread/you/trail-notes/45', 'Conflict UI'], ['/thread/you/trail-notes/42', 'airplane mode'], ['/user/lin', 'tiny-sync'],
+  ['/welcome', 'laid out the way you want'],
 ];
 
 const browser = await chromium.launch({ proxy: process.env.HTTPS_PROXY ? { server: process.env.HTTPS_PROXY, bypass: 'localhost,127.0.0.1' } : undefined });
 const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+// Screens are checked as a returning user; the first-launch tour has its own test (npm run e2e:onboarding).
+await page.addInitScript(() => localStorage.setItem('gitling.onboarded.v1', 'smoke'));
 const errors = [];
 page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
 page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(`console: ${m.text()}`); });

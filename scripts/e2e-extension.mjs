@@ -26,13 +26,13 @@ const EXT_ORIGIN = `chrome-extension://${extId}`;
 const work = mkdtempSync(join(tmpdir(), 'gitling-e2e-ext-'));
 await build({
   stdin: {
-    contents: `export { encodeDesign, DEFAULT_DESIGN, BACKGROUNDS, PRESETS, applyPreset } from '@gitling/design';
+    contents: `export { encodeDesign, designToFile, DEFAULT_DESIGN, BACKGROUNDS, PRESETS, applyPreset } from '@gitling/design';
                export { primerVars } from './apps/extension/src/primer';`,
     resolveDir: root, loader: 'ts',
   },
   bundle: true, format: 'esm', platform: 'node', outfile: join(work, 'design.mjs'), logLevel: 'silent',
 });
-const { encodeDesign, DEFAULT_DESIGN, BACKGROUNDS, PRESETS, applyPreset, primerVars } = await import(pathToFileURL(join(work, 'design.mjs')).href);
+const { encodeDesign, designToFile, DEFAULT_DESIGN, BACKGROUNDS, PRESETS, applyPreset, primerVars } = await import(pathToFileURL(join(work, 'design.mjs')).href);
 
 const REPO = 'https://github.com/react/react';
 const OTHER = 'https://github.com/vercel/next.js';
@@ -169,6 +169,14 @@ try {
   check('imported accent reaches GitHub tokens (--fgColor-accent, --bgColor-accent-emphasis)', s.accent.toLowerCase() === primerVars(terminal)['--fgColor-accent'].toLowerCase() && s.accentEmphasis.toLowerCase() === wantEmph, `${s.accent} / ${s.accentEmphasis}, want ${terminal.theme.accent} / ${wantEmph}`);
   const pState = await pop.evaluate(() => ({ bg: document.querySelector('#bg button[aria-pressed="true"]')?.dataset.v, num: document.querySelector('#num button[aria-pressed="true"]')?.dataset.v, code: document.getElementById('code').value }));
   check('popup reflects the imported design and clears the box', pState.bg === 'black' && pState.num === 'mono' && pState.code === '', JSON.stringify(pState));
+
+  // A saved design file's text (Studio → Save as file, format in docs/DESIGN-FILE.md).
+  const calm = applyPreset(clone(DEFAULT_DESIGN), PRESETS.find((p) => p.id === 'calm'));
+  await pop.fill('#code', designToFile(calm, { name: 'Calm desk' }));
+  await pop.click('#apply');
+  okMsg = await waitFor(pop, () => document.getElementById('msg').className.includes('ok'));
+  ok = await shows(gh, calm, 'live');
+  check('import a .gitling.json design file (Calm preset): applied live', okMsg && ok, `${describe(await snap(gh))}; popup says "${await pop.textContent('#msg')}"`);
 
   const paper = applyPreset(clone(DEFAULT_DESIGN), PRESETS.find((p) => p.id === 'paper'));
   await pop.fill('#code', `https://gitling.truckcoding.workers.dev/studio?import=${encodeURIComponent(encodeDesign(paper))}`);

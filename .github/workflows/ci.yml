@@ -31,6 +31,7 @@ jobs:
       - run: npm run e2e:signin
       - run: npm run e2e:studio
       - run: npm run e2e:review
+      - run: npm run e2e:onboarding
       - name: Coverage (unit + fuzz)
         # Also after an earlier step failed, so the report is there to look at.
         if: matrix.os == 'ubuntu-latest' && !cancelled()

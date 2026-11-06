@@ -25,6 +25,22 @@ build and bundle without uploading.
 Auth: either `CLOUDFLARE_API_TOKEN` (the "Edit Cloudflare Workers" template), plus `CLOUDFLARE_ACCOUNT_ID`
 if the token can see several accounts, or `npx wrangler@4 login` on your own machine.
 
+### Preview a branch (live site untouched)
+
+```bash
+npm run deploy:preview              # alias = git branch, e.g. feat/onboarding → feat-onboarding
+node scripts/deploy.mjs --preview=x # or pick the alias
+```
+
+Uploads a new Worker version without sending live traffic to it (`wrangler versions upload --preview-alias`).
+It answers at `https://<alias>-gitling.truckcoding.workers.dev`, plus a per-version URL. Check it with
+`SMOKE_URL=<preview url> npm run smoke`.
+- **Sign-in:** a preview isn't in `ALLOWED_RETURN`, so one-tap sign-in on a preview fails: the Worker answers
+  "This sign-in link is not valid" (HTTP 400). Try previews in sample mode, or paste a token.
+- **Detached checkouts** (CI, worktrees) must name the preview: `--preview=<name>`. `--dry-run` builds without
+  uploading.
+- **Going live:** that's still `npm run deploy` from `main` after the PR merges.
+
 ### First time only
 
 1. Open Workers & Pages in the Cloudflare dashboard once. That creates the account's free `workers.dev`

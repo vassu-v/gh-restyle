@@ -26,6 +26,7 @@ import FileCode from 'lucide-react-native/icons/file-code';
 import FileText from 'lucide-react-native/icons/file-text';
 import Flag from 'lucide-react-native/icons/flag';
 import Folder from 'lucide-react-native/icons/folder';
+import FolderOpen from 'lucide-react-native/icons/folder-open';
 import GitCommitHorizontal from 'lucide-react-native/icons/git-commit-horizontal';
 import GitFork from 'lucide-react-native/icons/git-fork';
 import GitMerge from 'lucide-react-native/icons/git-merge';
@@ -67,7 +68,7 @@ export const ICONS = {
   activity: Activity, 'arrow-down': ArrowDown, 'arrow-up': ArrowUp, 'arrow-up-right': ArrowUpRight, 'at-sign': AtSign, bell: Bell,
   'book-marked': BookMarked, 'book-plus': BookPlus, bug: Bug, check: Check, 'chevron-left': ChevronLeft, 'chevron-right': ChevronRight,
   'circle-check': CircleCheck, 'circle-dot': CircleDot, 'circle-x': CircleX, clock: Clock, code: Code, copy: Copy, download: Download, ellipsis: Ellipsis, file: File, 'file-text': FileText,
-  eye: Eye, 'eye-off': EyeOff, 'file-code': FileCode, flag: Flag, folder: Folder, 'git-commit-horizontal': GitCommitHorizontal,
+  eye: Eye, 'eye-off': EyeOff, 'file-code': FileCode, flag: Flag, folder: Folder, 'folder-open': FolderOpen, 'git-commit-horizontal': GitCommitHorizontal,
   'git-fork': GitFork, 'git-merge': GitMerge, 'git-pull-request': GitPullRequest, globe: Globe, 'chevron-down': ChevronDown, 'chevron-up': ChevronUp, 'git-branch': GitBranch, 'grip-vertical': GripVertical, house: House, inbox: Inbox,
   'key-round': KeyRound, link: Link, 'list-checks': ListChecks, lock: Lock, 'log-out': LogOut, 'message-circle': MessageCircle,
   'message-square': MessageSquare, package: Package, palette: Palette, plus: Plus, rocket: Rocket, search: Search, share: Share, smartphone: Smartphone,

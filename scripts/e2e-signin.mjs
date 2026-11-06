@@ -68,7 +68,9 @@ await ctx.route('https://github.com/login/oauth/authorize**', (route) => {
   route.fulfill({ status: 302, headers: { Location: `${WORKER}/auth/callback?code=${code}&state=${encodeURIComponent(u.searchParams.get('state'))}` } });
 });
 // Fake api.github.com: accept only the issued token.
-await ctx.route('https://api.github.com/**', (route) => {
+let slowApi = 0; // ms of delay, to prove a reopened app shows its saved cache before GitHub answers
+await ctx.route('https://api.github.com/**', async (route) => {
+  if (slowApi) await new Promise((r) => setTimeout(r, slowApi));
   const auth = route.request().headers()['authorization'];
   apiCalls.push(auth);
   if (auth !== 'Bearer gho_e2e_token') return route.fulfill({ status: 401, contentType: 'application/json', body: '{"message":"Bad credentials"}' });
@@ -78,6 +80,8 @@ await ctx.route('https://api.github.com/**', (route) => {
 });
 
 const page = await ctx.newPage();
+// A returning user: first-launch tour behaviour is covered by npm run e2e:onboarding.
+await page.addInitScript(() => localStorage.setItem('gitling.onboarded.v1', 'e2e'));
 const errors = []; page.on('pageerror', (e) => errors.push(e.message));
 await page.goto(`${APP}/account`, { waitUntil: 'networkidle' });
 log(await page.getByText('Sign in with GitHub', { exact: true }).isVisible(), 'Account shows the one-tap button when sign-in is configured');
@@ -100,6 +104,21 @@ log(stored.hasBox && !stored.plainInBox && !stored.local && !stored.session, 'to
 await page.reload({ waitUntil: 'networkidle' });
 log(await page.getByText('@e2e-user').isVisible().catch(() => false), 'still signed in after reload');
 
+// Saved cache (src/data/persist.ts): what you saw is kept on the device, shown at once on the next open, gone on sign-out.
+const savedCache = () => page.evaluate(async () => {
+  const db = await new Promise((r, j) => { const q = indexedDB.open('gitling-cache', 1); q.onupgradeneeded = () => q.result.createObjectStore('kv'); q.onsuccess = () => r(q.result); q.onerror = () => j(q.error); });
+  return new Promise((r) => { const q = db.transaction('kv').objectStore('kv').get('gitling.query-cache.v1'); q.onsuccess = () => r(q.result ?? null); });
+});
+await page.waitForTimeout(2000); // the cache is written at most every 1.5 s
+const saved = await savedCache();
+log(!!saved && saved.includes('e2e-user') && !saved.includes('gho_'), 'signed-in data is saved on the device (and never the token)');
+slowApi = 4000;
+await page.goto(`${APP}/account`, { waitUntil: 'domcontentloaded' });
+const shownFast = await page.getByText('@e2e-user').waitFor({ timeout: 2500 }).then(() => true, () => false);
+log(shownFast, 'a reopened app shows the saved data before GitHub answers (API delayed 4 s)');
+slowApi = 0;
+await page.waitForLoadState('networkidle');
+
 // Replaying the callback (back button / refresh) must not sign in again or crash.
 const before = exchanges.length;
 await page.goto(`${APP}/auth/callback?code=e2ecodereplay&state=x.y`, { waitUntil: 'networkidle' });
@@ -113,6 +132,9 @@ const afterOut = await page.evaluate(async () => {
   return new Promise((r) => { const q = db.transaction('vault').objectStore('vault').get('token'); q.onsuccess = () => r(q.result ?? null); });
 });
 log(afterOut === null, 'sign out deletes the stored token');
+await page.waitForTimeout(2000);
+const savedAfterOut = await savedCache();
+log(!savedAfterOut || !savedAfterOut.includes('e2e-user'), 'sign out removes the saved copy of your data');
 
 // Denied on GitHub → friendly message.
 await ctx.unroute('https://github.com/login/oauth/authorize**');

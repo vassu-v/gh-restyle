@@ -108,3 +108,20 @@ describe('path segments', () => {
   });
 });
 
+
+describe('lists that span several pages', () => {
+  it('your repos and stars follow every Link page (there were people with more than 50)', async () => {
+    const pages = (path: string) => {
+      const p = Number(/[?&]page=(\d+)/.exec(path)?.[1] ?? 1);
+      const items = Array.from({ length: p < 3 ? 100 : 7 }, (_, i) => ({ full_name: `me/r${p}-${i}` }));
+      const link = p < 3 ? `<https://api.github.com${path.replace(/([?&])page=\d+/, `$1page=${p + 1}`)}>; rel="next"` : null;
+      return new Response(JSON.stringify(items), { headers: link ? { Link: link } : {} });
+    };
+    const seen: string[] = [];
+    const f = (async (u: string) => { seen.push(u); return pages(u); }) as unknown as typeof fetch;
+    const live = createApi(createClient({ kind: 'token', token: 't' }, { fetch: f }));
+    expect((await live.myRepos()).length).toBe(207);
+    expect(seen.every((u) => u.includes('per_page=100'))).toBe(true);
+    expect((await live.starred()).length).toBe(207);
+  });
+});

@@ -82,8 +82,9 @@ export function createApi(client: GitHubClient) {
     feed: (login: string, mine = false) => get<FeedEvent[]>(`/users/${seg(login)}/${mine ? 'events' : 'received_events'}?per_page=60`),
 
     // ── repos
-    myRepos: () => get<Repo[]>('/user/repos?sort=pushed&per_page=50'),
-    starred: () => get<Repo[]>('/user/starred?per_page=50'),
+    // Every page (up to 1,000): one page of 50 left people with more repos missing some, under a count of "50".
+    myRepos: () => all<Repo>('/user/repos?sort=pushed&per_page=100', 10),
+    starred: () => all<Repo>('/user/starred?per_page=100', 10),
     isStarred: (full: string) => get<true>(`/user/starred/${fullPath(full)}`).then(() => true, (err: { status?: number }) => { if (err.status === 404) return false; throw err; }),
     setStar: (full: string, on: boolean) => get<true>(`/user/starred/${fullPath(full)}`, { method: on ? 'PUT' : 'DELETE' }),
     repo: (owner: string, repo: string) => get<Repo>(repoPath(owner, repo)),

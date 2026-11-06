@@ -1,4 +1,4 @@
-import { decodeDesign, type Background } from '@gitling/design';
+import { readDesignText, type Background } from '@gitling/design';
 import { loadSettings, saveSettings, type Settings } from './storage';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -10,12 +10,6 @@ function render() {
   for (const b of $('num').querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.v === s.design.theme.numbers));
 }
 const msg = (text: string, ok: boolean) => { const m = $('msg'); m.textContent = text; m.className = 'msg ' + (ok ? 'ok' : 'bad'); };
-/** Studio's main button copies a share link (…/studio?import=GITLING1.…); accept that as well as a bare code. */
-function codeFrom(text: string) {
-  const raw = text.trim();
-  try { const c = new URL(raw).searchParams.get('import'); if (c) return c; } catch { /* not a link */ }
-  return raw;
-}
 async function save(): Promise<boolean> {
   try { await saveSettings(s); } catch (e) { msg(`Couldn't save: ${(e as Error).message}`, false); return false; }
   render();
@@ -29,7 +23,8 @@ async function save(): Promise<boolean> {
   $('bg').addEventListener('click', (e) => { const v = (e.target as HTMLElement).dataset.v as Background | undefined; if (v) { s.design.theme.background = v; save(); } });
   $('num').addEventListener('click', (e) => { const v = (e.target as HTMLElement).dataset.v as Settings['design']['theme']['numbers'] | undefined; if (v) { s.design.theme.numbers = v; save(); } });
   $('apply').addEventListener('click', async () => {
-    const r = decodeDesign(codeFrom($<HTMLTextAreaElement>('code').value));
+    // Same reader as the app: a design code, a share link, or a .gitling.json design file's text.
+    const r = readDesignText($<HTMLTextAreaElement>('code').value);
     if (!r.ok) return msg(r.error, false);
     s.design = r.design; s.enabled = true;
     if (!(await save())) return;

@@ -4,6 +4,7 @@ import { Pressable, TextInput, View } from 'react-native';
 import { useTokens } from '@/design/DesignProvider';
 import { useSearchIssues, useSearchRepos } from '@/data/queries';
 import { IssueRow, RepoRow } from '@/features/rows';
+import { routeForUrl } from '@/lib/links';
 import { Icon } from '@/ui/Icon';
 import { Empty, ErrorNote, Loading, Screen, Seg, T } from '@/ui/primitives';
 
@@ -19,13 +20,19 @@ export default function Search() {
   const issues = useSearchIssues(issueQ, 40, !!q && kind !== 'repos');
   const repos = useSearchRepos(q, !!q && kind === 'repos');
   const active = kind === 'repos' ? repos : issues;
+  // A pasted github.com link opens its Gitling screen (repo, file, issue, PR, profile) instead of searching for it.
+  const submit = () => {
+    const s = input.trim();
+    const route = /^(https?:\/\/)?(www\.)?github\.com\//i.test(s) ? routeForUrl(/^https?:/i.test(s) ? s : `https://${s}`) : null;
+    if (route) router.push(route); else setQ(s);
+  };
   return (
     <Screen header={
       <View style={{ paddingHorizontal: 14, paddingVertical: 10, gap: 12 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <View style={{ flex: 1, height: 42, borderRadius: 13, backgroundColor: t.c.el2, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12 }}>
             <Icon name="search" size={17} color={t.c.mut} />
-            <TextInput autoFocus={!p.q} value={input} onChangeText={setInput} onSubmitEditing={() => setQ(input.trim())} returnKeyType="search" placeholder="Search GitHub"
+            <TextInput autoFocus={!p.q} value={input} onChangeText={setInput} onSubmitEditing={submit} returnKeyType="search" placeholder="Search GitHub"
               placeholderTextColor={t.c.mut} autoCapitalize="none" autoCorrect={false}
               style={{ flex: 1, color: t.c.fg, fontFamily: /:/.test(input) ? t.font.mono.regular : t.font.ui.regular, fontSize: 15, height: '100%' }} />
           </View>

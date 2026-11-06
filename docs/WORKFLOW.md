@@ -13,6 +13,11 @@ What a new agent session needs to know about *how* this project is run, beyond t
 3. **Keep the repo the source of truth.** `docs/STATUS.md` must stay true. Lasting facts go in
    `docs/CONTEXT.md`, and how-we-work notes go here.
 
+## Commits
+
+Don't commit after every small step: each commit asks the owner for permission. Work, verify, then split the
+finished work into a few meaningful commits and push once (the push is the one click the owner expects).
+
 ## Pull requests and `main`
 
 - **`main` directly:** the default for small changes and docs (AGENTS.md "Done means").
@@ -22,6 +27,8 @@ What a new agent session needs to know about *how* this project is run, beyond t
      stars. Comment `@coderabbitai full review` to get one.
   2. Treat each CodeRabbit finding as a claim. Check it against the code, fix the real ones, and reply on
      every thread saying what changed or why not.
+  - For UI work, upload a preview (`npm run deploy:preview`) and put its URL in the PR, so the owner can try it
+    on their phone before merging.
   3. Merge only when CI is green on both Ubuntu and Windows, the PR is clean, and the owner said to merge.
   4. Deploy, then verify live: `/health`, `SMOKE_URL=… npm run smoke`, and a GET to `/auth/callback`
      (it must answer 200 with `no-store`, never a redirect loop).

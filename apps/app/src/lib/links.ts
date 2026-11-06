@@ -25,7 +25,7 @@ export function routeForUrl(url: string): Href | null {
   if (!/^(www\.)?github\.com$/.test(u.hostname)) return null;
   let p: string[];
   try { p = u.pathname.split('/').filter(Boolean).map(decodeURIComponent); } catch { return null; }
-  if (!p.length || RESERVED.has(p[0].toLowerCase())) return null;
+  if (!p.length || RESERVED.has(p[0].toLowerCase()) || p.some((s) => s === '.' || s === '..')) return null;
   const [owner, name, kind, ...rest] = p;
   if (!name) return routes.user(owner);
   const repoName = name.replace(/\.git$/, '');
