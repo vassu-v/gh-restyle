@@ -5,7 +5,7 @@
  */
 type Tab = { id?: number };
 type ChromeBg = {
-  runtime: { onInstalled: { addListener(fn: () => void): void }; getManifest(): { content_scripts?: { matches: string[]; js?: string[]; css?: string[] }[] } };
+  runtime: { onInstalled: { addListener(fn: (d: { reason: string }) => void): void }; getManifest(): { content_scripts?: { matches: string[]; js?: string[]; css?: string[] }[] } };
   tabs: { query(q: { url: string[] }): Promise<Tab[]> };
   scripting: {
     executeScript(o: { target: { tabId: number }; files: string[] }): Promise<unknown>;
@@ -14,14 +14,15 @@ type ChromeBg = {
 };
 const c = (globalThis as unknown as { chrome: ChromeBg }).chrome;
 
-c.runtime.onInstalled.addListener(async () => {
-  for (const cs of c.runtime.getManifest().content_scripts ?? []) {
-    for (const tab of await c.tabs.query({ url: cs.matches })) {
-      if (tab.id === undefined) continue;
-      const target = { tabId: tab.id };
-      // A tab can refuse (a GitHub error page, a discarded tab); the others still get it.
-      await c.scripting.insertCSS({ target, files: cs.css ?? [] }).catch(() => {});
-      await c.scripting.executeScript({ target, files: cs.js ?? [] }).catch(() => {});
-    }
-  }
+c.runtime.onInstalled.addListener(async ({ reason }) => {
+  // Only when our code changed: on a Chrome update the tabs' copy is still alive, and a second one would double up.
+  if (reason !== 'install' && reason !== 'update') return;
+  const inject = async (tabId: number, cs: { css?: string[]; js?: string[] }) => {
+    const target = { tabId };
+    // A tab can refuse (a GitHub error page, a discarded tab); the others still get it.
+    await c.scripting.insertCSS({ target, files: cs.css ?? [] }).catch(() => {});
+    await c.scripting.executeScript({ target, files: cs.js ?? [] }).catch(() => {});
+  };
+  await Promise.all((c.runtime.getManifest().content_scripts ?? []).map(async (cs) =>
+    Promise.all((await c.tabs.query({ url: cs.matches })).flatMap((t) => (t.id === undefined ? [] : [inject(t.id, cs)])))));
 });
