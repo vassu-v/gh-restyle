@@ -1,10 +1,11 @@
 import { DESIGN_FILE_EXT, DESIGN_FILE_MAX_BYTES } from '@gitling/design';
 import { Platform, Share } from 'react-native';
+import { isMobileBrowser } from '@/pwa/InstallSheet';
 
 /**
  * Saving and opening design files (`*.gitling.json`, format in docs/DESIGN-FILE.md). The format lives in
  * packages/design (designToFile / readDesignText); this file only moves text between the app and the device.
- *  - web: a normal download, and the browser's file picker
+ *  - web: the share sheet on phones (Web Share with a file), otherwise a normal download; the browser's file picker
  *  - native: the share sheet (Save to Files, AirDrop, mail…). Opening a file on native isn't wired up yet (it
  *    needs expo-document-picker); people paste the file's text into Studio instead.
  */
@@ -14,6 +15,14 @@ export const canOpenFiles = Platform.OS === 'web';
 
 export async function saveDesignFile(text: string, fileName: string): Promise<void> {
   if (Platform.OS === 'web') {
+    // Phone browsers: hand the file to the share sheet (Save to Files, Drive, a chat…) instead of a download that
+    // lands somewhere hard to find. Desktop browsers and older phones fall back to a normal download.
+    const file = typeof File !== 'undefined' ? new File([text], fileName, { type: 'application/json' }) : null;
+    const nav = navigator as Navigator & { canShare?: (d: { files: File[] }) => boolean };
+    if (file && isMobileBrowser() && nav.share && nav.canShare?.({ files: [file] })) {
+      try { await nav.share({ files: [file], title: fileName }); return; }
+      catch (e) { if ((e as Error).name === 'AbortError') return; /* the share sheet failed: download instead */ }
+    }
     const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
     const a = document.createElement('a');
     a.href = url; a.download = fileName; a.rel = 'noopener';

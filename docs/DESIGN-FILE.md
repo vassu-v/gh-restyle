@@ -4,8 +4,8 @@ A design file holds a whole Gitling setup in one readable JSON file: the look, t
 the shortcut tiles. You can keep it, edit it by hand, put it in a repo or a gist, and load it on another device
 or in the desktop extension.
 
-- **Save one:** Studio → Share → **Save as file**. On a phone it opens the share sheet, so you can pick Save to
-  Files, AirDrop and so on.
+- **Save one:** Studio → Share → **Save as file**. On a phone (the web app or a native build) it opens the share
+  sheet, so you can pick Save to Files, Drive, AirDrop and so on. On a computer it downloads the file.
 - **Load one:** Studio → Share → **Open a design file**, or step 5 of the welcome tour. On a phone, paste the
   file's text into the box instead. In the desktop extension, paste the text into the popup.
 - **Every box that takes a design reads all four forms:** a design file, a bare design object, a `GITLING1.…`

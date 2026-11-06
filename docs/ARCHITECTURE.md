@@ -157,6 +157,15 @@ tokenStore.set(token); GET /user to validate
   - `vercel.json` is kept as an alternative host.
 
   See `docs/DEPLOY.md`.
+- **Install sheet** (`src/pwa/InstallSheet.tsx`, rendered once in the root layout) asks phone browsers to install
+  Gitling:
+  - Android/Chrome/Edge: an **Install** button that opens the browser's own dialog (the saved
+    `beforeinstallprompt`).
+  - iPhone/iPad: the two Safari taps, Share → Add to Home Screen.
+  - Other phone browsers: where the menu keeps "Install app".
+  - It never shows on desktop, inside the installed app, during the welcome tour or sign-in, or for 14 days after
+    "Not now" (`gitling.install.dismissed`). Account → Install app is always there.
+  - Tested in `e2e:onboarding` with iPhone and Pixel emulation.
 
 ## Design system
 
