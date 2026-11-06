@@ -5,8 +5,27 @@ import { z } from 'zod';
 export const TabId = z.enum(['home', 'feed', 'inbox', 'repos', 'studio']);
 export type TabId = z.infer<typeof TabId>;
 
-export const SectionId = z.enum(['status', 'shortcuts', 'needs', 'feed', 'inbox', 'recent']);
+/**
+ * Built-in Home sections. Each appears at most once; a design keeps every one (hidden ones are the "add to Home"
+ * list in Studio). Append new ids at the end: older designs get them added, switched off (withAllSections).
+ */
+export const SectionId = z.enum(['status', 'shortcuts', 'needs', 'feed', 'inbox', 'recent', 'reviews', 'my-prs', 'assigned', 'mentions', 'starred', 'checks']);
 export type SectionId = z.infer<typeof SectionId>;
+
+export const BuiltInSection = z.object({ id: SectionId, visible: z.boolean() });
+/** A Home section listing the results of any GitHub issue/PR search. Unlike built-ins, there can be several. */
+export const SearchSection = z.object({
+  id: z.string().regex(/^q-[a-z0-9]{1,16}$/),
+  visible: z.boolean(),
+  title: z.string().min(1).max(40),
+  q: z.string().min(1).max(256),
+});
+export const HomeSection = z.union([BuiltInSection, SearchSection]);
+export type HomeSection = z.infer<typeof HomeSection>;
+export type SearchSection = z.infer<typeof SearchSection>;
+export const isSearchSection = (s: HomeSection): s is SearchSection => 'q' in s;
+/** Search sections a design may hold (Studio refuses more; the schema's array cap leaves room for built-ins). */
+export const MAX_SEARCH_SECTIONS = 12;
 
 export const InboxFilter = z.enum(['all', 'review_requested', 'mention', 'assign', 'author', 'comment', 'ci_activity']);
 export type InboxFilter = z.infer<typeof InboxFilter>;
@@ -95,8 +114,10 @@ export const Design = z.object({
       .refine((t) => new Set(t).size === t.length, 'Each tab can be in the tab bar once'),
   }),
   home: z.object({
-    sections: z.array(z.object({ id: SectionId, visible: z.boolean() }))
-      .refine((s) => new Set(s.map((x) => x.id)).size === s.length, 'Each Home section can appear once'),
+    sections: z.array(HomeSection).max(SectionId.options.length + MAX_SEARCH_SECTIONS)
+      .refine((s) => new Set(s.map((x) => x.id)).size === s.length, 'Each Home section can appear once')
+      .refine((s) => s.filter(isSearchSection).length <= MAX_SEARCH_SECTIONS, `Up to ${MAX_SEARCH_SECTIONS} search sections`)
+      .refine((s) => s.some((x) => x.visible), 'Keep at least one section on Home'),
   }),
   tiles: z.array(Tile).max(24),
 });
@@ -112,7 +133,7 @@ export type Design = z.infer<typeof Design>;
  * still switch them on (it only lists the sections in the design).
  */
 export function withAllSections(d: Design): Design {
-  const have = new Set(d.home.sections.map((s) => s.id));
+  const have = new Set<string>(d.home.sections.map((s) => s.id));
   const missing = SectionId.options.filter((id) => !have.has(id));
   return missing.length ? { ...d, home: { sections: [...d.home.sections, ...missing.map((id) => ({ id, visible: false }))] } } : d;
 }

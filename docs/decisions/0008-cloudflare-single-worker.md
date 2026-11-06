@@ -1,7 +1,7 @@
 # 0008 — Host the app and sign-in on one Cloudflare Worker
 
 **Context.** The PWA needs a static host and sign-in needs a small server. With two hosts (Vercel plus a
-Worker) the owner manages two accounts, and the app makes cross-origin calls.
+Worker) the maintainer manages two accounts, and the app makes cross-origin calls.
 
 **Decision.** One Worker (`services/edge`, name `gitling`) uses Workers Static Assets to serve
 `apps/app/dist`, with `not_found_handling = "single-page-application"`. Only `/auth/*` and `/health` run

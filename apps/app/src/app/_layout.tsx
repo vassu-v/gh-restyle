@@ -11,8 +11,8 @@ import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client
 import { useFonts } from 'expo-font';
 import { router, Stack, type ErrorBoundaryProps } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Platform, Pressable, Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { MAX_AGE, persister, shouldSave } from '@/data/persist';
 import { DesignProvider, useDesign } from '@/design/DesignProvider';
@@ -21,8 +21,21 @@ import { InstallSheet } from '@/pwa/InstallSheet';
 import { SessionProvider } from '@/session/SessionProvider';
 import '@/pwa/register';
 
+/** Web: the HTML splash (scripts/pwa.mjs) covers the page until the app first draws; fade it out then. */
+function useHideSplash() {
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+    const el = document.getElementById('gitling-splash');
+    if (!el) return;
+    el.classList.add('gs-out');
+    const id = setTimeout(() => el.remove(), 250);
+    return () => clearTimeout(id);
+  }, []);
+}
+
 function Shell() {
   const { tokens: t } = useDesign();
+  useHideSplash();
   return (
     <>
       <StatusBar style={t.mode === 'dark' ? 'light' : 'dark'} />
@@ -43,6 +56,7 @@ function Shell() {
  * the providers (they may be what failed), so it uses fixed colors (the app shell's own background) and system fonts.
  */
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  useHideSplash();
   const btn = { paddingHorizontal: 18, paddingVertical: 12, borderRadius: 22, borderWidth: 1, borderColor: '#3A3D44' } as const;
   return (
     <View style={{ flex: 1, backgroundColor: '#0E0F11', padding: 28, justifyContent: 'center', gap: 14 }}>
@@ -57,7 +71,9 @@ export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
 }
 
 export default function RootLayout() {
-  const [fontsLoaded] = useFonts({ Geist_400Regular, Geist_500Medium, Geist_600SemiBold, Geist_700Bold, GeistMono_400Regular, GeistMono_500Medium, Doto_800ExtraBold });
+  // A font that fails to load (offline first visit, blocked file) falls back to system fonts instead of a blank app.
+  const [fontsReady, fontError] = useFonts({ Geist_400Regular, Geist_500Medium, Geist_600SemiBold, Geist_700Bold, GeistMono_400Regular, GeistMono_500Medium, Doto_800ExtraBold });
+  const fontsLoaded = fontsReady || !!fontError;
   // gcTime as long as the saved cache lives, or data would be dropped from memory (and the save) before it's reused.
   const [qc] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: true, gcTime: MAX_AGE } } }));
   if (!fontsLoaded) return null;

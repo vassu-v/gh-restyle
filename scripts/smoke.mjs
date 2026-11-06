@@ -31,10 +31,10 @@ const base = (process.env.SMOKE_URL ?? '').replace(/\/+$/, '') || `http://127.0.
 const SCREENS = [
   ['/', 'need you'], ['/feed', 'Following'], ['/inbox', 'Inbox'], ['/repos', 'Repositories'], ['/studio', 'Studio'],
   ['/search', 'search'], ['/account', 'Connect your GitHub account'],
-  ['/repo/you/trail-notes', 'README'], ['/repo/you/trail-notes/tree?path=src', 'sync'], ['/repo/you/trail-notes/blob?path=src%2Ftypes.ts', 'export type Entry'],
+  ['/repo/you/trail-notes', 'Browse code'], ['/repo/you/trail-notes/tree?path=src', 'sync'], ['/repo/you/trail-notes/blob?path=src%2Ftypes.ts', 'export type Entry'],
   ['/repo/you/trail-notes/blob?path=README.md', 'Install'], ['/repo/you/trail-notes/list?kind=issues', 'Issues'], ['/repo/you/trail-notes/list?kind=pulls', 'Pull requests'],
   ['/thread/you/trail-notes/45', 'Conflict UI'], ['/thread/you/trail-notes/42', 'airplane mode'], ['/user/lin', 'tiny-sync'],
-  ['/welcome', 'laid out the way you want'],
+  ['/welcome?replay=1', 'Pick a look'],
 ];
 
 const browser = await chromium.launch({ proxy: process.env.HTTPS_PROXY ? { server: process.env.HTTPS_PROXY, bypass: 'localhost,127.0.0.1' } : undefined });
@@ -77,6 +77,21 @@ const head = await (await fetch(base + '/')).text();
 const pwaOk = manifest.icons?.length >= 4 && sw.includes('PRECACHE') && head.includes('rel="manifest"');
 console.log(`${pwaOk ? '✓' : '✗'} PWA manifest, service worker and head tags`);
 if (!pwaOk) failed++;
+// Startup (review feedback: seconds of black before every screen): one app bundle, so no screen waits on its own
+// code file; fonts preloaded with it; a splash from the first paint that the app removes once it has drawn.
+const bundles = [...head.matchAll(/<script src="([^"]+\.js)"/g)].length;
+const preloads = [...head.matchAll(/rel="preload"[^>]*as="font"/g)].length;
+await page.goto(base + '/', { waitUntil: 'networkidle' });
+const splashGone = await page.waitForFunction(() => !document.getElementById('gitling-splash'), null, { timeout: 8000 }).then(() => true, () => false);
+const chunksOnNav = await page.evaluate(async () => {
+  const before = performance.getEntriesByType('resource').filter((r) => r.name.includes('/_expo/static/js/')).length;
+  window.history.pushState(null, '', '/inbox'); window.dispatchEvent(new PopStateEvent('popstate'));
+  await new Promise((r) => setTimeout(r, 800));
+  return performance.getEntriesByType('resource').filter((r) => r.name.includes('/_expo/static/js/')).length - before;
+});
+const startOk = head.includes('id="gitling-splash"') && splashGone && preloads >= 7 && chunksOnNav === 0;
+console.log(`${startOk ? '✓' : '✗'} startup: splash shown then removed, ${preloads} fonts preloaded, ${bundles} script(s), no code fetched when changing screens (${chunksOnNav})`);
+if (!startOk) failed++;
 await browser.close();
 // Close keep-alive sockets and wait, then let Node exit by itself: process.exit() while sockets are still
 // closing trips a libuv assertion on Windows (exit code 127 after "all screens ok").

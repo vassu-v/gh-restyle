@@ -9,11 +9,12 @@ deployed. Keep this file true: update it in the same change that finishes, break
 |---|---|---|
 | M0 | Design direction (Signal skin) | ✅ done |
 | M1 | Skeleton: monorepo, app, design engine, sample data, extension v0 | ✅ done |
-| M2 | Sign in with GitHub (OAuth App + PKCE + worker), secure token storage, PAT fallback | ✅ built and tested; a real account signed in through the live Worker on 2026-11-05 (the client secret is set as a Secret). The loop fix is deployed; a real one-tap sign-in on the deployed site (owner's phone) is still to do |
+| M2 | Sign in with GitHub (OAuth App + PKCE + worker), secure token storage, PAT fallback | ✅ built and tested; a real account signed in through the live Worker on 2026-11-05 (the client secret is set as a Secret). The loop fix is deployed; a real one-tap sign-in on the deployed site (on a phone) is still to do |
 | M3 | Core GitHub: feed, inbox triage, repos, code browser (syntax colors, branch picker), issues, PRs (diff, checks, merge, reviews with line comments / approve / request changes), search, profiles, markdown | ✅ done (see gaps below) |
 | M4 | Studio: presets gallery, theme, drag-to-reorder tabs/sections/tiles, tile editor, share codes + share links with live preview | ✅ done |
 | M5.1 | Install sheet on phones: Install button (Android/Chrome), Add to Home Screen steps (Safari, or the address bar in Chrome/Firefox/Edge on iPhone), "open in your browser" for in-app browsers, menu steps elsewhere; only on the main tabs and never while typing; snoozes 14 days | ✅ built, tested with iPhone/Pixel emulation (`e2e:onboarding`); Chrome reports the preview installable with 0 errors on a Pixel profile. Not yet tried on a real phone |
-| M4.1 | Welcome tour on first launch (look, home, tab bar, bring a design, how-it-works tips) + design files (`.gitling.json`: save, open, load in the app and the extension) | ✅ built and tested in Chromium (`feat/onboarding`); not yet tried on a real phone. Opening a file on native isn't wired up (paste the text instead) |
+| M4.1 | Design files (`.gitling.json`: save, open, load in the app and the extension) | ✅ built and tested in Chromium; not yet tried on a real phone. Opening a file on native isn't wired up (paste the text instead) |
+| M4.2 | First run in order: install (phone browsers) → sign in or look around → 3-step setup tour once signed in. Home sections: 12 built-ins plus your own searches (up to 12), add and remove, at least one kept | ✅ built and tested in Chromium and phone emulation (`feat/first-run-and-home-sections`); not yet tried on a real phone |
 | M5 | Ship the PWA: installable, offline shell, icons; hosted on one Cloudflare Worker with sign-in (`npm run deploy`) | ✅ live at https://gitling.truckcoding.workers.dev |
 | P2 | Push notifications, design sync via gist, native store builds | not started |
 
@@ -23,10 +24,10 @@ deployed. Keep this file true: update it in the same change that finishes, break
 |---|---|---|
 | Types (app + worker) | `npm run typecheck` | clean |
 | Lint | `npm run lint` | clean |
-| Unit + property-based fuzz tests: client, api × sample data, PKCE/state, worker, design + presets, suggestions, diffs, extension storage | `npm test` (`npm run verify` runs everything) | 151/151 |
+| Unit + property-based fuzz tests: client, api × sample data, PKCE/state, worker, design + presets, suggestions, diffs, extension storage | `npm test` (`npm run verify` runs everything) | 168/168 |
 | Every screen in Chromium at phone size, plus PWA files, service worker and offline launch | `npm run smoke` | 17/17 screens (incl. `/welcome`), SW registers, opens offline |
-| Welcome tour + design files: first launch, every step saves, skip/finish, mid-tour reload, returning users, deep links, applying a shared design ends the tour, replay returns to Studio, Search opens pasted github.com links, Studio download + file picker (under the real CSP), pasted file, install sheet on iPhone/Android emulation (shows, installs, snoozes, never on desktop, in the tour, over a PR or Search, or in the installed app; in-app browsers told to open Safari) | `npm run e2e:onboarding` | 43/43 |
-| Full sign-in flow, GitHub simulated, real worker code | `npm run e2e:signin` | 12/12 |
+| First run + tour + Home sections + design files: desktop asks to sign in (no install step), "Look around first", phones get the install step first (iPhone steps, Android install dialog) then sign-in, the install card stays snoozed after it; tour steps save (look, load a file's text, add built-in and search sections, remove down to one, tab bar), replay and Skip return to Studio, returning users, deep links, shared designs, Search links, Studio download + file picker (under the real CSP), install card on iPhone/Android emulation | `npm run e2e:onboarding` | 50/50 |
+| Full sign-in flow, GitHub simulated, real worker code; saved cache; a new person's sign-in step leads into the setup tour | `npm run e2e:signin` | 19/19 |
 | Studio: presets, mouse drag reorder, share link preview/apply | `npm run e2e:studio` | 12/12 |
 | PR reviews: line comments, verdicts, timeline, own-PR rules, replies, resolve/unresolve, multi-line ranges, suggestions (apply, batch, blocked reasons), file changed in the code browser | `npm run e2e:review` | 47/47 |
 | Extension stress test on live github.com: 26 page types × 3 backgrounds vs a no-extension baseline, signed out | `npm run stress:extension` (report in `stress-report/`, git-ignored) | 0 new low-contrast text in ~15,000 checks, 0 extension errors, content script 6.3 KB |
@@ -50,6 +51,22 @@ live site), each in its own browser with the real CSP. Fixed from it:
   `deploy --preview` takes the last/space-separated name. Search ignores `.`/`..` path segments.
 Left as known: reloading mid-tour starts at step 1; Android browsers without an install prompt get no Account
 help; on iPhone SE with text size XL the PR screen is too wide (not from this PR).
+
+## Fixes from outside feedback (2026-11-06)
+
+A tester's notes on the live site, all fixed on `feat/first-run-and-home-sections`:
+- **Seconds of black before every screen.** Measured on the live site: nothing drawn for ~3 s, because the code
+  loaded in a chain (main bundle → layout files → fonts → the screen's own file), and each new screen fetched its
+  own file. Now one bundle, fonts preloaded alongside it, and a Gitling splash from the first paint. Locally:
+  code and fonts in by ~0.5 s; no code fetched when changing screens (`npm run smoke` checks it).
+- **"No code browser."** It existed behind a "Code" row that read like a branch name. The repo screen now lists
+  the top-level files (folders first) with "Browse code" and "All N files and folders", like github.com.
+- **Close PR was a bare ✕ next to Merge** and closed on one tap. Now a labelled "Close" that asks for a second tap
+  ("Tap again to close", resets after 6 s), like Merge; closing an issue works the same way (`e2e:review`).
+- **Desktop:** Studio's presets are a wrapping grid on wide screens (a mouse couldn't scroll the row to Calm and
+  Ink). Rows scrolling under the floating tab bar now fade out behind it. At 800×616 and 1280×720 the last row
+  already ended above the bar once scrolled to the end; the fade is for rows passing under it.
+- Not yet checked on the live site (not deployed) or a real phone.
 
 ## Not verified yet (be honest about these)
 
@@ -86,7 +103,7 @@ Signed in with GitHub (real OAuth through the live Worker) on a private test rep
 - **Writing:** star and unstar, comment (Unicode), close and reopen, review with line comments and suggestions
   (`commit_id` = head), apply one suggestion, batch apply. Bytes were checked with git afterwards: CRLF and the
   BOM were kept.
-- **Not tested:** the final merge (left to the owner), inbox writes on a real inbox.
+- **Not tested:** the final merge (done by hand), inbox writes on a real inbox.
 
 Bugs this found, now fixed:
 - "Committing…" stayed on screen ~20 s after the commit landed: mutations waited for every repo query to
@@ -136,7 +153,7 @@ URL. Your counts matched GitHub exactly: needs-you 19, mentions 7, unread 8, sta
 live site. No token in readable storage. Only the app and api.github.com were contacted.
 
 That check found, and this change fixes:
-- **Repos → Yours showed only the 50 most recently pushed repos** under a count of "50" (the owner has 61). Your
+- **Repos → Yours showed only the 50 most recently pushed repos** under a count of "50" (the test account had 61). Your
   repos and stars now follow every page, up to 1,000.
 - **Nothing was kept between visits.** Every open started empty, about 1.5 s to Home's data on desktop, and a big PR's
   Files took 3.7 s. Signed-in lists and screens are now saved on the device for a day and shown at once on open

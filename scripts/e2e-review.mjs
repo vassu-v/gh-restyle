@@ -158,6 +158,19 @@ log((await btn('Apply').count()) === 0, 'no Apply button without write access');
 log(await visible(page.getByText('You need write access to apply suggestions.')), 'the card says "You need write access to apply suggestions."');
 await shot('multiline');
 
+// Closing takes two taps (review feedback: a lone ✕ next to Merge closed the PR on a fat-finger tap).
+await page.goto(`${base}/thread/you/trail-notes/45`, { waitUntil: 'networkidle' });
+await page.getByRole('button', { name: 'Close pull request' }).click();
+await page.waitForTimeout(400);
+log(await visible(page.getByRole('button', { name: 'Tap again to close the pull request' })) && !(await visible(page.getByText(/^Closed$/))), 'one tap on Close only asks for a second tap');
+await page.waitForTimeout(6400);
+log(await visible(page.getByRole('button', { name: 'Close pull request' })), 'and it goes back to "Close" after a few seconds');
+await page.getByRole('button', { name: 'Close pull request' }).click();
+await page.getByRole('button', { name: 'Tap again to close the pull request' }).click();
+log(await visible(page.getByRole('button', { name: 'Reopen', exact: true })), 'the second tap closes it (Reopen shows)');
+await page.getByRole('button', { name: 'Reopen', exact: true }).click();
+log(await visible(page.getByRole('button', { name: 'Close pull request' })), 'Reopen opens it again (Close is back)');
+
 log(errors.length === 0, `no page errors${errors.length ? ': ' + errors.join(' | ') : ''}`);
 await browser.close(); server.close();
 console.log(process.exitCode ? '\nreview e2e FAILED' : '\nreview e2e passed');

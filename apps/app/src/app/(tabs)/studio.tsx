@@ -24,7 +24,7 @@ export default function Studio() {
   const { design, tokens: t, update, undo, canUndo, replace, reset, dropped, dismissDropped } = useDesign();
   // Someone who arrived with a share link and applied it has set Gitling up: no tour on their first Home.
   const onboarding = useOnboarding();
-  const appliedDesign = () => { if (onboarding.needed) onboarding.finish(); };
+  const appliedDesign = () => { if (onboarding.newcomer) onboarding.finish(); };
   // A link can repeat a parameter (?import=a&import=b), which arrives as an array: use the first.
   const raw = useLocalSearchParams<{ tab?: string | string[]; import?: string | string[] }>();
   const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -80,7 +80,7 @@ export default function Studio() {
 
       {tab === 'home' ? (
         <View>
-          <T v="sub" c="mut" style={{ paddingHorizontal: 18, paddingBottom: 10 }}>Choose what Home shows. Drag the grip to change the order.</T>
+          <T v="sub" c="mut" style={{ paddingHorizontal: 18, paddingBottom: 10 }}>Add anything to Home, remove what you don’t need, and drag the grip to change the order.</T>
           <HomeSectionsEditor />
         </View>
       ) : null}

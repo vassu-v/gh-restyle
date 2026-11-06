@@ -45,8 +45,27 @@ const HEAD = `
         createScript: function () { throw new TypeError('Blocked script'); }
       });</script>
     <!-- /gitling:pwa -->`;
+// Fonts: the app waits for them before its first frame, so start downloading them with the code, not after it.
+const fonts = walkAll(join(dist, 'assets')).filter((p) => /(Geist|GeistMono|Doto)_\d{3}\w*\.[0-9a-f]+\.ttf$|(Geist|GeistMono|Doto)_\d{3}\w*\.ttf$/.test(basename(p)))
+  .map((p) => '/' + relative(dist, p).split('\\').join('/'));
+const PRELOAD = fonts.map((f) => `\n    <link rel="preload" href="${f}" as="font" type="font/ttf" crossorigin />`).join('');
+// Splash: shown from the first paint until the app has drawn (src/app/_layout.tsx removes it), instead of a blank
+// screen while the code starts. Plain HTML and CSS: it needs no script, so the CSP stays hash-only.
+const SPLASH = `
+    <!-- gitling:splash -->
+    <div id="gitling-splash" aria-label="Gitling is loading" role="status"><div class="gs-word">GITLING</div><div class="gs-bar"><i></i></div></div>
+    <style>#gitling-splash{position:fixed;inset:0;z-index:2147483647;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:#0E0F11;transition:opacity .18s ease-out}
+      #gitling-splash.gs-out{opacity:0;pointer-events:none}
+      #gitling-splash .gs-word{font:800 34px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.18em;color:#A8B8FF}
+      #gitling-splash .gs-bar{width:120px;height:3px;border-radius:2px;background:#24262B;overflow:hidden}
+      #gitling-splash .gs-bar i{display:block;width:40%;height:100%;border-radius:2px;background:#A8B8FF;animation:gs 1s ease-in-out infinite alternate}
+      @keyframes gs{from{transform:translateX(-10%)}to{transform:translateX(160%)}}
+      @media (prefers-reduced-motion:reduce){#gitling-splash .gs-bar i{animation:none;width:100%}}</style>
+    <!-- /gitling:splash -->`;
 html = html.replace(/\n\s*<!-- gitling:pwa -->[\s\S]*?<!-- \/gitling:pwa -->/, '');
-html = html.replace('</head>', `${HEAD}\n</head>`);
+html = html.replace(/\n\s*<!-- gitling:splash -->[\s\S]*?<!-- \/gitling:splash -->/, '');
+html = html.replace('</head>', `${HEAD.replace('<!-- /gitling:pwa -->', `${PRELOAD}\n    <!-- /gitling:pwa -->`)}\n</head>`);
+html = html.replace(/<div id="root"><\/div>/, (m) => `${m}${SPLASH}`);
 // viewport-fit=cover lets the app draw under the notch; safe-area insets keep content clear of it.
 html = html.replace(/<meta name="viewport" content="[^"]*"\s*\/?>/, '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />');
 writeFileSync(htmlPath, html);

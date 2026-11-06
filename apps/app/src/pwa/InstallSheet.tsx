@@ -5,8 +5,9 @@ import { Platform, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTokens } from '@/design/DesignProvider';
 import { Icon } from '@/ui/Icon';
+import { useOnboarding } from '@/onboarding/OnboardingProvider';
 import { Button, glass, T } from '@/ui/primitives';
-import { browserKind, useInstall } from './useInstall';
+import { browserKind, INSTALL_DISMISSED_KEY as DISMISSED_KEY, isMobileBrowser, useInstall } from './useInstall';
 
 /**
  * "Install Gitling" sheet for phones that opened the web app in a browser tab. Installed, it opens full screen
@@ -19,19 +20,15 @@ import { browserKind, useInstall } from './useInstall';
  * a text field has focus, not on desktop or inside the installed app, and not for 14 days after it's closed.
  * Account → Install Gitling shows the same help any time.
  */
-const DISMISSED_KEY = 'gitling.install.dismissed';
 const SNOOZE_MS = 14 * 24 * 3600e3;
 const SHOWN_ON = ['/', '/feed', '/inbox', '/repos'];
 
-type Kind = 'prompt' | 'ios-safari' | 'ios-other' | 'inapp' | 'menu';
+export type InstallKind = 'prompt' | 'ios-safari' | 'ios-other' | 'inapp' | 'menu';
 
-/** A phone or tablet browser (not a desktop window made narrow). iPadOS reports itself as a Mac with touch. */
-export function isMobileBrowser(): boolean {
-  if (Platform.OS !== 'web' || typeof navigator === 'undefined') return false;
-  const uaData = (navigator as { userAgentData?: { mobile?: boolean } }).userAgentData;
-  if (uaData?.mobile) return true;
-  const ua = navigator.userAgent;
-  return /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+/** Which install help fits this browser: the browser's own dialog, or the steps to do it by hand. */
+export function installKind(state: ReturnType<typeof useInstall>['state']): InstallKind {
+  const b = browserKind();
+  return state === 'ready' ? 'prompt' : b === 'inapp' ? 'inapp' : b === 'ios-safari' ? 'ios-safari' : b === 'ios-other' ? 'ios-other' : 'menu';
 }
 
 /** True while a text field has focus: the sheet must never sit on top of what someone is typing into. */
@@ -52,6 +49,8 @@ export function InstallSheet() {
   const pathname = usePathname();
   const { state, prompt } = useInstall();
   const typing = useTyping();
+  // Passing the first-run install screen counts as closing the card (it also saves the same 14-day snooze).
+  const { installDone } = useOnboarding();
   const onMainTab = SHOWN_ON.includes(pathname);
   // Desktop never asks, so start "snoozed" there without touching storage.
   const [snoozed, setSnoozed] = useState<boolean | null>(() => (isMobileBrowser() ? null : true));
@@ -65,6 +64,9 @@ export function InstallSheet() {
       .then((v) => { const at = Number(v); setSnoozed(!!v && at <= Date.now() && Date.now() - at < SNOOZE_MS); }) // a future time doesn't snooze forever
       .catch(() => setSnoozed(false));
   }, []);
+  // Passed the first-run install screen just now: that counts as closing the card.
+  const [installDoneAtStart] = useState(installDone);
+  const passedNow = installDone && !installDoneAtStart;
   // Let each main screen settle (and the browser's install event arrive) before asking, including right after the tour.
   useEffect(() => {
     if (!onMainTab) return;
@@ -72,14 +74,11 @@ export function InstallSheet() {
     return () => clearTimeout(id);
   }, [onMainTab, pathname]);
 
-  if (Platform.OS !== 'web' || !ready || !onMainTab || typing || snoozed !== false || state === 'installed') return null;
-  const b = browserKind();
-  const kind: Kind = state === 'ready' ? 'prompt' : b === 'inapp' ? 'inapp' : b === 'ios-safari' ? 'ios-safari' : b === 'ios-other' ? 'ios-other' : 'menu';
+  if (Platform.OS !== 'web' || !ready || !onMainTab || typing || snoozed !== false || passedNow || state === 'installed') return null;
+  const kind = installKind(state);
   const dismiss = () => { setSnoozed(true); AsyncStorage.setItem(DISMISSED_KEY, String(Date.now())).catch(() => {}); };
   // Only snooze after the dialog was answered with "install"; cancelling it leaves the sheet for another day.
   const install = async () => { const outcome = await prompt(); if (outcome === 'accepted') dismiss(); else setSnoozed(true); };
-  const ios = /iPhone|iPod/.test(typeof navigator !== 'undefined' ? navigator.userAgent : '');
-  const strong = (s: string) => <T v="bodyStrong" style={{ fontSize: 14 }}>{s}</T>;
 
   return (
     <View pointerEvents="box-none" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, justifyContent: 'flex-end', alignItems: 'center', paddingHorizontal: 10 }}>
@@ -94,27 +93,7 @@ export function InstallSheet() {
           <Pressable onPress={dismiss} hitSlop={10} accessibilityRole="button" accessibilityLabel="Close"><Icon name="x" size={18} color={t.c.mut} /></Pressable>
         </View>
 
-        {kind === 'ios-safari' ? (
-          <View style={{ gap: 8 }}>
-            <Step n="1">Tap <Icon name="share" size={15} color={t.c.acc} /> Share in Safari’s toolbar</Step>
-            <Step n="2">Choose {strong('Add to Home Screen')}, then Add</Step>
-          </View>
-        ) : kind === 'ios-other' ? (
-          <View style={{ gap: 8 }}>
-            <Step n="1">Tap <Icon name="share" size={15} color={t.c.acc} /> Share (in the address bar or the menu)</Step>
-            <Step n="2">Choose {strong('Add to Home Screen')}, then Add</Step>
-          </View>
-        ) : kind === 'inapp' ? (
-          <View style={{ gap: 8 }}>
-            <Step n="1">Open the menu ({strong('⋯')} or {strong('⋮')}) of this screen</Step>
-            <Step n="2">Choose {strong(ios ? 'Open in Safari' : 'Open in Chrome')} (or “Open in browser”), then install from there</Step>
-          </View>
-        ) : kind === 'menu' ? (
-          <View style={{ gap: 8 }}>
-            <Step n="1">Open your browser’s menu {strong('⋮')}</Step>
-            <Step n="2">Tap {strong('Install app')} or {strong('Add to Home screen')}</Step>
-          </View>
-        ) : null}
+        <InstallSteps kind={kind} />
 
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {kind === 'prompt' ? <Button style={{ flex: 1, height: 44 }} icon="download" label="Install" onPress={install} /> : null}
@@ -122,6 +101,38 @@ export function InstallSheet() {
         </View>
       </View>
     </View>
+  );
+}
+
+/** The steps to install by hand, for this browser (nothing when the browser has its own install dialog). */
+export function InstallSteps({ kind }: { kind: InstallKind }) {
+  const t = useTokens();
+  const ios = /iPhone|iPod/.test(typeof navigator !== 'undefined' ? navigator.userAgent : '');
+  const strong = (x: string) => <T v="bodyStrong" style={{ fontSize: 14 }}>{x}</T>;
+  return (
+    <>
+      {kind === 'ios-safari' ? (
+        <View style={{ gap: 8 }}>
+          <Step n="1">Tap <Icon name="share" size={15} color={t.c.acc} /> Share in Safari’s toolbar</Step>
+          <Step n="2">Choose {strong('Add to Home Screen')}, then Add</Step>
+        </View>
+      ) : kind === 'ios-other' ? (
+        <View style={{ gap: 8 }}>
+          <Step n="1">Tap <Icon name="share" size={15} color={t.c.acc} /> Share (in the address bar or the menu)</Step>
+          <Step n="2">Choose {strong('Add to Home Screen')}, then Add</Step>
+        </View>
+      ) : kind === 'inapp' ? (
+        <View style={{ gap: 8 }}>
+          <Step n="1">Open the menu ({strong('⋯')} or {strong('⋮')}) of this screen</Step>
+          <Step n="2">Choose {strong(ios ? 'Open in Safari' : 'Open in Chrome')} (or “Open in browser”), then install from there</Step>
+        </View>
+      ) : kind === 'menu' ? (
+        <View style={{ gap: 8 }}>
+          <Step n="1">Open your browser’s menu {strong('⋮')}</Step>
+          <Step n="2">Tap {strong('Install app')} or {strong('Add to Home screen')}</Step>
+        </View>
+      ) : null}
+    </>
   );
 }
 

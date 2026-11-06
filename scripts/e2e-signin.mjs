@@ -136,6 +136,34 @@ await page.waitForTimeout(2000);
 const savedAfterOut = await savedCache();
 log(!savedAfterOut || !savedAfterOut.includes('e2e-user'), 'sign out removes the saved copy of your data');
 
+// A new person: first run asks to sign in, and the setup tour starts once they come back signed in.
+{
+  const c2 = await browser.newContext({ viewport: { width: 1280, height: 800 } }); // desktop: no install step
+  await c2.route('https://github.com/login/oauth/authorize**', (route) => {
+    const u = new URL(route.request().url());
+    const code = 'e2ecode' + Math.random().toString(36).slice(2, 10);
+    issued.set(code, u.searchParams.get('code_challenge'));
+    route.fulfill({ status: 302, headers: { Location: `${WORKER}/auth/callback?code=${code}&state=${encodeURIComponent(u.searchParams.get('state'))}` } });
+  });
+  await c2.route('https://api.github.com/**', (route) => {
+    const path = new URL(route.request().url()).pathname;
+    const body = path === '/user' ? { login: 'e2e-user', name: 'E2E User', avatar_url: '' } : path.startsWith('/search') ? { total_count: 0, items: [] } : [];
+    route.fulfill({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify(body) });
+  });
+  const p2 = await c2.newPage();
+  p2.on('pageerror', (e) => errors.push(e.message));
+  await p2.goto(`${APP}/`, { waitUntil: 'networkidle' });
+  log(p2.url().endsWith('/welcome') && await p2.getByRole('button', { name: 'Sign in with GitHub' }).isVisible(), 'first run on desktop: the sign-in step (no install step)');
+  await p2.getByRole('button', { name: 'Sign in with GitHub' }).click();
+  await p2.getByText('01 / 03 · look').waitFor({ timeout: 15000 }).then(() => log(true, 'back from GitHub signed in, the setup tour starts'), () => log(false, `back from GitHub signed in, the setup tour starts (at ${p2.url()})`));
+  await p2.getByRole('button', { name: 'Skip setup' }).click();
+  await p2.waitForTimeout(500);
+  log(new URL(p2.url()).pathname === '/' && await p2.getByText('Showing sample data').isHidden(), 'skipping the tour lands on Home with your account');
+  await p2.goto(`${APP}/`, { waitUntil: 'networkidle' });
+  log(!p2.url().endsWith('/welcome'), 'and first run never comes back');
+  await c2.close();
+}
+
 // Denied on GitHub → friendly message.
 await ctx.unroute('https://github.com/login/oauth/authorize**');
 await ctx.route('https://github.com/login/oauth/authorize**', (route) => {

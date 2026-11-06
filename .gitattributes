@@ -1,0 +1,16 @@
+# Text files are stored and checked out with LF on every OS, so Windows and Linux checkouts match byte for byte
+# (no "LF will be replaced by CRLF" noise, no CRLF-only diffs, CI on Ubuntu and Windows sees the same files).
+* text=auto eol=lf
+
+# Windows-only scripts keep CRLF.
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary assets: never touch.
+*.png binary
+*.jpg binary
+*.ico binary
+*.ttf binary
+*.woff binary
+*.woff2 binary

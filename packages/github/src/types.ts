@@ -106,7 +106,7 @@ export type Notification = {
 
 export type CheckRun = { name: string; status: string; conclusion: string | null; started_at?: string; completed_at?: string | null; html_url?: string };
 export type CheckRuns = { total_count: number; check_runs: CheckRun[] };
-export type WorkflowRuns = { total_count: number; workflow_runs: { conclusion: string | null; created_at?: string }[] };
+export type WorkflowRuns = { total_count: number; workflow_runs: { id?: number; name?: string; head_branch?: string; status?: string; html_url?: string; conclusion: string | null; created_at?: string }[] };
 
 /** One entry of GET /repos/{o}/{r}/contents/{path} when path is a directory. */
 export type ContentItem = { type: 'file' | 'dir' | 'symlink' | 'submodule'; name: string; path: string; size: number; sha: string; html_url?: string };
