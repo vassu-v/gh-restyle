@@ -14,7 +14,7 @@
   :root { --bg: #0E0F11; --el: #16171A; --el2: #1E1F23; --line: #25262B; --line2: #33343A; --fg: #ECECEE; --mut: #8D8F96; --acc: #A8B8FF; --acc-soft: #A8B8FF22; --on-fg: #0E0F11; --ok: #5BD69A; --bad: #FF7A5C; --num: "Gitling Doto"; --r: 18px; }
   * { box-sizing: border-box; }
   html { background: var(--bg); color-scheme: dark; }
-  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 "Gitling Geist", system-ui, sans-serif; transition: background .2s, color .2s; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 var(--font, "Gitling Geist", system-ui, sans-serif); transition: background .2s, color .2s; }
   main { max-width: 980px; margin: 0 auto; padding: 32px 24px 64px; }
   header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 28px; }
   .word { font: 800 30px/1 "Gitling Doto", monospace; letter-spacing: .14em; color: var(--acc); }
@@ -81,6 +81,19 @@
   .pv .pill.primary { background: var(--fg); color: var(--on-fg); border-color: transparent; font-weight: 600; }
   .pv a { color: var(--acc); text-decoration: none; }
   .note { color: var(--mut); font-size: 13px; margin: 10px 4px 0; }
+  .ct-color { display: flex; align-items: center; gap: 8px; }
+  .ct-color input[type=color] { width: 34px; height: 26px; border: 1px solid var(--line2); border-radius: 8px; background: none; padding: 0; cursor: pointer; }
+  .ct-color code { font: 12px "Gitling Geist Mono", monospace; color: var(--mut); min-width: 64px; }
+  .ct-color.unset code { opacity: .6; }
+  .reset { border: 0; background: none; color: var(--mut); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline; padding: 2px; }
+  .reset[disabled] { visibility: hidden; }
+  .field { height: 34px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--line2); background: var(--el2); color: var(--fg); font: inherit; font-size: 14px; }
+  .warn { display: inline-block; font: 500 11px "Gitling Geist Mono", monospace; color: var(--bad); border: 1px solid var(--bad); border-radius: 999px; padding: 1px 7px; margin-left: 6px; }
+  .warnings { color: var(--bad); font-size: 13px; padding: 0 16px; }
+  .warnings:empty { display: none; }
+  .warnings li { margin: 4px 0; }
+  .notice { border: 1px solid var(--bad); border-radius: 14px; padding: 12px 14px; margin: 0 16px 14px; font-size: 13px; }
+  .notice[hidden] { display: none; }
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 </style>
 </head>
@@ -103,6 +116,33 @@
         <div class="row"><div>Counters<div class="hint">Issue, pull request and star counts.</div></div><div class="seg" id="num"><button data-v="dot">Dot</button><button data-v="mono">Mono</button><button data-v="sans">Sans</button></div></div>
         <div class="row"><div>Corners</div><div class="seg" id="tiles"><button data-v="window">Round</button><button data-v="plain">Rounder</button></div></div>
         <div class="row"><div>Text size<div class="hint" id="scale-out">100%</div></div><input type="range" id="scale" min="0.85" max="1.3" step="0.05" aria-label="Text size"></div>
+      </div>
+
+      <div class="label"><span>custom theme</span><span id="ct-state"></span></div>
+      <div class="panel" id="custom">
+        <div class="row"><div>Custom theme<div class="hint">Your own colours, fonts and corners. Works the same in the Gitling app.</div></div><div class="btns" style="margin:0"><button class="btn" id="ct-start">Start from current look</button><button class="btn" id="ct-remove">Remove</button></div></div>
+        <div id="ct-fields">
+          <div class="row"><label for="ct-name">Theme name</label><input class="field" id="ct-name" maxlength="40" placeholder="My theme"></div>
+          <div class="row"><label for="ct-author">Author</label><input class="field" id="ct-author" maxlength="40" placeholder="Your name"></div>
+          <div class="row"><div>Mode<div class="hint">GitHub's code and diff colours follow it.</div></div><div class="seg" id="ct-mode"><button data-v="dark">Dark</button><button data-v="light">Light</button></div></div>
+          <div id="ct-colors"></div>
+          <div id="ct-fonts"></div>
+          <div class="row"><div>Corner radius<div class="hint" id="ct-radius-out"></div></div><div class="ct-color"><input type="range" id="ct-radius" min="0" max="24" step="1" aria-label="Corner radius"><button class="reset" id="ct-radius-reset">Reset</button></div></div>
+          <ul class="warnings" id="ct-warnings" role="status"></ul>
+        </div>
+      </div>
+
+      <div class="label"><span>custom css</span></div>
+      <div class="panel" id="css-panel">
+        <div class="row"><div>Custom CSS<div class="hint" id="css-note"></div></div><span class="switch"><input type="checkbox" id="css-on" role="switch" aria-label="Custom CSS"><span></span></span></div>
+        <div class="notice" id="css-notice" hidden role="alertdialog" aria-labelledby="css-notice-text">
+          <div id="css-notice-text"></div>
+          <div class="btns"><button class="btn primary" id="css-accept">Apply the CSS</button><button class="btn" id="css-decline">Not now</button></div>
+        </div>
+        <div style="padding:0 16px 16px">
+          <textarea id="css" placeholder="/* CSS for github.com, up to 20 KB. @import is removed. */" spellcheck="false" aria-label="Custom CSS text"></textarea>
+          <div class="btns"><button class="btn" id="css-save">Save CSS</button></div>
+        </div>
       </div>
 
       <div class="label"><span>developer mode</span></div>

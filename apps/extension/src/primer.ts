@@ -1,6 +1,34 @@
 // Deep imports keep zod out of the content script (see storage.ts).
 import type { Design } from '@gitling/design/src/schema';
-import { fit, mix, resolveTokens } from '@gitling/design/src/tokens';
+import { fit, mix, modeOf, numbersOf, resolveTokens } from '@gitling/design/src/tokens';
+
+/** CSS font stacks for each font a design can choose (all bundled with the extension, or the computer's own). */
+const SANS = '"Gitling Geist", -apple-system, "Segoe UI", sans-serif';
+const MONO = '"Gitling Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace';
+const SYSTEM_SANS = '-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
+const SYSTEM_MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+export function fontStacks(design: Design) {
+  const f = design.theme.custom?.fonts;
+  const body = f?.body === 'geist-mono' ? MONO : f?.body === 'system' ? SYSTEM_SANS : SANS;
+  const mono = f?.mono === 'system-mono' ? SYSTEM_MONO : MONO;
+  const n = numbersOf(design);
+  return { body, mono, num: n === 'dot' ? '"Gitling Doto"' : n === 'mono' ? '"Gitling Geist Mono"' : '"Gitling Geist"' };
+}
+
+/** The radius (px) GitHub's medium corners get: a custom theme's, else from the Corners setting. */
+export const radiusOf = (design: Design) => design.theme.custom?.radius ?? (design.theme.tiles === 'plain' ? 12 : 10);
+
+/** Custom CSS made safe to inject as text: no remote @import (or any @import), at most 20 KB. */
+export function safeCss(css: string | undefined): string {
+  if (!css) return '';
+  // At-keywords may be written with CSS escapes (@\69mport is @import): decode the name before checking it.
+  const unescape = (n: string) => n.replace(/\\([0-9a-f]{1,6})\s?/gi, (_, h) => String.fromCodePoint(parseInt(h, 16) || 0xfffd)).replace(/\\(.)/g, '$1');
+  const MARK = '\u0000gitling-import\u0000';
+  return css.slice(0, 20 * 1024).replace(/\u0000/g, '')
+    .replace(/@((?:\\[0-9a-f]{1,6}\s?|\\[^\n]|[\w-])+)/gi, (m, name: string) => (unescape(name).toLowerCase() === 'import' ? MARK : m))
+    .replace(new RegExp(`${MARK}[^;]*;?`, 'g'), '/* @import removed */')
+    .replace(/<\/style/gi, '<\\/style');
+}
 
 const round = (n: number) => Math.round(n * 1000) / 1000;
 
@@ -11,7 +39,9 @@ const round = (n: number) => Math.round(n * 1000) / 1000;
 export function primerVars(design: Design): Record<string, string> {
   const t = resolveTokens(design);
   const c = t.c;
-  const radius = design.theme.tiles === 'plain' ? 12 : 10;
+  const radius = radiusOf(design);
+  const fonts = fontStacks(design);
+  const mode = modeOf(design);
   return {
     '--bgColor-default': c.bg,
     '--bgColor-muted': c.el,
@@ -55,9 +85,13 @@ export function primerVars(design: Design): Record<string, string> {
     '--control-fgColor-rest': c.fg,
     '--control-bgColor-rest': c.el2,
     '--control-bgColor-hover': mix(c.el2, c.fg, 0.08),
-    '--fontStack-system': '"Gitling Geist", -apple-system, "Segoe UI", sans-serif',
-    '--fontStack-sansSerif': '"Gitling Geist", -apple-system, "Segoe UI", sans-serif',
-    '--fontStack-monospace': '"Gitling Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
+    '--fgColor-warning': c.wait,
+    '--bgColor-success-emphasis': fit(c.ok, '#FFFFFF', 4.5),
+    '--bgColor-danger-emphasis': fit(c.bad, '#FFFFFF', 4.5),
+    '--fontStack-system': fonts.body,
+    '--fontStack-sansSerif': fonts.body,
+    '--fontStack-sansSerifDisplay': fonts.body,
+    '--fontStack-monospace': fonts.mono,
     '--borderRadius-medium': `${radius / 16}rem`,
     '--borderRadius-large': `${(radius + 8) / 16}rem`,
     // Our own copies: some GitHub regions (the signed-out header) re-scope Primer tokens, so content.css uses these.
@@ -72,8 +106,14 @@ export function primerVars(design: Design): Record<string, string> {
     '--gitling-acc-soft': c.accSoft,
     '--borderRadius-default': `${radius / 16}rem`,
     '--gitling-panel-radius': `${(radius + 8) / 16}rem`,
-    '--gitling-num-font': t.numbers === 'dot' ? '"Gitling Doto"' : t.numbers === 'mono' ? '"Gitling Geist Mono"' : '"Gitling Geist"',
-    'color-scheme': t.mode,
+    '--gitling-num-font': fonts.num,
+    '--gitling-font': fonts.body,
+    '--gitling-mono-font': fonts.mono,
+    '--gitling-ok': c.ok,
+    '--gitling-bad': c.bad,
+    '--gitling-wait': c.wait,
+    '--gitling-radius': `${radius / 16}rem`,
+    'color-scheme': mode,
     // Text size from Studio: the whole page scales evenly (CSS zoom, like the browser's own zoom). Scaling only
     // rem sizes broke GitHub's px-sized columns (cut-off times, squashed avatars). 100% leaves GitHub as it is.
     ...(design.theme.textScale !== 1 ? { zoom: String(round(design.theme.textScale)) } : {}),

@@ -28,7 +28,8 @@
     "e2e:extension:user": "node scripts/e2e-extension-user.mjs",
     "test:fuzz": "vitest run tests/fuzz",
     "test:coverage": "vitest run --coverage",
-    "verify": "node scripts/verify.mjs"
+    "verify": "node scripts/verify.mjs",
+    "e2e:custom-theme": "node scripts/e2e-custom-theme.mjs"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^3.2.7",

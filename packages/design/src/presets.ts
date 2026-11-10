@@ -22,12 +22,18 @@ export function applyPreset(design: Design, preset: Preset): Design {
 /** The preset the design currently matches exactly, if any. */
 export function presetOf(design: Design): Preset | undefined {
   const t = design.theme;
+  if (t.custom) return undefined;
   return PRESETS.find((p) => (Object.keys(p.theme) as (keyof Design['theme'])[]).every((k) => String(p.theme[k]).toLowerCase() === String(t[k]).toLowerCase()));
 }
 
 /** One line describing a design, for share previews. */
 export function describeDesign(d: Design): string {
   const p = presetOf(d);
-  const look = p ? p.name : `${d.theme.background[0].toUpperCase()}${d.theme.background.slice(1)} · ${d.theme.numbers} numbers`;
+  const look = d.theme.custom ? `Your design: ${d.theme.custom.name ?? 'custom theme'}` : p ? p.name : `${d.theme.background[0].toUpperCase()}${d.theme.background.slice(1)} · ${d.theme.numbers} numbers`;
   return `${look} · ${d.nav.tabs.length} tabs · ${d.home.sections.filter((s) => s.visible).length} home sections · ${d.tiles.length} shortcuts`;
+}
+
+/** The name a design goes by: its custom theme's name, else its preset's. */
+export function designName(d: Design): string | undefined {
+  return d.theme.custom ? d.theme.custom.name ?? 'Custom theme' : presetOf(d)?.name;
 }

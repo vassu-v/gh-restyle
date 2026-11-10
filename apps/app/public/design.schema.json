@@ -78,6 +78,113 @@
               "type": "number",
               "minimum": 0.85,
               "maximum": 1.3
+            },
+            "custom": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "author": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "mode": {
+                  "type": "string",
+                  "enum": [
+                    "dark",
+                    "light"
+                  ]
+                },
+                "radius": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 24
+                },
+                "colors": {
+                  "type": "object",
+                  "properties": {
+                    "bg": {
+                      "type": "string",
+                      "pattern": "^#[0-9A-Fa-f]{6}$"
+                    },
+                    "surface": {
+                      "type": "string",
+                      "pattern": "^#[0-9A-Fa-f]{6}$"
+                    },
+                    "surfaceAlt": {
+                      "type": "string",
+                      "pattern": "^#[0-9A-Fa-f]{6}$"
+                    },
+                    "border": {
+                      "type": "string",
+                      "pattern": "^#[0-9A-Fa-f]{6}$"
+                    },
+                    "text": {
+                      "type": "string",
+                      "pattern": "^#[0-9A-Fa-f]{6}$"
+                    },
+                    "muted": {
+                      "type": "string",
+                      "pattern": "^#[0-9A-Fa-f]{6}$"
+                    },
+                    "accent": {
+                      "type": "string",
+                      "pattern": "^#[0-9A-Fa-f]{6}$"
+                    },
+                    "success": {
+                      "type": "string",
+                      "pattern": "^#[0-9A-Fa-f]{6}$"
+                    },
+                    "danger": {
+                      "type": "string",
+                      "pattern": "^#[0-9A-Fa-f]{6}$"
+                    },
+                    "warning": {
+                      "type": "string",
+                      "pattern": "^#[0-9A-Fa-f]{6}$"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "fonts": {
+                  "type": "object",
+                  "properties": {
+                    "body": {
+                      "type": "string",
+                      "enum": [
+                        "geist",
+                        "geist-mono",
+                        "system"
+                      ]
+                    },
+                    "mono": {
+                      "type": "string",
+                      "enum": [
+                        "geist-mono",
+                        "system-mono"
+                      ]
+                    },
+                    "numbers": {
+                      "type": "string",
+                      "enum": [
+                        "doto",
+                        "geist-mono",
+                        "geist"
+                      ]
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "css": {
+                  "type": "string",
+                  "maxLength": 20480
+                }
+              },
+              "additionalProperties": false
             }
           },
           "required": [

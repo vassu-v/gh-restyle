@@ -53,6 +53,7 @@ The `design` fields:
 | `theme.tiles` | `window`, `plain` |
 | `theme.density` | 1–5 |
 | `theme.textScale` | 0.85–1.3 |
+| `theme.custom` | Optional custom theme. Every field is optional and replaces what background + accent would give: `name`, `author` (≤ 40 characters), `mode` (`dark`/`light`), `radius` (whole px, 0–24), `colors` (`bg`, `surface`, `surfaceAlt`, `border`, `text`, `muted`, `accent`, `success`, `danger`, `warning`, each `#RRGGBB`), `fonts` (`body`: `geist`/`geist-mono`/`system`; `mono`: `geist-mono`/`system-mono`; `numbers`: `doto`/`geist-mono`/`geist`), and `css` (≤ 20 KB, applied by the browser extension only, after a notice). An invalid custom theme is left out on its own and the rest of the look still loads. |
 | `nav.tabs` | 2–5 of `home`, `feed`, `inbox`, `repos`, `studio`; must include `studio` |
 | `home.sections` | In display order, at least one with `visible: true`. Built-ins are `{ id, visible }`, each id once: `status`, `shortcuts`, `needs`, `feed`, `inbox`, `recent`, `reviews`, `my-prs`, `assigned`, `mentions`, `starred`, `checks` (`visible: false` means "not on Home, can be added"; missing ones are added switched off). Search sections are `{ id: "q-…", visible, title, q }`: any GitHub issue/PR search under your own title (≤ 40 characters), up to 12. A list with nothing visible is left out and the default Home is used. |
 | `tiles` | up to 24; each has `label` (≤ 40 characters), `icon`, `tint`, `count`, `size` (`half` or `full`) and a `target` |

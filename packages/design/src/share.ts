@@ -19,6 +19,12 @@ export function encodeDesign(d: Design): string {
   return PREFIX + toB64Url(JSON.stringify(d));
 }
 
+/**
+ * Longest share link Gitling hands out. Browsers and chat apps cut or refuse longer URLs; a full design with a
+ * custom theme is ~3 KB, so only a design carrying lots of custom CSS goes over (use the code or a file then).
+ */
+export const SHARE_LINK_MAX = 8000;
+
 /** `dropped`: parts left out because this version doesn't accept them (e.g. an unsafe link tile), as for files. */
 export type DecodeResult = { ok: true; design: Design; dropped: string[] } | { ok: false; error: string };
 

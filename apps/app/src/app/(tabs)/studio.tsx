@@ -1,11 +1,11 @@
-import { describeDesign, designFileName, designToFile, encodeDesign, presetOf, readDesignText } from '@gitling/design';
+import { describeDesign, designFileName, designName, SHARE_LINK_MAX, designToFile, encodeDesign, presetOf, readDesignText } from '@gitling/design';
 import * as Clipboard from 'expo-clipboard';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Platform, Pressable, TextInput, View } from 'react-native';
 import { appUrl } from '@/config';
 import { useDesign } from '@/design/DesignProvider';
-import { DesignPreview, HomeSectionsEditor, LookRows, PresetGallery, TabBarEditor } from '@/features/studio/controls';
+import { CustomThemePanel, DesignPreview, HomeSectionsEditor, LookRows, PresetGallery, TabBarEditor } from '@/features/studio/controls';
 import { canOpenFiles, openDesignFile, saveDesignFile } from '@/lib/designFile';
 import { useOnboarding } from '@/onboarding/OnboardingProvider';
 import { Icon } from '@/ui/Icon';
@@ -41,7 +41,6 @@ export default function Studio() {
     if (params.import) { setTab('share'); setCode(params.import); setMsg(null); }
     else if (params.tab && (TABS as string[]).includes(params.tab)) setTab(params.tab as Tab);
   }
-  const active = presetOf(design);
   // The paste box takes anything readDesignText reads: a design file's text, a code, or a share link.
   const incoming = code.trim() ? readDesignText(code) : null;
   const flash = (ok: boolean, text: string) => setMsg({ ok, text });
@@ -71,10 +70,11 @@ export default function Studio() {
         <View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 18, paddingBottom: 10 }}>
             <T v="label" c="mut">presets</T>
-            <T v="monoS" c="dim">{active ? active.name : 'custom'}</T>
+            <T v="monoS" c="dim">{designName(design) ?? 'custom'}</T>
           </View>
           <PresetGallery />
           <LookRows />
+          <CustomThemePanel />
         </View>
       ) : null}
 
@@ -116,11 +116,11 @@ export default function Studio() {
           <T v="sub" c="mut">Share your look, tabs, home layout and shortcuts. A link opens Gitling with your design ready to preview; the code also works in the desktop extension.</T>
           <T v="monoS" c="dim">{describeDesign(design)}</T>
           {shareLink('x') ? (
-            <Button label="Copy share link" icon="link" onPress={async () => { await Clipboard.setStringAsync(shareLink(encodeDesign(design))); flash(true, 'Link copied. Anyone with Gitling can preview and apply it.'); }} />
+            <Button label="Copy share link" icon="link" onPress={async () => { const link = shareLink(encodeDesign(design)); if (link.length > SHARE_LINK_MAX) { flash(false, 'This design is too long for a link (its custom CSS). Copy the design code or save a file instead.'); return; } await Clipboard.setStringAsync(link); flash(true, 'Link copied. Anyone with Gitling can preview and apply it.'); }} />
           ) : null}
           <Button kind="quiet" label="Copy design code" icon="copy" onPress={async () => { await Clipboard.setStringAsync(encodeDesign(design)); flash(true, 'Code copied.'); }} />
           <Button kind="quiet" label={Platform.OS === 'web' ? 'Save as file' : 'Share design'} icon="download" onPress={async () => {
-            const name = active?.name;
+            const name = designName(design);
             try { if (await saveDesignFile(designToFile(design, { name }), designFileName(name))) flash(true, 'Saved. Open it later here or in Welcome to bring this setup back.'); }
             catch { flash(false, "Couldn't save the file."); }
           }} />
