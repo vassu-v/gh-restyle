@@ -46,6 +46,8 @@ to reload.
 | **Counters:** Dot / Mono / Sans | The font of the number badges (issue, pull request and star counts). Dot is the dot-matrix style from the app. |
 | **Corners** | How round panels, buttons and inputs are. |
 | **Text size** | 85% to 130%. The whole page scales evenly, like the browser's zoom, so GitHub's columns stay intact. |
+| **Custom theme** | Your own colours (background, panels, raised, borders, text, muted text, accent, success, danger, warning), text/code/numbers fonts, corner radius, dark or light mode, a name and an author. The same section, in the same order, as the app's Studio. See [Custom themes](#custom-themes). |
+| **Custom CSS** | Extra CSS for github.com only, up to 20 KB, behind its own switch. See [Custom themes](#custom-themes). |
 | **Developer mode** | One switch for all of these, or each on its own: **hide sales menus** (enterprise, pricing, solutions, marketplace, "features"), **hide Copilot** (its buttons, menu entries and prompts), **hide the footer**, and **wide layout** (the whole window instead of GitHub's fixed width). |
 | **Your design** | Paste a design code, a share link or a design file's text and click **Apply design**; or **Open a design file**, **Save as file**, **Copy design code** (to paste in the app), and **Reset to default**. |
 
@@ -68,6 +70,28 @@ labels and topics, rounder code blocks, and selection and focus colours in your 
 If the code was cut off or mistyped, the settings page says so in red and leaves your current look alone. Copy
 it again in full. Going the other way works too: **Copy design code** or **Save as file** on the settings page,
 then paste or open it in the app's Studio → Share.
+
+## Custom themes
+
+A custom theme is part of your design, so it travels in the same design code, share link and `.gitling.json`
+file, and looks the same in the app and on github.com.
+
+1. On the settings page, under **custom theme**, click **Start from current look**. Every field fills in with what
+   you see now.
+2. Change what you like. Colours use the picker; **Reset** next to a field goes back to the automatic value.
+   Fonts come from the ones bundled with Gitling (Geist, Geist Mono, Doto) or your computer's own: never a web
+   address. Corner radius is 0 to 24 px. **Mode** decides GitHub's own dark or light mode, so code and diff
+   colours match.
+3. A red badge like `2.1:1` means a colour is hard to read against the background or panels; the list under the
+   fields says which pair. Gitling doesn't change your colour for you.
+4. **Copy design code** or **Save as file** and load it in the app's Studio → Share (or the reverse).
+5. **Remove** drops the custom theme and goes back to the preset look underneath.
+
+**Custom CSS** (extension only, optional). Type CSS in the **custom css** box and click **Save CSS**; it applies
+to github.com straight away and can be switched off. It is carried in design codes and files, and the app keeps
+it but ignores it ("applies on github.com only"). When you load someone else's design that has CSS, the CSS is
+**not** applied: a notice asks first, and only **Apply the CSS** turns it on. `@import` rules are removed, so the
+CSS can't pull in anything from the web. The CSS is kept on this computer (it's too big for browser sync).
 
 ## Turn it off
 

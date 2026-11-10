@@ -10,14 +10,27 @@ export const CLEAN_KEYS = Object.keys(CLEAN_OFF) as (keyof Clean)[];
 export type Settings = { enabled: boolean; design: Design; clean: Clean };
 const KEY = 'gitling';
 
-type ChromeLike = { storage: { sync: { get(k: string): Promise<Record<string, unknown>>; set(v: Record<string, unknown>): Promise<void> }; onChanged: { addListener(fn: (changes: Record<string, unknown>, area: string) => void): void } } };
+type Area = { get(k: string): Promise<Record<string, unknown>>; set(v: Record<string, unknown>): Promise<void> };
+type ChromeLike = { storage: { local?: Area; sync: { get(k: string): Promise<Record<string, unknown>>; set(v: Record<string, unknown>): Promise<void> }; onChanged: { addListener(fn: (changes: Record<string, unknown>, area: string) => void): void } } };
 export const ext = (globalThis as unknown as { browser?: ChromeLike; chrome: ChromeLike }).browser ?? (globalThis as unknown as { chrome: ChromeLike }).chrome;
 
 const HEX = /^#[0-9a-f]{6}$/i;
 /** Enough to render safely; anything off falls back to the default design. */
+const FONTS: Record<string, string[]> = { body: ['geist', 'geist-mono', 'system'], mono: ['geist-mono', 'system-mono'], numbers: ['doto', 'geist-mono', 'geist'] };
+/** A custom theme's values are used in CSS, so each must be what the schema allows (or absent). */
+function customOk(c: unknown): boolean {
+  if (c === undefined) return true;
+  if (!c || typeof c !== 'object') return false;
+  const x = c as Record<string, unknown>;
+  if (x.mode !== undefined && x.mode !== 'dark' && x.mode !== 'light') return false;
+  if (x.radius !== undefined && !(Number.isInteger(x.radius) && (x.radius as number) >= 0 && (x.radius as number) <= 24)) return false;
+  if (x.colors !== undefined && (!x.colors || typeof x.colors !== 'object' || !Object.values(x.colors).every((v) => typeof v === 'string' && HEX.test(v)))) return false;
+  if (x.fonts !== undefined && (!x.fonts || typeof x.fonts !== 'object' || !Object.entries(x.fonts).every(([k, v]) => FONTS[k]?.includes(v as string)))) return false;
+  return true;
+}
 function looksValid(d: unknown): d is Design {
   const t = (d as Design | undefined)?.theme;
-  return !!t && HEX.test(t.accent) && Object.prototype.hasOwnProperty.call(BACKGROUNDS, t.background) && ['dot', 'mono', 'sans'].includes(t.numbers)
+  return !!t && customOk(t.custom) && HEX.test(t.accent) && Object.prototype.hasOwnProperty.call(BACKGROUNDS, t.background) && ['dot', 'mono', 'sans'].includes(t.numbers)
     && ['window', 'plain'].includes(t.tiles) && Number.isInteger(t.density) && t.density >= 1 && t.density <= 5;
 }
 
@@ -43,10 +56,35 @@ export function forSync(s: Settings): Settings {
   return { ...s, design: { ...DEFAULT_DESIGN, theme: s.design.theme, tiles: [] } };
 }
 
+/** A design without its custom CSS: the CSS (up to 20 KB) lives in storage.local, see CustomCss. */
+const withoutCss = (d: Design): Design => {
+  if (d.theme.custom?.css === undefined) return d;
+  const { css: _css, ...custom } = d.theme.custom;
+  return { ...d, theme: { ...d.theme, custom } };
+};
+
 export async function saveSettings(s: Settings) {
-  await ext.storage.sync.set({ [KEY]: forSync(s) });
+  await ext.storage.sync.set({ [KEY]: forSync({ ...s, design: withoutCss(s.design) }) });
 }
 
 export function onSettingsChange(fn: () => void) {
-  ext.storage.onChanged.addListener((changes, area) => { if (area === 'sync' && KEY in changes) fn(); });
+  ext.storage.onChanged.addListener((changes, area) => { if ((area === 'sync' && KEY in changes) || (area === 'local' && CSS_KEY in changes)) fn(); });
+}
+
+/**
+ * Extension-only custom CSS for github.com. Too big for storage.sync, so it stays on this computer.
+ * `on`: the toggle on the settings page. `accepted`: the person saw this CSS (wrote it, or confirmed the notice
+ * after importing a design that had it); CSS from an import is never applied before that.
+ */
+export type CustomCss = { css: string; on: boolean; accepted: boolean };
+const CSS_KEY = 'gitling-css';
+export const CSS_OFF: CustomCss = { css: '', on: false, accepted: false };
+
+export async function loadCss(): Promise<CustomCss> {
+  const raw = ext.storage.local ? ((await ext.storage.local.get(CSS_KEY))[CSS_KEY] as Partial<CustomCss> | undefined) : undefined;
+  return { css: typeof raw?.css === 'string' ? raw.css.slice(0, 20 * 1024) : '', on: raw?.on === true, accepted: raw?.accepted === true };
+}
+
+export async function saveCss(c: CustomCss) {
+  await ext.storage.local?.set({ [CSS_KEY]: c });
 }

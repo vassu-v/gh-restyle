@@ -98,6 +98,37 @@ export type Tile = z.infer<typeof Tile>;
 export const Background = z.enum(['graphite', 'black', 'paper']);
 export type Background = z.infer<typeof Background>;
 
+const Hex = z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Use a colour like #1A2B3C');
+
+/** Colours a custom theme can set. Each one replaces what the background + accent would give. Order = editor order. */
+export const CUSTOM_COLORS = ['bg', 'surface', 'surfaceAlt', 'border', 'text', 'muted', 'accent', 'success', 'danger', 'warning'] as const;
+export type CustomColor = (typeof CUSTOM_COLORS)[number];
+/** Bundled fonts only (shipped with the app and the extension, or the device's own): never a URL. */
+export const CUSTOM_FONTS = {
+  body: ['geist', 'geist-mono', 'system'],
+  mono: ['geist-mono', 'system-mono'],
+  numbers: ['doto', 'geist-mono', 'geist'],
+} as const;
+export const CUSTOM_RADIUS = { min: 0, max: 24 } as const;
+/** Extension-only custom CSS, in characters (UTF-16 code units, about bytes for CSS). */
+export const CUSTOM_CSS_MAX = 20 * 1024;
+
+export const CustomTheme = z.object({
+  name: z.string().trim().min(1).max(40, 'Theme name: up to 40 characters').optional(),
+  author: z.string().trim().min(1).max(40, 'Author: up to 40 characters').optional(),
+  mode: z.enum(['dark', 'light']).optional(),
+  radius: z.number().int('Corner radius must be a whole number').min(CUSTOM_RADIUS.min).max(CUSTOM_RADIUS.max, `Corner radius: ${CUSTOM_RADIUS.min} to ${CUSTOM_RADIUS.max} px`).optional(),
+  colors: z.object(Object.fromEntries(CUSTOM_COLORS.map((k) => [k, Hex.optional()])) as Record<CustomColor, z.ZodOptional<typeof Hex>>).strict().optional(),
+  fonts: z.object({
+    body: z.enum(CUSTOM_FONTS.body).optional(),
+    mono: z.enum(CUSTOM_FONTS.mono).optional(),
+    numbers: z.enum(CUSTOM_FONTS.numbers).optional(),
+  }).strict().optional(),
+  /** Extension only: extra CSS for github.com. The app ignores it. */
+  css: z.string().max(CUSTOM_CSS_MAX, 'Custom CSS: up to 20 KB').optional(),
+}).strict();
+export type CustomTheme = z.infer<typeof CustomTheme>;
+
 export const Design = z.object({
   version: z.literal(1),
   skin: z.literal('signal'),
@@ -108,6 +139,8 @@ export const Design = z.object({
     tiles: z.enum(['window', 'plain']),
     density: z.number().int().min(1).max(5),
     textScale: z.number().min(0.85).max(1.3),
+    /** Optional: a theme of your own on top of the fields above. Designs without it look exactly as before. */
+    custom: CustomTheme.optional(),
   }),
   nav: z.object({
     tabs: z.array(TabId).min(2).max(5).refine((t) => t.includes('studio'), 'Studio must stay in the tab bar')
@@ -148,7 +181,13 @@ export function salvageDesign(input: unknown, fallback: Design): { design: Desig
   const src = input as Record<string, unknown>;
   const dropped: string[] = [];
   const part = <K extends keyof Design>(k: K): Design[K] => {
-    const r = Design.shape[k].safeParse(src[k]);
+    let r = Design.shape[k].safeParse(src[k]);
+    // A custom theme this version rejects is left out on its own; the rest of the look still loads.
+    if (!r.success && k === 'theme' && src.theme && typeof src.theme === 'object' && 'custom' in src.theme) {
+      const { custom: _drop, ...rest } = src.theme as Record<string, unknown>;
+      r = Design.shape[k].safeParse(rest);
+      if (r.success) dropped.push('custom theme');
+    }
     if (r.success) return r.data as Design[K];
     if (k !== 'tiles') dropped.push(String(k));
     return fallback[k];

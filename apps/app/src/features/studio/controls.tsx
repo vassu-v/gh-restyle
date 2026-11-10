@@ -1,4 +1,7 @@
-import { applyPreset, isSearchSection, presetOf, resolveTokens, ACCENTS, BACKGROUNDS, MAX_SEARCH_SECTIONS, PRESETS, SearchSection, type Background, type Design, type TabId } from '@gitling/design';
+import {
+  applyPreset, derivedColor, designName, isSearchSection, presetOf, resolveTokens, startCustom, themeWarnings, withCustom, ACCENTS, BACKGROUNDS, CUSTOM_COLOR_LABELS, CUSTOM_COLORS, CUSTOM_CSS_NOTE,
+  CUSTOM_FONT_LABELS, CUSTOM_FONTS, CUSTOM_RADIUS, Design as DesignSchema, FONT_NAMES, MAX_SEARCH_SECTIONS, PRESETS, SearchSection, type Background, type CustomColor, type CustomTheme, type Design, type TabId,
+} from '@gitling/design';
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, TextInput, useWindowDimensions, View } from 'react-native';
 import { TokensScope, useDesign, useTokens } from '@/design/DesignProvider';
@@ -258,6 +261,115 @@ export function TabBarEditor() {
           </Pressable>
         ))}
       </View>
+    </View>
+  );
+}
+
+const HEX = /^#[0-9A-Fa-f]{6}$/;
+
+/** A text field that saves when you leave it (or press return), so undo gets one step per edit, not per letter. */
+function TextField({ value, placeholder, label, style, onCommit }: { value: string; placeholder: string; label: string; style: object; onCommit: (v: string) => void }) {
+  const t = useTokens();
+  const [text, setText] = useState<string | null>(null);
+  const commit = () => { if (text !== null && text.trim() !== value) onCommit(text.trim()); setText(null); };
+  return <TextInput value={text ?? value} onChangeText={setText} onBlur={commit} onSubmitEditing={commit} placeholder={placeholder} placeholderTextColor={t.c.dim} maxLength={40} accessibilityLabel={label} style={style} />;
+}
+
+/** One colour of a custom theme: swatch, hex field, contrast badge, reset. Bad hex is refused with a message. */
+function ColorField({ k, design, warn, onSet }: { k: CustomColor; design: Design; warn?: number; onSet: (v: string | undefined) => void }) {
+  const t = useTokens();
+  const set = design.theme.custom?.colors?.[k];
+  const shown = set ?? derivedColor(design, k);
+  const [text, setText] = useState<string | null>(null);
+  const bad = text !== null && !HEX.test(text.trim());
+  const { label, hint } = CUSTOM_COLOR_LABELS[k];
+  const commit = () => { if (text === null) return; const v = text.trim(); if (HEX.test(v)) { onSet(v.toUpperCase()); setText(null); } };
+  return (
+    <View style={{ paddingHorizontal: 18, paddingVertical: 10, borderTopWidth: 1, borderColor: t.c.line, gap: 4 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <T v="body">{label}</T>
+            {warn !== undefined ? <View accessibilityLabel={`${label}: low contrast ${warn.toFixed(1)} to 1`} style={{ borderWidth: 1, borderColor: t.c.bad, borderRadius: t.r.pill, paddingHorizontal: 6 }}><T v="monoS" c="bad">{`${warn.toFixed(1)}:1`}</T></View> : null}
+          </View>
+          <T v="monoS" c="mut">{hint}</T>
+        </View>
+        <View style={{ width: 24, height: 24, borderRadius: 7, backgroundColor: shown, borderWidth: 1, borderColor: t.c.line2 }} />
+        <TextInput value={text ?? (set ? shown : '')} placeholder={shown} placeholderTextColor={t.c.dim} onChangeText={setText} onBlur={commit} onSubmitEditing={commit}
+          autoCapitalize="none" autoCorrect={false} maxLength={7} accessibilityLabel={label}
+          style={{ width: 92, padding: 8, borderRadius: t.r.sm, backgroundColor: t.c.el2, color: t.c.fg, fontFamily: t.font.mono.regular, fontSize: 13, borderWidth: 1, borderColor: bad ? t.c.bad : 'transparent' }} />
+        <Pressable disabled={!set} onPress={() => { setText(null); onSet(undefined); }} accessibilityRole="button" accessibilityLabel={`Reset ${label}`} hitSlop={6} style={{ opacity: set ? 1 : 0.25, padding: 4 }}>
+          <Icon name="x" size={16} color={t.c.mut} />
+        </Pressable>
+      </View>
+      {bad ? <T v="monoS" c="bad">Use a colour like #1A2B3C</T> : null}
+    </View>
+  );
+}
+
+/**
+ * The custom theme editor: colours, fonts, corners, mode, name and author. Same fields, order and words as the
+ * extension's settings page (both read packages/design/src/custom.ts), and the same design code carries it.
+ */
+export function CustomThemePanel() {
+  const { design, update } = useDesign();
+  const t = useTokens();
+  const c = design.theme.custom;
+  const [error, setError] = useState<string | null>(null);
+  const warns = useMemo(() => themeWarnings(design), [design]);
+  const change = (fn: (x: CustomTheme) => CustomTheme) => {
+    const next = withCustom(design, fn(design.theme.custom ?? {}));
+    const ok = DesignSchema.shape.theme.safeParse(next.theme);
+    if (!ok.success) { setError(ok.error.issues[0]?.message ?? 'That value isn’t allowed.'); return; }
+    setError(null);
+    update((d) => { d.theme = next.theme; });
+  };
+  const input = { padding: 9, borderRadius: t.r.sm, backgroundColor: t.c.el2, color: t.c.fg, fontFamily: t.font.ui.regular, fontSize: 14, minWidth: 160 } as const;
+  const radius = c?.radius ?? resolveTokens(design).r.md;
+  return (
+    <View style={{ paddingTop: 22 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 18, paddingBottom: 6 }}>
+        <T v="label" c="mut">custom theme</T>
+        {c ? <T v="monoS" c="dim">{`Your design: ${designName(design)}`}</T> : null}
+      </View>
+      <T v="sub" c="mut" style={{ paddingHorizontal: 18, paddingBottom: 10 }}>Your own colours, fonts and corners. The design code carries it to the browser extension, which applies it to github.com the same way.</T>
+      <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 18, paddingBottom: 12, flexWrap: 'wrap' }}>
+        <Button kind="quiet" icon="sparkles" label={c ? 'Fill in from current look' : 'Start from current look'} onPress={() => change(() => startCustom(design))} />
+        {c ? <Button kind="quiet" icon="x" label="Remove" accessibilityLabel="Remove custom theme" onPress={() => change(() => ({}))} /> : null}
+      </View>
+      {c ? (
+        <View>
+          <SettingRow label="Theme name"><TextField value={c.name ?? ''} placeholder="My theme" label="Theme name" style={input} onCommit={(v) => change((x) => ({ ...x, name: v || undefined }))} /></SettingRow>
+          <SettingRow label="Author"><TextField value={c.author ?? ''} placeholder="Your name" label="Author" style={input} onCommit={(v) => change((x) => ({ ...x, author: v || undefined }))} /></SettingRow>
+          <SettingRow label="Mode"><Seg small value={resolveTokens(design).mode} onChange={(v: 'dark' | 'light') => change((x) => ({ ...x, mode: v }))} options={[{ value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }]} /></SettingRow>
+          {CUSTOM_COLORS.map((k) => {
+            const w = warns.filter((x) => x.field === k);
+            return <ColorField key={k} k={k} design={design} warn={w.length ? Math.min(...w.map((x) => x.ratio)) : undefined} onSet={(v) => change((x) => ({ ...x, colors: { ...x.colors, [k]: v } }))} />;
+          })}
+          {(Object.keys(CUSTOM_FONTS) as (keyof typeof CUSTOM_FONTS)[]).map((k) => (
+            <SettingRow key={k} label={CUSTOM_FONT_LABELS[k]}>
+              <Seg small value={c.fonts?.[k] ?? ''} onChange={(v: string) => change((x) => ({ ...x, fonts: { ...x.fonts, [k]: v || undefined } }))}
+                options={[{ value: '', label: 'Auto' }, ...CUSTOM_FONTS[k].map((f) => ({ value: f, label: FONT_NAMES[f] }))]} />
+            </SettingRow>
+          ))}
+          <SettingRow label={`Corner radius · ${radius} px${c.radius === undefined ? ' (auto)' : ''}`} last>
+            <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+              <Button kind="quiet" icon="chevron-down" accessibilityLabel="Smaller corners" disabled={radius <= CUSTOM_RADIUS.min} onPress={() => change((x) => ({ ...x, radius: Math.max(CUSTOM_RADIUS.min, radius - 2) }))} />
+              <Button kind="quiet" icon="chevron-up" accessibilityLabel="Bigger corners" disabled={radius >= CUSTOM_RADIUS.max} onPress={() => change((x) => ({ ...x, radius: Math.min(CUSTOM_RADIUS.max, radius + 2) }))} />
+              <Pressable disabled={c.radius === undefined} onPress={() => change((x) => ({ ...x, radius: undefined }))} accessibilityRole="button" accessibilityLabel="Reset Corner radius" hitSlop={6} style={{ opacity: c.radius === undefined ? 0.25 : 1, padding: 4 }}>
+                <Icon name="x" size={16} color={t.c.mut} />
+              </Pressable>
+            </View>
+          </SettingRow>
+          {warns.length ? (
+            <View accessibilityRole="alert" style={{ paddingHorizontal: 18, paddingTop: 10, gap: 4 }}>
+              {warns.map((w) => <T key={`${w.field}-${w.against}`} v="monoS" c="bad">{w.message}</T>)}
+            </View>
+          ) : null}
+          {c.css ? <T v="monoS" c="mut" style={{ paddingHorizontal: 18, paddingTop: 10 }}>{`This design has custom CSS. ${CUSTOM_CSS_NOTE}`}</T> : null}
+        </View>
+      ) : null}
+      {error ? <T v="monoS" c="bad" style={{ paddingHorizontal: 18, paddingTop: 8 }}>{error}</T> : null}
     </View>
   );
 }

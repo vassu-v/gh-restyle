@@ -1,6 +1,6 @@
-import { BACKGROUNDS } from '@gitling/design/src/signal';
-import { primerVars } from './primer';
-import { CLEAN_KEYS, loadSettings, onSettingsChange } from './storage';
+import { modeOf, numbersOf } from '@gitling/design/src/tokens';
+import { primerVars, safeCss } from './primer';
+import { CLEAN_KEYS, loadCss, loadSettings, onSettingsChange } from './storage';
 
 /*
  * Applies the design in two layers:
@@ -33,6 +33,8 @@ function setModeAttrs() {
 }
 
 function clear() {
+  styleEl?.remove(); styleEl = null;
+  document.getElementById('gitling-custom-css')?.remove();
   for (const k of applied) root.style.removeProperty(k);
   applied = [];
   root.classList.remove('gitling-on', ...NUM_CLASSES, ...CLEAN_KEYS.map((k) => `gitling-clean-${k}`));
@@ -45,10 +47,11 @@ function clear() {
 }
 
 async function apply() {
-  const s = await loadSettings();
+  const [s, custom] = await Promise.all([loadSettings(), loadCss()]);
   clear();
   if (!s.enabled) return;
-  const mode = BACKGROUNDS[s.design.theme.background].mode;
+  // A custom theme's mode decides; otherwise the background does (modeOf).
+  const mode = modeOf(s.design);
   wantMode = { 'data-color-mode': mode, 'data-light-theme': 'light', 'data-dark-theme': 'dark' };
   // Re-read GitHub's own values: clear() just put them back, and GitHub may have changed them while we were off.
   original = Object.fromEntries(MODE_ATTRS.map((a) => [a, root.getAttribute(a)]));
@@ -61,9 +64,13 @@ async function apply() {
   root.classList.add('gitling-on');
   // Our classes on <html>, which content.css acts on: the number style (so it can size the dot-matrix face up,
   // unreadable at GitHub's 12px) and one per developer-mode part that's on.
-  ourClasses = [`gitling-num-${s.design.theme.numbers}`, ...CLEAN_KEYS.filter((k) => s.clean[k]).map((k) => `gitling-clean-${k}`)];
+  ourClasses = [`gitling-num-${numbersOf(s.design)}`, ...CLEAN_KEYS.filter((k) => s.clean[k]).map((k) => `gitling-clean-${k}`)];
   root.classList.add(...ourClasses);
+  // Extension-only custom CSS, once the person has seen the notice for it (options page). Text only: no @import.
+  const css = custom.on && custom.accepted ? safeCss(custom.css) : '';
+  if (css) { styleEl = document.createElement('style'); styleEl.id = 'gitling-custom-css'; styleEl.textContent = css; (document.head ?? root).append(styleEl); }
 }
+let styleEl: HTMLStyleElement | null = null;
 
 apply();
 onSettingsChange(apply);

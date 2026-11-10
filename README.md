@@ -27,7 +27,7 @@ Local-first: it runs on your device and talks to GitHub directly.
 
 ## What you get
 
-- **Your layout, not ours.** Pick a preset (Signal, Terminal, Paper, Dense, Calm, Ink), then tune the accent, background, numbers, density and text size. Undo works everywhere.
+- **Your layout, not ours.** Pick a preset (Signal, Terminal, Paper, Dense, Calm, Ink), then tune the accent, background, numbers, density and text size, or make a **custom theme** of your own (every colour, fonts, corners, light or dark). Undo works everywhere.
 - **A Home that shows what you care about.** Add or remove sections: review requests, your PRs, mentions, inbox, feed, starred repos, recent checks, or any GitHub search under your own title. Shortcut tiles open any search, repo, file or link.
 - **Real GitHub work on a phone.** Feed, inbox triage, a code browser with syntax colors, issues, and pull requests with diffs, checks, merge and full reviews (line comments, suggestions, approve or request changes).
 - **Feels like an app.** Install it to your home screen, open it offline, and land on your last data instead of a spinner. First launch walks you through install, sign-in and a short setup.
@@ -57,6 +57,19 @@ Sample mode needs no sign-in at all, and the extension never signs in to anythin
 3. Open github.com. The toolbar button turns Gitling on or off; **Settings** has presets, colors, text size, design files and developer mode.
 
 Only Chrome is tested so far. Every control and the known limits are in [`docs/EXTENSION.md`](docs/EXTENSION.md).
+
+### Make and share a custom theme
+
+A custom theme works the same in the app and in the extension: make it on one side, use it on the other.
+
+1. In the app, open **Studio → Look** and scroll to **Custom theme**, then tap **Start from current look**. (On
+   desktop: the extension's settings page has the same **Custom theme** section.)
+2. Change any colour (type a hex value like `#1A2B3C`), the text, code and number fonts, the corner radius, and
+   dark or light mode. Each field has a reset. Hard-to-read pairs get a red contrast badge; your colours are kept
+   as you picked them.
+3. Give it a name and your name as author. Studio then shows "Your design: *name*".
+4. **Studio → Share → Copy design code** (or Save as file) and paste or open it on the extension's settings page,
+   or the other way round. More in [`docs/EXTENSION.md`](docs/EXTENSION.md#custom-themes).
 
 <!-- Screenshot to add: a github.com repo page with the extension on, Paper (light) and Graphite (dark) side by side, plus the settings page. -->
 
