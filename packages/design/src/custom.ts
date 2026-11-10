@@ -18,7 +18,7 @@ export const CUSTOM_COLOR_LABELS: Record<CustomColor, { label: string; hint: str
   warning: { label: 'Warning', hint: 'Pending, attention.' },
 };
 export const CUSTOM_FONT_LABELS: Record<keyof typeof CUSTOM_FONTS, string> = { body: 'Text font', mono: 'Code font', numbers: 'Numbers font' };
-export const FONT_NAMES: Record<string, string> = { geist: 'Geist', 'geist-mono': 'Geist Mono', system: 'System', 'system-mono': 'System mono', doto: 'Doto (dots)' };
+export const FONT_NAMES: Record<string, string> = { geist: 'Geist', 'geist-mono': 'Geist Mono', system: 'System', 'system-mono': 'System mono', doto: 'Dots' };
 export const CUSTOM_CSS_NOTE = 'Applies on github.com only (the browser extension). The app ignores it.';
 export const CUSTOM_CSS_NOTICE = 'This design includes custom CSS for github.com. It can change how any GitHub page looks. Apply it only if you trust where the design came from.';
 
