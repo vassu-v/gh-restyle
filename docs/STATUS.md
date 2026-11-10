@@ -40,6 +40,7 @@ deployed. Keep this file true: update it in the same change that finishes, break
 | Read endpoints against the real api.github.com | `LIVE_REPO=vassu-v/gh-restyle LIVE_REPO_ONLY=1 npm run test:live` | pass (repo, readme, tree, file, issues, pulls, thread, files, checks) |
 | Live site: every screen, service worker, offline launch, Chrome installability | `SMOKE_URL=https://gitling.truckcoding.workers.dev npm run smoke` + CDP installability check | 16/16, SW active, opens offline, 0 installability errors; re-run after the PR #2 deploy: all screens ok under the CSP |
 | Extension end to end on live github.com: settings page and popup, popup switch, text size, developer mode, design codes, share links and design files, off/on restore, persistence, in-site navigation | `npm run e2e:extension` | 41/41 |
+| Custom themes (issue #10), written blind from the spec: unit (round-trips, old codes unchanged, bad values dropped with a clear error, every field → tokens and Primer vars, `@import` removal incl. CSS escapes, contrast warnings) and browser (Studio editor at phone size, app code → extension and back, every extension field updates an open github.com tab live, old codes, CSS notice on import) | `npm test` (`tests/custom-theme.test.ts`), `npm run e2e:custom-theme` | 45/45, 72/72. github.com is a fixture page in these runs; the extension on the real github.com with a custom theme is not yet checked |
 | Extension | `npm run build:extension` | builds; restyle verified on live github.com during M1 |
 
 ## PR #3 QA pass (2026-11-06)

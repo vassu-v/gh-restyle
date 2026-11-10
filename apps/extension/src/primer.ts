@@ -21,7 +21,13 @@ export const radiusOf = (design: Design) => design.theme.custom?.radius ?? (desi
 /** Custom CSS made safe to inject as text: no remote @import (or any @import), at most 20 KB. */
 export function safeCss(css: string | undefined): string {
   if (!css) return '';
-  return css.slice(0, 20 * 1024).replace(/@import\b[^;]*;?/gi, '/* @import removed */').replace(/<\/style/gi, '<\\/style');
+  // At-keywords may be written with CSS escapes (@\69mport is @import): decode the name before checking it.
+  const unescape = (n: string) => n.replace(/\\([0-9a-f]{1,6})\s?/gi, (_, h) => String.fromCodePoint(parseInt(h, 16) || 0xfffd)).replace(/\\(.)/g, '$1');
+  const MARK = '\u0000gitling-import\u0000';
+  return css.slice(0, 20 * 1024).replace(/\u0000/g, '')
+    .replace(/@((?:\\[0-9a-f]{1,6}\s?|\\[^\n]|[\w-])+)/gi, (m, name: string) => (unescape(name).toLowerCase() === 'import' ? MARK : m))
+    .replace(new RegExp(`${MARK}[^;]*;?`, 'g'), '/* @import removed */')
+    .replace(/<\/style/gi, '<\\/style');
 }
 
 const round = (n: number) => Math.round(n * 1000) / 1000;
