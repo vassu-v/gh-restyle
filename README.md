@@ -98,3 +98,7 @@ scripts/           PWA post-build, smoke and end-to-end runs, deploy
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | How it fits together; [`docs/decisions/`](docs/decisions/) explains why |
 | [`docs/TESTING.md`](docs/TESTING.md) | Test layers and when to run what |
 | [`PLAN.md`](PLAN.md) | Milestones and what's next (push notifications, design sync, store builds) |
+
+## Licence
+
+Gitling is open source under the [GNU AGPL-3.0](LICENSE). Want to use it in a closed-source product or service? See [COMMERCIAL.md](COMMERCIAL.md) for a commercial licence.
