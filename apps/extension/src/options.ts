@@ -3,8 +3,9 @@ import {
   derivedColor, designFileName, designName, designToFile, encodeDesign, FONT_NAMES, PRESETS, readDesignText, resolveTokens, startCustom, themeWarnings, withCustom, type CustomTheme, type Design,
 } from '@gitling/design';
 import { presetOf } from './presetOf';
-import { fontStacks, radiusOf } from './primer';
-import { CLEAN_KEYS, loadCss, loadSettings, onSettingsChange, saveCss, saveSettings, type CustomCss, type Settings } from './storage';
+import { formatVars, parseVars } from '@gitling/design/src/vars';
+import { fontStacks, primerVars, radiusOf } from './primer';
+import { CLEAN_KEYS, loadCss, loadSettings, loadVars, onSettingsChange, saveCss, saveSettings, saveVars, type CustomCss, type Settings } from './storage';
 
 /*
  * The settings page: everything about how Gitling looks on github.com. The toolbar popup only turns it on or off
@@ -14,6 +15,8 @@ import { CLEAN_KEYS, loadCss, loadSettings, onSettingsChange, saveCss, saveSetti
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 let s: Settings;
 let css: CustomCss;
+/** Your own values for the variables (the Variables box); stored on this computer (storage.ts loadVars). */
+let mine: Record<string, string> = {};
 
 
 /** The page wears the design it edits. */
@@ -48,6 +51,7 @@ function render() {
   const cur = presetOf(s.design)?.id;
   for (const b of $('presets').querySelectorAll<HTMLElement>('.preset')) b.setAttribute('aria-pressed', String(b.dataset.v === cur));
   renderCustom();
+  renderVars();
   paint();
 }
 
@@ -139,8 +143,8 @@ async function storeCss(next: CustomCss, note?: string) {
   msg(note ?? 'Saved. Open GitHub tabs update right away.', true);
 }
 
-/** The design with this computer's custom CSS in it, for codes and files. */
-const exported = (): Design => (css.css ? withCustom(s.design, { ...s.design.theme.custom, css: css.css }) : s.design);
+/** The design with this computer's custom CSS and variables in it, for codes and files. */
+const exported = (): Design => withCustom(s.design, { ...s.design.theme.custom, css: css.css || undefined, vars: Object.keys(mine).length ? mine : undefined });
 
 const msg = (text: string, ok: boolean) => { const m = $('msg'); m.textContent = text; m.className = 'msg ' + (ok ? 'ok' : 'bad'); };
 async function save(): Promise<boolean> {
@@ -174,13 +178,46 @@ function buildPresets() {
   }
 }
 
+/** The Variables box: what the controls give (primerVars), with your lines on top. Not rewritten while you type. */
+function renderVars() {
+  const box = $<HTMLTextAreaElement>('vars');
+  if (document.activeElement !== box) box.value = formatVars(primerVars(s.design), mine);
+  const n = Object.keys(mine).length;
+  $('vars-state').textContent = n ? `${n} of yours` : 'none of yours';
+}
+
+let varsTimer: ReturnType<typeof setTimeout> | undefined;
+/** Reads the box; saves your values when there are no mistakes (open GitHub tabs update at once). */
+async function readVars(final: boolean) {
+  const { overrides, errors } = parseVars($<HTMLTextAreaElement>('vars').value, primerVars(s.design));
+  const list = $('vars-errors');
+  list.replaceChildren(...errors.slice(0, 8).map((e) => { const li = document.createElement('li'); li.textContent = e.line ? `Line ${e.line}: ${e.message}` : e.message; return li; }));
+  if (errors.length) { $('vars-msg').textContent = 'Nothing changed until these are fixed.'; $('vars-msg').className = 'msg bad'; return; }
+  if (JSON.stringify(overrides) !== JSON.stringify(mine)) {
+    mine = overrides;
+    try { await saveVars(mine); } catch (e) { $('vars-msg').textContent = `Couldn't save: ${(e as Error).message}`; $('vars-msg').className = 'msg bad'; return; }
+    $('vars-msg').textContent = 'Applied to open GitHub tabs.'; $('vars-msg').className = 'msg ok';
+  }
+  if (final) renderVars();
+  else $('vars-state').textContent = Object.keys(mine).length ? `${Object.keys(mine).length} of yours` : 'none of yours';
+}
+
 (async () => {
-  [s, css] = await Promise.all([loadSettings(), loadCss()]);
+  [s, css, mine] = await Promise.all([loadSettings(), loadCss(), loadVars()]);
   buildPresets();
   buildCustom();
   render();
   // Another window (or the popup) changed something: show it.
-  onSettingsChange(async () => { [s, css] = await Promise.all([loadSettings(), loadCss()]); render(); });
+  onSettingsChange(async () => { [s, css, mine] = await Promise.all([loadSettings(), loadCss(), loadVars()]); render(); });
+  // Variables: applied as you type (after a short pause), tidied when you leave the box.
+  $('vars').addEventListener('input', () => { clearTimeout(varsTimer); varsTimer = setTimeout(() => readVars(false), 500); });
+  $('vars').addEventListener('blur', () => { clearTimeout(varsTimer); readVars(true); });
+  $('vars-reset').addEventListener('click', async () => {
+    mine = {};
+    try { await saveVars(mine); } catch (e) { return msg(`Couldn't save: ${(e as Error).message}`, false); }
+    $('vars-errors').replaceChildren(); renderVars();
+    $('vars-msg').textContent = 'Every variable follows the controls again.'; $('vars-msg').className = 'msg ok';
+  });
 
   $<HTMLInputElement>('enabled').addEventListener('change', (e) => { s.enabled = (e.target as HTMLInputElement).checked; save(); });
   $('clean').addEventListener('change', (e) => {
@@ -221,12 +258,15 @@ function buildPresets() {
     const r = readDesignText(text);
     if (!r.ok) return msg(r.error, false);
     const importedCss = r.design.theme.custom?.css ?? '';
+    const importedVars = r.design.theme.custom?.vars;
     s.design = r.design; s.enabled = true;
     if (!(await save())) return;
     // CSS from someone else's design is stored but never applied until the person confirms the notice.
     if (importedCss) { css = { css: importedCss, on: false, accepted: false }; await saveCss(css); render(); }
+    // Variables are values only (checked; nothing can load or run), so a design's own apply straight away.
+    if (importedVars) { mine = { ...importedVars }; await saveVars(mine); render(); }
     $<HTMLTextAreaElement>('code').value = '';
-    msg(`${r.name ? `“${r.name}” applied` : 'Applied'} from ${from}.${r.dropped.length ? ` Left out: ${r.dropped.join(', ')}.` : ''}${importedCss ? ' It has custom CSS: see the notice under Custom CSS.' : ''} Open GitHub tabs update right away.`, true);
+    msg(`${r.name ? `“${r.name}” applied` : 'Applied'} from ${from}.${r.dropped.length ? ` Left out: ${r.dropped.join(', ')}.` : ''}${importedVars ? ` It sets ${Object.keys(importedVars).length} variable${Object.keys(importedVars).length === 1 ? '' : 's'} (see Variables).` : ''}${importedCss ? ' It has custom CSS: see the notice under Custom CSS.' : ''} Open GitHub tabs update right away.`, true);
   };
   $('apply').addEventListener('click', () => load($<HTMLTextAreaElement>('code').value, 'the code'));
   $('open').addEventListener('click', () => $<HTMLInputElement>('file').click());
@@ -245,5 +285,5 @@ function buildPresets() {
     try { await navigator.clipboard.writeText(encodeDesign(exported())); msg('Design code copied. Paste it in the app: Studio → Share.', true); }
     catch { msg("Couldn't copy. Use Save as file instead.", false); }
   });
-  $('reset').addEventListener('click', () => { s.design = DEFAULT_DESIGN; save().then((ok) => ok && msg('Back to the default look.', true)); });
+  $('reset').addEventListener('click', async () => { s.design = DEFAULT_DESIGN; mine = {}; await saveVars(mine).catch(() => {}); save().then((ok) => ok && msg('Back to the default look.', true)); });
 })();

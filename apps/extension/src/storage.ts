@@ -2,6 +2,7 @@
 // The popup validates designs with zod before saving, so here a light shape check is enough.
 import type { Design } from '@gitling/design/src/schema';
 import { BACKGROUNDS, DEFAULT_DESIGN } from '@gitling/design/src/signal';
+import { tidyVars } from '@gitling/design/src/vars';
 
 /** Developer mode: parts of GitHub to leave out (each one separately), plus a wider page. */
 export type Clean = { sales: boolean; copilot: boolean; footer: boolean; wide: boolean };
@@ -58,8 +59,8 @@ export function forSync(s: Settings): Settings {
 
 /** A design without its custom CSS: the CSS (up to 20 KB) lives in storage.local, see CustomCss. */
 const withoutCss = (d: Design): Design => {
-  if (d.theme.custom?.css === undefined) return d;
-  const { css: _css, ...custom } = d.theme.custom;
+  if (d.theme.custom?.css === undefined && d.theme.custom?.vars === undefined) return d;
+  const { css: _css, vars: _vars, ...custom } = d.theme.custom;
   return { ...d, theme: { ...d.theme, custom } };
 };
 
@@ -68,7 +69,7 @@ export async function saveSettings(s: Settings) {
 }
 
 export function onSettingsChange(fn: () => void) {
-  ext.storage.onChanged.addListener((changes, area) => { if ((area === 'sync' && KEY in changes) || (area === 'local' && CSS_KEY in changes)) fn(); });
+  ext.storage.onChanged.addListener((changes, area) => { if ((area === 'sync' && KEY in changes) || (area === 'local' && (CSS_KEY in changes || VARS_KEY in changes))) fn(); });
 }
 
 /**
@@ -87,4 +88,19 @@ export async function loadCss(): Promise<CustomCss> {
 
 export async function saveCss(c: CustomCss) {
   await ext.storage.local?.set({ [CSS_KEY]: c });
+}
+
+/**
+ * Your own values for the variables Gitling writes into github.com (the settings page's Variables box; see
+ * packages/design/src/vars.ts). Up to 150 of them can be bigger than storage.sync allows, so they stay on this
+ * computer like custom CSS, and travel between computers in design codes and files. Values only: they're
+ * re-checked here and in the content script, and can't load or run anything.
+ */
+const VARS_KEY = 'gitling-vars';
+export async function loadVars(): Promise<Record<string, string>> {
+  const raw = ext.storage.local ? (await ext.storage.local.get(VARS_KEY))[VARS_KEY] : undefined;
+  return tidyVars(raw as Record<string, unknown> | undefined) ?? {};
+}
+export async function saveVars(v: Record<string, string>) {
+  await ext.storage.local?.set({ [VARS_KEY]: tidyVars(v) ?? {} });
 }

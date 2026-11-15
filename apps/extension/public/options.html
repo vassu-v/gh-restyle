@@ -132,6 +132,15 @@
         </div>
       </div>
 
+      <div class="label"><span>variables</span><span id="vars-state"></span></div>
+      <div class="panel" id="vars-panel" style="padding:16px">
+        <div class="hint" style="margin-bottom:10px">Every value Gitling writes into github.com, as text you can change: colours, fonts, corner sizes, zoom. Use any unit (px, rem, em, %), or add any of GitHub's own <code>--variables</code>. The controls above fill these in. A line you change is yours, and the controls leave it alone. Delete it to hand it back. Changes apply to open GitHub tabs as you type.</div>
+        <textarea id="vars" spellcheck="false" aria-label="Variables" rows="22" style="min-height:360px;font-size:12px;line-height:1.55;white-space:pre;overflow-wrap:normal;overflow-x:auto"></textarea>
+        <ul id="vars-errors" class="msg bad" role="alert" style="margin:8px 0 0;padding-left:18px"></ul>
+        <div class="btns"><button class="btn" id="vars-reset">Give all back to the controls</button></div>
+        <div class="msg" id="vars-msg" role="status"></div>
+      </div>
+
       <div class="label"><span>custom css</span></div>
       <div class="panel" id="css-panel">
         <div class="row"><div>Custom CSS<div class="hint" id="css-note"></div></div><span class="switch"><input type="checkbox" id="css-on" role="switch" aria-label="Custom CSS"><span></span></span></div>

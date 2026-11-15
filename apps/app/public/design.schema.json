@@ -182,6 +182,18 @@
                 "css": {
                   "type": "string",
                   "maxLength": 20480
+                },
+                "vars": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string",
+                    "pattern": "^(--[A-Za-z0-9_-]{1,80}|zoom|color-scheme)$"
+                  },
+                  "additionalProperties": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
                 }
               },
               "additionalProperties": false

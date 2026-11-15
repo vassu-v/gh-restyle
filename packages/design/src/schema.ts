@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { isVarName, VAR_NAME, VAR_VALUE_MAX, varValueProblem, VARS_MAX } from './vars';
 
 /** Everything a user can customize lives in one versioned, validated document. */
 
@@ -126,6 +127,10 @@ export const CustomTheme = z.object({
   }).strict().optional(),
   /** Extension only: extra CSS for github.com. The app ignores it. */
   css: z.string().max(CUSTOM_CSS_MAX, 'Custom CSS: up to 20 KB').optional(),
+  /** Extension only: your own values for the variables Gitling writes into github.com (src/vars.ts). */
+  vars: z.record(z.string().regex(VAR_NAME, 'Variable names look like --bgColor-default'),
+    z.string().min(1).max(VAR_VALUE_MAX).refine((v) => varValueProblem(v) === null, 'That variable value isn’t allowed'))
+    .refine((v) => Object.keys(v).length <= VARS_MAX, `Up to ${VARS_MAX} variables`).optional(),
 }).strict();
 export type CustomTheme = z.infer<typeof CustomTheme>;
 
@@ -182,6 +187,22 @@ export function salvageDesign(input: unknown, fallback: Design): { design: Desig
   const dropped: string[] = [];
   const part = <K extends keyof Design>(k: K): Design[K] => {
     let r = Design.shape[k].safeParse(src[k]);
+    // Variables this version rejects are left out one by one (and named); the rest of the custom theme stays.
+    if (!r.success && k === 'theme') {
+      const t = src.theme as { custom?: { vars?: unknown } } | undefined;
+      const vars = t?.custom?.vars;
+      if (vars && typeof vars === 'object') {
+        const kept: Record<string, string> = {};
+        for (const [name, v] of Object.entries(vars as Record<string, unknown>)) {
+          if (Object.keys(kept).length < VARS_MAX && isVarName(name) && typeof v === 'string' && varValueProblem(v) === null) kept[name] = v;
+          else dropped.push(`variable ${name.slice(0, 60)}`);
+        }
+        const custom = { ...t!.custom, vars: Object.keys(kept).length ? kept : undefined };
+        if (!custom.vars) delete custom.vars;
+        const retry = Design.shape[k].safeParse({ ...(src.theme as object), custom });
+        if (retry.success) r = retry; else dropped.splice(dropped.length - Object.keys(vars).length + Object.keys(kept).length);
+      }
+    }
     // A custom theme this version rejects is left out on its own; the rest of the look still loads.
     if (!r.success && k === 'theme' && src.theme && typeof src.theme === 'object' && 'custom' in src.theme) {
       const { custom: _drop, ...rest } = src.theme as Record<string, unknown>;
