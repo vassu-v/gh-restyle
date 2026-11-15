@@ -69,10 +69,7 @@ function watchErrors(page, label) {
   });
 }
 
-const gh = await ctx.newPage(); watchErrors(gh, 'github');
-await goto(gh, GH);
-await gh.evaluate(() => { window.__gitlingVarsMark = 42; });
-let opt;
+let gh, opt;
 async function openSettings() {
   opt = await ctx.newPage(); watchErrors(opt, 'settings');
   await opt.goto(OPTIONS);
@@ -80,7 +77,6 @@ async function openSettings() {
   await opt.evaluate(() => { const w = navigator.clipboard.writeText.bind(navigator.clipboard); navigator.clipboard.writeText = (t) => { window.__copied = t; return w(t).catch(() => {}); }; });
   opt.on('dialog', (d) => d.accept().catch(() => {}));
 }
-await openSettings();
 
 // ---------- probes ----------
 const ghVar = (name) => gh.evaluate((n) => (n === 'zoom' || n === 'color-scheme')
@@ -145,6 +141,10 @@ const MINE = {
 
 let exitCode = 0;
 try {
+  gh = await ctx.newPage(); watchErrors(gh, 'github');
+  await goto(gh, GH);
+  await gh.evaluate(() => { window.__gitlingVarsMark = 42; });
+  await openSettings();
   // 1. The box lists what Gitling writes, with the values github.com has right now.
   await guarded('box lists the variables', async () => {
     const text = await boxText();

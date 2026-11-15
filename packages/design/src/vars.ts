@@ -23,6 +23,7 @@ export function varValueProblem(v: string): string | null {
   if (!s) return 'is empty';
   if (s.length > VAR_VALUE_MAX) return `is longer than ${VAR_VALUE_MAX} characters`;
   if (/[;{}<>\\\n\r]/.test(s)) return 'has a character that isn’t allowed in a value (; { } < > \\)';
+  if (/\/\*|\*\//.test(s)) return 'has a comment in it (/* */); put comments on their own line';
   // Anything that could fetch from the network, or old IE script hooks.
   if (/\b(url|image|image-set|-webkit-image-set|cross-fade|element|src|expression)\s*\(|@|javascript:/i.test(s)) return 'can’t load anything (url(), image-set(), @ and the like aren’t allowed)';
   return null;

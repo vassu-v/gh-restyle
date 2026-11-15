@@ -194,7 +194,7 @@ export function salvageDesign(input: unknown, fallback: Design): { design: Desig
       if (vars && typeof vars === 'object') {
         const kept: Record<string, string> = {};
         for (const [name, v] of Object.entries(vars as Record<string, unknown>)) {
-          if (Object.keys(kept).length < VARS_MAX && isVarName(name) && typeof v === 'string' && varValueProblem(v) === null) kept[name] = v;
+          if (Object.keys(kept).length < VARS_MAX && isVarName(name) && typeof v === 'string' && v.length <= VAR_VALUE_MAX && varValueProblem(v) === null) kept[name] = v;
           else dropped.push(`variable ${name.slice(0, 60)}`);
         }
         const custom = { ...t!.custom, vars: Object.keys(kept).length ? kept : undefined };

@@ -181,21 +181,22 @@ function buildPresets() {
 /** The Variables box: what the controls give (primerVars), with your lines on top. Not rewritten while you type. */
 function renderVars() {
   const box = $<HTMLTextAreaElement>('vars');
-  if (document.activeElement !== box) box.value = formatVars(primerVars(s.design), mine);
+  if (document.activeElement !== box) { varsBase = primerVars(s.design); box.value = formatVars(varsBase, mine); }
   const n = Object.keys(mine).length;
   $('vars-state').textContent = n ? `${n} of yours` : 'none of yours';
 }
 
+/** What the controls gave when the box was last written: lines are read against this, not newer controls. */
+let varsBase: Record<string, string> = {};
 let varsTimer: ReturnType<typeof setTimeout> | undefined;
 /** Reads the box; saves your values when there are no mistakes (open GitHub tabs update at once). */
 async function readVars(final: boolean) {
-  const { overrides, errors } = parseVars($<HTMLTextAreaElement>('vars').value, primerVars(s.design));
+  const { overrides, errors } = parseVars($<HTMLTextAreaElement>('vars').value, varsBase);
   const list = $('vars-errors');
   list.replaceChildren(...errors.slice(0, 8).map((e) => { const li = document.createElement('li'); li.textContent = e.line ? `Line ${e.line}: ${e.message}` : e.message; return li; }));
   if (errors.length) { $('vars-msg').textContent = 'Nothing changed until these are fixed.'; $('vars-msg').className = 'msg bad'; return; }
   if (JSON.stringify(overrides) !== JSON.stringify(mine)) {
-    mine = overrides;
-    try { await saveVars(mine); } catch (e) { $('vars-msg').textContent = `Couldn't save: ${(e as Error).message}`; $('vars-msg').className = 'msg bad'; return; }
+    try { await saveVars(overrides); mine = overrides; } catch (e) { $('vars-msg').textContent = `Couldn't save: ${(e as Error).message}`; $('vars-msg').className = 'msg bad'; return; }
     $('vars-msg').textContent = 'Applied to open GitHub tabs.'; $('vars-msg').className = 'msg ok';
   }
   if (final) renderVars();
@@ -285,5 +286,5 @@ async function readVars(final: boolean) {
     try { await navigator.clipboard.writeText(encodeDesign(exported())); msg('Design code copied. Paste it in the app: Studio → Share.', true); }
     catch { msg("Couldn't copy. Use Save as file instead.", false); }
   });
-  $('reset').addEventListener('click', async () => { s.design = DEFAULT_DESIGN; mine = {}; await saveVars(mine).catch(() => {}); save().then((ok) => ok && msg('Back to the default look.', true)); });
+  $('reset').addEventListener('click', async () => { s.design = DEFAULT_DESIGN; mine = {}; const saved = save(); await saveVars(mine).catch(() => {}); saved.then((ok) => ok && msg('Back to the default look.', true)); });
 })();
