@@ -1,6 +1,7 @@
 import { modeOf, numbersOf } from '@gitling/design/src/tokens';
 import { primerVars, safeCss } from './primer';
-import { CLEAN_KEYS, loadCss, loadSettings, onSettingsChange } from './storage';
+import { effectiveVars } from '@gitling/design/src/vars';
+import { CLEAN_KEYS, loadCss, loadSettings, loadVars, onSettingsChange } from './storage';
 
 /*
  * Applies the design in two layers:
@@ -47,7 +48,7 @@ function clear() {
 }
 
 async function apply() {
-  const [s, custom] = await Promise.all([loadSettings(), loadCss()]);
+  const [s, custom, mine] = await Promise.all([loadSettings(), loadCss(), loadVars()]);
   clear();
   if (!s.enabled) return;
   // A custom theme's mode decides; otherwise the background does (modeOf).
@@ -58,7 +59,8 @@ async function apply() {
   root.setAttribute(ORIG, JSON.stringify(original));
   root.setAttribute(OWNER, me);
   setModeAttrs();
-  const vars = primerVars(s.design);
+  // The controls' values, with the person's own (settings page → Variables) on top.
+  const vars = effectiveVars(primerVars(s.design), mine);
   for (const [k, v] of Object.entries(vars)) { root.style.setProperty(k, v, 'important'); applied.push(k); }
   root.setAttribute(VARS, JSON.stringify(applied));
   root.classList.add('gitling-on');

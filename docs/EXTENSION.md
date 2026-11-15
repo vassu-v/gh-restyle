@@ -47,6 +47,7 @@ to reload.
 | **Corners** | How round panels, buttons and inputs are. |
 | **Text size** | 85% to 130%. The whole page scales evenly, like the browser's zoom, so GitHub's columns stay intact. |
 | **Custom theme** | Your own colours (background, panels, raised, borders, text, muted text, accent, success, danger, warning), text/code/numbers fonts, corner radius, dark or light mode, a name and an author. The same section, in the same order, as the app's Studio. See [Custom themes](#custom-themes). |
+| **Variables** | Every value Gitling writes into github.com, as text you can edit, in any unit. See [Variables](#variables). |
 | **Custom CSS** | Extra CSS for github.com only, up to 20 KB, behind its own switch. See [Custom themes](#custom-themes). |
 | **Developer mode** | One switch for all of these, or each on its own: **hide sales menus** (enterprise, pricing, solutions, marketplace, "features"), **hide Copilot** (its buttons, menu entries and prompts), **hide the footer**, and **wide layout** (the whole window instead of GitHub's fixed width). |
 | **Your design** | Paste a design code, a share link or a design file's text and click **Apply design**; or **Open a design file**, **Save as file**, **Copy design code** (to paste in the app), and **Reset to default**. |
@@ -92,6 +93,35 @@ to github.com straight away and can be switched off. It is carried in design cod
 it but ignores it ("applies on github.com only"). When you load someone else's design that has CSS, the CSS is
 **not** applied: a notice asks first, and only **Apply the CSS** turns it on. `@import` rules are removed, so the
 CSS can't pull in anything from the web. The CSS is kept on this computer (it's too big for browser sync).
+
+## Variables
+
+The **variables** box shows every value Gitling writes into github.com: GitHub's own design variables
+(`--bgColor-default`, `--fgColor-accent`, `--borderRadius-medium`, `--fontStack-monospace`, …), Gitling's
+`--gitling-*` copies of them, and `zoom` / `color-scheme`. That's about 65 lines, grouped: page, type, shape,
+buttons and controls, text and links, backgrounds, borders and lines.
+
+- **The controls fill it in.** Pick a preset, a background, an accent, corners or text size, and the box shows
+  the new values.
+- **Change any value, in any unit:** `--borderRadius-medium: 2px;`, `--fgColor-accent: rgb(255 120 0);`,
+  `zoom: 1.1;`, `--fontStack-system: Georgia, serif;`. Changes reach open GitHub tabs as you type, after a short
+  pause, without a reload.
+- **Add your own lines** for any of GitHub's `--variables`. Gitling doesn't have to set a variable for you to
+  set it.
+- **A line you change is yours.** Your lines move to the top under `/* yours */`, and the controls no longer
+  change them. To hand one back, delete the line (or set it back to the controls' value). **Give all back to the
+  controls** clears every line of yours.
+- **Mistakes are named by line,** and nothing changes until they're fixed. A line must read `--name: value;`, and
+  only `--names`, `zoom` and `color-scheme` can be set.
+- **Values are refused if they could load or run anything:** `url()`, `image-set()` and other image functions,
+  `@`, `javascript:`, and `; { } < > \`. A value is at most 200 characters, and you can have up to 150 lines of
+  your own.
+- **They travel with your design.** **Copy design code** and **Save as file** include them; loading a design that
+  has variables applies its values straight away (they're values only, so there's nothing to confirm). Loading a
+  design without variables keeps yours. **Reset to default** clears them. They're kept on this computer, like
+  custom CSS, so they reach other computers through codes and files rather than browser sync. The app keeps them
+  in the design but ignores them.
+- The preview on the settings page shows the controls' look; your variables show on github.com itself.
 
 ## Turn it off
 

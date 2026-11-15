@@ -22,7 +22,7 @@ const steps = [
     ['e2e: authenticator', 'npm run e2e:authenticator'],
     ['e2e: custom themes (app + extension, written blind)', 'npm run e2e:custom-theme'],
   ]),
-  ...(noLive ? [] : [['e2e: extension on live github.com', 'npm run e2e:extension'], ['e2e: extension, user spec (written blind)', 'npm run e2e:extension:user']]),
+  ...(noLive ? [] : [['e2e: extension on live github.com', 'npm run e2e:extension'], ['e2e: extension, user spec (written blind)', 'npm run e2e:extension:user'], ['e2e: extension variables (written blind)', 'npm run e2e:extension:vars']]),
 ];
 
 const results = [];
