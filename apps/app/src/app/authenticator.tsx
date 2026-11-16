@@ -2,6 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
 import { parseOtpInput, type OtpAccount } from '@gitling/github';
+import { AddByScan, BackupPanel } from '@/authenticator/AddByScan';
 import { useOtpAccounts, useTotp } from '@/authenticator/store';
 import { useTokens } from '@/design/DesignProvider';
 import { useMe } from '@/data/queries';
@@ -70,14 +71,15 @@ export default function Authenticator() {
         {empty ? (
           <View style={{ gap: 6 }}>
             <T v="sub" c="mut">1. On GitHub, open Settings → Password and authentication, and choose to set up an authenticator app.</T>
-            <T v="sub" c="mut">{'2. Under the QR code, tap the “setup key” link and copy the key.'}</T>
-            <T v="sub" c="mut">3. Paste it here and tap Add.</T>
+            <T v="sub" c="mut">{'2. Scan the QR code it shows (or a screenshot of it). Or tap the “setup key” link, copy the key and paste it below.'}</T>
+            <T v="sub" c="mut">3. Check the account and tap Add.</T>
             <T v="sub" c="mut">4. Type the code Gitling shows into GitHub to finish.</T>
           </View>
         ) : (
-          <T v="sub" c="mut">{'Paste the setup key GitHub shows under the QR code, or the whole otpauth:// link.'}</T>
+          <T v="sub" c="mut">{'Scan the QR code, or paste the setup key GitHub shows under it (or the whole otpauth:// link).'}</T>
         )}
         <Pressable onPress={() => openUrl(SECURITY_URL)} accessibilityRole="link"><T v="bodyStrong" c="acc">Open GitHub security settings ↗</T></Pressable>
+        <AddByScan defaultName={defaultName} onAdded={() => { setErr(null); setAdded(true); }} />
         <TextInput value={input} onChangeText={(v) => { setInput(v); setErr(null); setAdded(false); }} placeholder="Setup key or otpauth:// link" placeholderTextColor={t.c.dim}
           autoCapitalize="none" autoCorrect={false} spellCheck={false} accessibilityLabel="Setup key or otpauth link" style={field} />
         <TextInput value={name} onChangeText={setName} placeholder={`Name (optional, ${defaultName})`} placeholderTextColor={t.c.dim}
@@ -86,6 +88,8 @@ export default function Authenticator() {
         {err ? <T v="sub" c="bad">{err}</T> : null}
         {added ? <T v="sub" c="ok">Added. Type the code above into GitHub to finish.</T> : null}
       </Panel>
+
+      <BackupPanel count={accounts?.length ?? 0} />
 
       <View style={{ paddingHorizontal: 18, paddingTop: 22, gap: 8 }}>
         <T v="label" c="mut">good to know</T>
