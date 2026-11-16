@@ -53,16 +53,18 @@ export const canUseCamera = () => typeof navigator !== 'undefined' && !!navigato
 
 /**
  * Starts the back camera in `video` and reads frames until a QR code is found (`onText`), then stops.
- * Returns a stop function. Throws if the camera can't be opened (refused, none, insecure page).
+ * `cancelled` is checked after the permission wait and on every frame. Returns a stop function. Throws if the camera can't be opened (refused, none, insecure page).
  */
-export async function scanWithCamera(video: HTMLVideoElement, onText: (text: string) => void): Promise<() => void> {
+export async function scanWithCamera(video: HTMLVideoElement, onText: (text: string) => void, cancelled: () => boolean = () => false): Promise<() => void> {
   const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
   let stopped = false;
   const stop = () => { stopped = true; stream.getTracks().forEach((t) => t.stop()); video.srcObject = null; };
+  if (cancelled()) { stop(); return stop; } // stopped (or left) while the permission prompt was open
   video.srcObject = stream; video.muted = true; video.setAttribute('playsinline', 'true');
   await video.play().catch(() => {});
   const canvas = document.createElement('canvas');
   const tick = async () => {
+    if (!stopped && cancelled()) stop();
     if (stopped) return;
     if (video.videoWidth) {
       const scale = Math.min(1, 800 / Math.max(video.videoWidth, video.videoHeight));

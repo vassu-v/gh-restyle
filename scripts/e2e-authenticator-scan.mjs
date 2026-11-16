@@ -76,6 +76,14 @@ const foreign = [];
 const newCtx = async (b = browser, opts = {}) => {
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, acceptDownloads: true, ...opts });
   await ctx.addInitScript(() => localStorage.setItem('gitling.onboarded.v1', 'e2e'));
+  // Record every camera track, so we can check it ended even after its preview is gone. DELAY_CAM slows the
+  // permission wait to test stopping before the camera opens.
+  await ctx.addInitScript(() => {
+    window.__tracks = [];
+    const md = navigator.mediaDevices; if (!md?.getUserMedia) return;
+    const real = md.getUserMedia.bind(md);
+    md.getUserMedia = async (c) => { if (window.__delayCam) await new Promise((r) => setTimeout(r, window.__delayCam)); const st = await real(c); window.__tracks.push(...st.getTracks()); return st; };
+  });
   ctx.on('request', (r) => { const u = r.url(); if (!u.startsWith(base) && !/^(data|blob):/.test(u)) foreign.push(u); });
   const page = await ctx.newPage();
   page.on('pageerror', (e) => console.log('  page error:', e.message));
@@ -229,7 +237,7 @@ const cardCodes = async (page) => (await page.getByTestId('otp-code').allInnerTe
   const t = await found(page).then((x) => x ?? page.getByTestId('otp-found').waitFor({ timeout: 10000 }).then(() => page.getByTestId('otp-found').innerText()).catch(() => null));
   log(!!t && t.includes('frank') && okCode(S.f, firstCode(t)), `the camera reads the QR code and shows the confirmation (${JSON.stringify(t)})`);
   await page.waitForTimeout(500);
-  const live = await page.evaluate(() => [...document.querySelectorAll('video')].filter((v) => v.srcObject && v.srcObject.getVideoTracks().some((t) => t.readyState === 'live')).length);
+  const live = await page.evaluate(() => window.__tracks.filter((t) => t.readyState === 'live').length + [...document.querySelectorAll('video')].filter((v) => v.srcObject).length);
   log(live === 0 && !(await vis(page.getByTestId('otp-camera'))), `after reading, the camera stops and the preview is gone (live videos: ${live})`);
   if (t) { await btn(page, 'Add this account').click(); await page.waitForTimeout(400); }
   log(await count(page) === 1, 'the scanned account is added');
@@ -242,8 +250,16 @@ const cardCodes = async (page) => (await page.getByTestId('otp-code').allInnerTe
   let pv = false; try { await s.page.getByTestId('otp-camera').waitFor({ timeout: 5000 }); pv = true; } catch {}
   await s.page.waitForTimeout(800);
   await btn(s.page, 'Stop camera').click().catch(() => {}); await s.page.waitForTimeout(500);
-  const live2 = await s.page.evaluate(() => [...document.querySelectorAll('video')].filter((v) => v.srcObject && v.srcObject.getVideoTracks().some((t) => t.readyState === 'live')).length);
+  const live2 = await s.page.evaluate(() => window.__tracks.filter((t) => t.readyState === 'live').length);
   log(pv && !(await vis(s.page.getByTestId('otp-camera'))) && live2 === 0, '"Stop camera" hides the preview and stops the camera');
+  // Stop while the camera is still opening (slow permission): the camera that opens afterwards is closed at once.
+  await s.page.evaluate(() => { window.__delayCam = 1500; });
+  await btn(s.page, 'Scan QR code').click();
+  await s.page.waitForTimeout(200);
+  await btn(s.page, 'Stop camera').click().catch(() => {});
+  await s.page.waitForTimeout(2500);
+  const late = await s.page.evaluate(() => ({ n: window.__tracks.length, live: window.__tracks.filter((t) => t.readyState === 'live').length }));
+  log(late.n >= 2 && late.live === 0 && !(await vis(s.page.getByTestId('otp-camera'))), `stopping before the camera opens leaves no camera running (${JSON.stringify(late)})`);
   await b2.close(); await camBrowser.close();
   // Denied
   const b3 = await chromium.launch({ args: ['--use-fake-device-for-media-stream', '--deny-permission-prompts'] });

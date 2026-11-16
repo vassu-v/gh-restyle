@@ -35,7 +35,8 @@ export function AddByScan({ defaultName, onAdded }: { defaultName: string; onAdd
   const [busy, setBusy] = useState(false);
   const box = useRef<HTMLElement | null>(null);
   const stopRef = useRef<(() => void) | null>(null);
-  useEffect(() => () => stopRef.current?.(), []);
+  const run = useRef(0); // bumped on stop/leave: a camera that opens later is closed at once
+  useEffect(() => () => { run.current++; stopRef.current?.(); }, []);
   if (Platform.OS !== 'web') return null;
 
   const found = (text: string) => {
@@ -47,24 +48,27 @@ export function AddByScan({ defaultName, onAdded }: { defaultName: string; onAdd
   };
 
   const startCamera = async () => {
+    const me = ++run.current;
     setErr(null); setPending(null); setScanning(true);
     await new Promise((r) => setTimeout(r, 0)); // let the preview box render
     const host = box.current;
     if (!host) { setScanning(false); return; }
     const video = document.createElement('video');
     video.setAttribute('aria-label', 'Camera preview');
-    Object.assign(video.style, { width: '100%', height: '100%', objectFit: 'cover', borderRadius: '13px' });
+    Object.assign(video.style, { width: '100%', height: '100%', objectFit: 'cover', borderRadius: `${t.r.md}px` });
     host.replaceChildren(video);
     try {
-      stopRef.current = await scanWithCamera(video, (text) => { stopRef.current = null; setScanning(false); found(text); });
+      const stop = await scanWithCamera(video, (text) => { if (run.current !== me) return; stopRef.current = null; setScanning(false); found(text); }, () => run.current !== me);
+      if (run.current === me) stopRef.current = stop; else stop();
     } catch (e) {
+      if (run.current !== me) return;
       setScanning(false);
       const name = (e as Error).name;
       setErr(name === 'NotAllowedError' ? 'Gitling wasn’t allowed to use the camera. Allow it in your browser’s site settings, or add from a screenshot.'
         : 'Couldn’t open the camera. Add from a screenshot instead.');
     }
   };
-  const stopCamera = () => { stopRef.current?.(); stopRef.current = null; setScanning(false); };
+  const stopCamera = () => { run.current++; stopRef.current?.(); stopRef.current = null; setScanning(false); };
 
   const fromPicture = async () => {
     setErr(null); setPending(null);
@@ -96,9 +100,9 @@ export function AddByScan({ defaultName, onAdded }: { defaultName: string; onAdd
           : <Button kind="quiet" icon="eye" label="Scan QR code" onPress={startCamera} />) : null}
         <Button kind="quiet" icon="folder-open" label="From a screenshot" onPress={fromPicture} />
       </View>
-      {scanning ? <View ref={box as never} testID="otp-camera" style={{ height: 260, borderRadius: 13, overflow: 'hidden', backgroundColor: t.c.el2 }} /> : null}
+      {scanning ? <View ref={box as never} testID="otp-camera" style={{ height: 260, borderRadius: t.r.md, overflow: 'hidden', backgroundColor: t.c.el2 }} /> : null}
       {pending ? (
-        <View testID="otp-found" style={{ gap: 8, padding: 12, borderRadius: 13, backgroundColor: t.c.el2 }}>
+        <View testID="otp-found" style={{ gap: 8, padding: 12, borderRadius: t.r.md, backgroundColor: t.c.el2 }}>
           <T v="bodyStrong">Found {pending.issuer} · {pending.label}</T>
           <T v="sub" c="mut">First code: {totp(pending).code}. Add it, then type the code Gitling shows into GitHub.</T>
           <View style={{ flexDirection: 'row', gap: 10 }}>
@@ -119,7 +123,7 @@ export function BackupPanel({ count }: { count: number }) {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   if (Platform.OS !== 'web' || !canBackup()) return null;
-  const field = { padding: 12, borderRadius: 13, backgroundColor: t.c.el2, color: t.c.fg, fontFamily: t.font.mono.regular, fontSize: 14 } as const;
+  const field = { padding: 12, borderRadius: t.r.md, backgroundColor: t.c.el2, color: t.c.fg, fontFamily: t.font.mono.regular, fontSize: 14 } as const;
   const short = pass.length < MIN_PASSPHRASE;
 
   const save = async () => {
@@ -144,10 +148,16 @@ export function BackupPanel({ count }: { count: number }) {
     try {
       const r = await openBackup(await f.text(), pass);
       if (!r.ok) { setMsg({ ok: false, text: r.error }); return; }
-      let added = 0; let skipped = 0;
-      for (const a of r.accounts) { const x = await otpStore.add(a); if (x.ok) added++; else skipped++; }
+      let added = 0; let skipped = 0; let failure: string | null = null;
+      for (const a of r.accounts) {
+        const x = await otpStore.add(a);
+        if (x.ok) added++;
+        else if (/already here|isn't valid|name|unusual|up to/i.test(x.error)) skipped++;
+        else { failure = x.error; break; } // storage trouble: stop and say so
+      }
       setPass('');
-      setMsg({ ok: true, text: `Restored ${added} account${added === 1 ? '' : 's'}${skipped ? ` (${skipped} already here or not usable)` : ''}.` });
+      const done = `Restored ${added} account${added === 1 ? '' : 's'}${skipped ? ` (${skipped} skipped: already here or not usable)` : ''}.`;
+      setMsg(failure ? { ok: false, text: `${done} Then: ${failure}` } : { ok: true, text: done });
     } catch { setMsg({ ok: false, text: "Couldn't read that file." }); }
     finally { setBusy(false); }
   };
