@@ -39,8 +39,10 @@ export function AddByScan({ defaultName, onAdded }: { defaultName: string; onAdd
   if (Platform.OS !== 'web') return null;
 
   const found = (text: string) => {
-    const p = parseOtpInput(text, defaultName);
-    if (!p.ok) { setErr(/^otpauth:/i.test(text) ? p.error : "That QR code isn't a two-factor setup code. Use the one GitHub shows when you set up an authenticator app."); return; }
+    // Setup QR codes always hold an otpauth:// link; anything else (a URL, plain words) isn't one.
+    const link = /^otpauth:\/\//i.test(text.trim());
+    const p = link ? parseOtpInput(text.trim(), defaultName) : null;
+    if (!p?.ok) { setErr(p ? p.error : "That QR code isn't a two-factor setup code. Use the one GitHub shows when you set up an authenticator app."); return; }
     setErr(null); setPending(p.account);
   };
 

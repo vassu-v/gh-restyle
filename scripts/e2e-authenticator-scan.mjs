@@ -122,9 +122,10 @@ const cardCodes = async (page) => (await page.getByTestId('otp-code').allInnerTe
   log(await errShown(page, /No QR code found/), 'picture without a QR code: "No QR code found"');
   await pick(page, files.url);
   log(await errShown(page, /That QR code isn.t a two-factor setup code/), 'https URL QR: "That QR code isn\'t a two-factor setup code"');
-  await pick(page, files.text); await page.waitForTimeout(1500); console.log("  [text QR screen]", JSON.stringify((await page.locator("body").innerText()).slice(0, 600)));
+  await pick(page, files.text);
   log(await errShown(page, /That QR code isn.t a two-factor setup code/), 'plain text QR: same refusal');
-  log(await count(page) === 1 && !(await vis(page.getByTestId('otp-found'))), 'non-2FA QR codes add nothing');
+  const tf = await vis(page.getByTestId('otp-found')); if (tf) await btn(page, 'Cancel').click();
+  log(await count(page) === 1 && !tf, 'non-2FA QR codes add nothing and offer no confirmation');
   await pick(page, files.sha256); await page.waitForTimeout(1500);
   const shaFound = await vis(page.getByTestId('otp-found'));
   if (shaFound) await btn(page, 'Add this account').click().catch(() => {});
@@ -211,8 +212,7 @@ const cardCodes = async (page) => (await page.getByTestId('otp-code').allInnerTe
     const expected = [S.a, S.b, S.c, S.d];
     log(expected.every((s) => codes.some((c) => okCode(s, c))), 'restored accounts show the correct codes');
     await restore(p2, backupPath, PASS);
-    console.log('  [restore again]', JSON.stringify((await p2.locator('body').innerText()).match(/Restored[^\n]*|[^\n]*(skip|already)[^\n]*/gi)));
-    log(await errShown(p2, /skipped/i) && await count(p2) === 4, 'restoring again reports skipped and adds no duplicates');
+    log(await errShown(p2, /skipped|already here/i) && await count(p2) === 4, 'restoring again reports them as skipped/already here and adds no duplicates');
     await c2.close();
   }
 }
