@@ -55,6 +55,7 @@ docs/                STATUS, ARCHITECTURE, TESTING (layers + when to run what), 
 | `npm run e2e:studio` | after `build:web`: Studio presets, drag-to-reorder, share links in a browser |
 | `npm run e2e:onboarding` | after `build:web`: the welcome tour (first launch, skip/finish, returning users) and design files (save, open, load) |
 | `npm run e2e:authenticator` | after `build:web`: two-factor codes: add from a key or link, codes match RFC 6238, copy, rename, two-tap remove, reload, no plaintext secret in storage, kept on sign-out |
+| `npm run e2e:authenticator:scan` | after `build:web`: adding by QR (screenshot and a fake camera), refusals, encrypted backup save/restore, no network, no plaintext secret |
 | `npm run e2e:review` | after `build:web`: PR reviews in a browser: line comments, verdicts, replies, resolve, multi-line, suggestions (apply + batch) |
 | `npm run test:live` | read-only tests against the real api.github.com (`LIVE_REPO=owner/name`, optional `GITHUB_TOKEN`) |
 | `npm run build:web` | `expo export` + `scripts/pwa.mjs` → `apps/app/dist` (what Vercel/Cloudflare serve) |

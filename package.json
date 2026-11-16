@@ -28,13 +28,15 @@
     "e2e:extension:user": "node scripts/e2e-extension-user.mjs",
     "test:fuzz": "vitest run tests/fuzz",
     "test:coverage": "vitest run --coverage",
-    "verify": "node scripts/verify.mjs"
+    "verify": "node scripts/verify.mjs",
+    "e2e:authenticator:scan": "node scripts/e2e-authenticator-scan.mjs"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^3.2.7",
     "esbuild": "^0.28.2",
     "fast-check": "^3.23.2",
     "playwright": "^1.63.0",
+    "qrcode": "^1.5.4",
     "vitest": "^3.2.7"
   },
   "engines": {

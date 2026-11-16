@@ -11,14 +11,33 @@ Open it from **Account → Authenticator**. It works whether or not you're signe
    Authenticator screen).
 2. Choose **Enable two-factor authentication**, or, if it's already on, add or edit the **Authenticator app**
    method.
-3. GitHub shows a QR code. On a phone you can't scan your own screen, so tap the **setup key** link under the
-   QR code and copy the key (letters and digits, like `ABCD EFGH IJKL MNOP`).
-4. In Gitling, open **Account → Authenticator**, paste the key and tap **Add**. You can give it a name; if you
-   don't, it's named after your GitHub login (or "GitHub" when you aren't signed in).
+3. GitHub shows a QR code. In Gitling, open **Account → Authenticator** and either:
+   - tap **Scan QR code** and point the camera at it (when GitHub is open on another screen), or
+   - take a screenshot of the QR code and tap **From a screenshot** (when GitHub is open on this phone), or
+   - tap the **setup key** link under the QR code, copy the key and paste it into Gitling.
+4. Check the account Gitling found and tap **Add this account** (or **Add** for a pasted key). A pasted key can
+   get a name; if not, it's named after your GitHub login (or "GitHub" when you aren't signed in).
 5. Type the code Gitling shows into GitHub to finish.
 6. **Save GitHub's recovery codes somewhere other than this phone** (a password manager, or on paper).
 
 You can also paste the whole `otpauth://totp/…` link if you have it; the name in the link is used.
+
+Scanning happens on your phone: the browser's own QR reader where it has one, else a small reader bundled with
+Gitling. The camera stops as soon as a code is read, pictures are dropped once read, and nothing is uploaded.
+The secret goes straight into the same encrypted vault as everything else here. You can delete the screenshot
+afterwards (it contains the secret).
+
+## Encrypted backup
+
+If your phone is lost or reset, the accounts go with it. To keep a copy:
+
+1. Under **encrypted backup**, type a passphrase of at least 10 characters and tap **Save backup**.
+2. Keep the file `gitling-authenticator.backup.json` somewhere other than this phone, and remember the passphrase.
+   Without it, the file can't be opened by anyone, including you.
+3. To restore, type the passphrase, tap **Restore** and pick the file. Accounts already here are skipped.
+
+The file is encrypted on the phone (a key made from your passphrase with PBKDF2-SHA-256, 600,000 rounds, then
+AES-256-GCM). The passphrase is never saved or sent. A wrong passphrase or a changed file is refused.
 
 ## Using it
 
